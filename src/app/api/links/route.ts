@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+<<<<<<< HEAD
 import { getSupabaseServer } from '@/lib/supabaseServer'
 import { generateShortCode, isValidUrl } from '@/lib/shortCode'
 
@@ -20,14 +21,32 @@ export async function POST(req: NextRequest) {
 
     if (!target_url || !isValidUrl(target_url)) {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
+=======
+import { supabaseServer } from '@/lib/supabaseServer'
+import { generateShortCode, isValidUrl } from '@/lib/shortCode'
+
+export async function POST(req: NextRequest) {
+  try {
+    const { target_url, code } = await req.json()
+
+    if (typeof target_url !== 'string' || !isValidUrl(target_url)) {
+      return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
+>>>>>>> 0e1f9ed (Initial commit)
     }
 
     // choose short_code (custom if provided, else generate unique)
     let short_code: string = ''
+<<<<<<< HEAD
     if (typeof code === 'string' && code) {
       const custom = code
       if (!/^[a-zA-Z0-9-_]{3,64}$/.test(custom)) {
         return NextResponse.json({ error: 'Invalid custom code format' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
+=======
+    if (typeof code === 'string' && code.trim()) {
+      const custom = code.trim()
+      if (!/^[a-zA-Z0-9-_]{3,64}$/.test(custom)) {
+        return NextResponse.json({ error: 'Invalid custom code format' }, { status: 400 })
+>>>>>>> 0e1f9ed (Initial commit)
       }
       const { data: exists, error: checkErr } = await supabaseServer
         .from('links')
@@ -35,8 +54,13 @@ export async function POST(req: NextRequest) {
         .eq('short_code', custom)
         .limit(1)
         .maybeSingle()
+<<<<<<< HEAD
       if (checkErr) return NextResponse.json({ error: checkErr.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
       if (exists) return NextResponse.json({ error: 'Custom code already taken' }, { status: 409, headers: { 'Cache-Control': 'no-store' } })
+=======
+      if (checkErr) return NextResponse.json({ error: checkErr.message }, { status: 500 })
+      if (exists) return NextResponse.json({ error: 'Custom code already taken' }, { status: 409 })
+>>>>>>> 0e1f9ed (Initial commit)
       short_code = custom
     } else {
       // ensure unique short_code
@@ -49,12 +73,20 @@ export async function POST(req: NextRequest) {
           .limit(1)
           .maybeSingle()
         if (error) {
+<<<<<<< HEAD
           return NextResponse.json({ error: error.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+=======
+          return NextResponse.json({ error: error.message }, { status: 500 })
+>>>>>>> 0e1f9ed (Initial commit)
         }
         if (!data) { short_code = candidate; break }
       }
       if (!short_code) {
+<<<<<<< HEAD
         return NextResponse.json({ error: 'Failed to generate short code, retry.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+=======
+        return NextResponse.json({ error: 'Failed to generate short code, retry.' }, { status: 500 })
+>>>>>>> 0e1f9ed (Initial commit)
       }
     }
 
@@ -70,7 +102,10 @@ export async function POST(req: NextRequest) {
       user_id = authData?.user?.id ?? null
     }
 
+<<<<<<< HEAD
     const startedAt = Date.now()
+=======
+>>>>>>> 0e1f9ed (Initial commit)
     const { data: inserted, error: insertErr } = await supabaseServer
       .from('links')
       .insert({ short_code, target_url, user_id })
@@ -78,6 +113,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (insertErr) {
+<<<<<<< HEAD
       return NextResponse.json({ error: insertErr.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
     }
 
@@ -86,15 +122,28 @@ export async function POST(req: NextRequest) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+=======
+      return NextResponse.json({ error: insertErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ short_code: inserted.short_code, target_url: inserted.target_url }, { status: 201 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
+>>>>>>> 0e1f9ed (Initial commit)
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
+<<<<<<< HEAD
     const supabaseServer = getSupabaseServer()
     const { searchParams } = new URL(req.url)
     const code = searchParams.get('code')
     const debug = searchParams.get('debug') === '1'
+=======
+    const { searchParams } = new URL(req.url)
+    const code = searchParams.get('code')
+>>>>>>> 0e1f9ed (Initial commit)
 
     // Attach user context if provided via Bearer; used for listing
     let user_id: string | null = null
@@ -109,16 +158,25 @@ export async function GET(req: NextRequest) {
 
     if (code) {
       // detail view: fetch link and some basic analytics
+<<<<<<< HEAD
       type LinkRow = { id: string; short_code: string; target_url: string; user_id: string; created_at?: string }
       const startedAt = Date.now()
       const { data: linkRaw, error } = await supabaseServer
+=======
+      const { data: link, error } = await supabaseServer
+>>>>>>> 0e1f9ed (Initial commit)
         .from('links')
         .select('id, short_code, target_url, user_id, created_at')
         .eq('short_code', code)
         .maybeSingle()
+<<<<<<< HEAD
       if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
       const link = (linkRaw ?? null) as LinkRow | null
       if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404, headers: { 'Cache-Control': 'no-store' } })
+=======
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+>>>>>>> 0e1f9ed (Initial commit)
 
       // Pull recent clicks (up to 1000 rows). Avoid referencing a specific timestamp column
       // because schema may differ (created_at vs createdAt, etc.). We'll normalize later.
@@ -127,6 +185,7 @@ export async function GET(req: NextRequest) {
         .select('*')
         .eq('link_id', link.id)
         .limit(1000)
+<<<<<<< HEAD
       if (clicksErr) return NextResponse.json({ error: clicksErr.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
 
       // Normalize clicks and sort by derived timestamp desc
@@ -140,6 +199,25 @@ export async function GET(req: NextRequest) {
           const ip = (c['ip'] ?? null) as string | null
           return { created_at, referrer, ip }
         })
+=======
+      if (clicksErr) return NextResponse.json({ error: clicksErr.message }, { status: 500 })
+
+      // Normalize clicks and sort by derived timestamp desc
+      type AnyClick = Record<string, any>
+      const getTs = (c: AnyClick): number => {
+        const v = c.created_at || c.createdAt || c.timestamp || c.ts || c.inserted_at || c.insertedAt
+        const d = v ? new Date(v) : null
+        return d && !isNaN(d as any) ? d.getTime() : 0
+      }
+      const clicks = (rawClicks ?? [])
+        .map((c: AnyClick) => ({
+          created_at: (c.created_at || c.createdAt || c.timestamp || c.ts || c.inserted_at || c.insertedAt)
+            ? new Date(c.created_at || c.createdAt || c.timestamp || c.ts || c.inserted_at || c.insertedAt).toISOString()
+            : new Date(0).toISOString(),
+          referrer: c.referrer ?? null,
+          ip: c.ip ?? null,
+        }))
+>>>>>>> 0e1f9ed (Initial commit)
         .sort((a, b) => (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
 
       // Build daily counts for last 30 days
@@ -166,22 +244,31 @@ export async function GET(req: NextRequest) {
         .slice(0, 10)
         .map(([referrer, count]) => ({ referrer, count }))
 
+<<<<<<< HEAD
       const tookMs = Date.now() - startedAt
       return NextResponse.json(
         { link, clicks: clicks.slice(0, 20), daily, topReferrers, ...(debug ? { diagnostics: { tookMs, clicksCount: rawClicks?.length ?? 0 } } : {}) },
         { headers: { 'Cache-Control': 'no-store' } }
       )
+=======
+      return NextResponse.json({ link, clicks: clicks.slice(0, 20), daily, topReferrers })
+>>>>>>> 0e1f9ed (Initial commit)
     }
 
     // list recent links for the authenticated user, else public (none)
     if (!user_id) {
+<<<<<<< HEAD
       return NextResponse.json({ links: [] }, { headers: { 'Cache-Control': 'no-store' } })
+=======
+      return NextResponse.json({ links: [] })
+>>>>>>> 0e1f9ed (Initial commit)
     }
     const { data: links, error } = await supabaseServer
       .from('links')
       .select('short_code, target_url, created_at')
       .eq('user_id', user_id)
       .order('created_at', { ascending: false })
+<<<<<<< HEAD
       .limit(120)
     if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
     return NextResponse.json(
@@ -191,5 +278,12 @@ export async function GET(req: NextRequest) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+=======
+      .limit(20)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ links })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
+>>>>>>> 0e1f9ed (Initial commit)
   }
 }

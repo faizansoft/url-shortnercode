@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import Link from "next/link";
 import SessionCTA from "./SessionCTA";
 
@@ -43,4 +44,11 @@ export default function Home() {
       </div>
     </main>
   );
+=======
+import { redirect } from "next/navigation";
+
+export default function Home() {
+  redirect("/dashboard");
+  return null;
+>>>>>>> 0e1f9ed (Initial commit)
 }

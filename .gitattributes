@@ -1,4 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+<<<<<<< HEAD
+=======
+public/ip2l6/** !text !filter !merge !diff
+>>>>>>> 0e1f9ed (Initial commit)
 public/ip2l6/**/*.json filter=lfs diff=lfs merge=lfs -text
 data/IP2LOCATION-LITE-DB3.IPV6.CSV filter=lfs diff=lfs merge=lfs -text

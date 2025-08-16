@@ -1,12 +1,18 @@
+<<<<<<< HEAD
 "use client";
 
 import Link from "next/link";
 import React, { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+=======
+import Link from "next/link";
+import React from "react";
+>>>>>>> 0e1f9ed (Initial commit)
 import NavItem from "./NavItem";
 import AuthGuard from "./AuthGuard";
 import UserMenu from "./UserMenu";
 
+<<<<<<< HEAD
 function DashboardSearchBox() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -56,6 +62,14 @@ export default function DashboardLayout({
   return (
     <div className="min-h-[100dvh] grid grid-cols-[240px_1fr]">
       <aside className="glass text-sm p-4 flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-hidden" style={{ borderRadius: 0 }}>
+=======
+export default function DashboardLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <div className="min-h-screen grid grid-cols-[240px_1fr]">
+      <aside className="border-r text-sm p-4 flex flex-col gap-3 bg-[var(--background)] relative overflow-hidden">
+>>>>>>> 0e1f9ed (Initial commit)
         <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
           <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%)'}} />
           <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 60%)'}} />
@@ -98,6 +112,7 @@ export default function DashboardLayout({
             }
           />
           <NavItem
+<<<<<<< HEAD
             href="/dashboard/qrcodes"
             label="QR Codes"
             icon={
@@ -114,6 +129,8 @@ export default function DashboardLayout({
             }
           />
           <NavItem
+=======
+>>>>>>> 0e1f9ed (Initial commit)
             href="/dashboard/analytics"
             label="Analytics"
             icon={
@@ -136,6 +153,7 @@ export default function DashboardLayout({
         </nav>
         {/* Removed footer branding */}
       </aside>
+<<<<<<< HEAD
       <div className="flex flex-col min-h-[100dvh] min-h-screen">
         <header
           className="sticky top-0 z-10 glass rounded-none border-b border-[var(--border)]"
@@ -147,10 +165,23 @@ export default function DashboardLayout({
                 <DashboardSearchBox />
               </Suspense>
             </div>
+=======
+      <div className="flex flex-col min-h-screen">
+        <header className="sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b bg-white/50">
+          <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-3">
+            <form className="flex-1">
+              <input
+                type="search"
+                placeholder="Search links…"
+                className="w-full h-9 px-3 rounded-md bg-white border border-[color-mix(in_oklab,var(--accent)_20%,#e5e7eb)] outline-none focus:border-[var(--accent)]"
+              />
+            </form>
+>>>>>>> 0e1f9ed (Initial commit)
             {/* Removed header Create button as requested */}
             <button
               aria-label="Notifications"
               className="btn btn-ghost h-9 w-9 p-0 rounded-full"
+<<<<<<< HEAD
               style={{ color: 'var(--muted)' }}
             >
               <svg
@@ -164,10 +195,15 @@ export default function DashboardLayout({
                 <path d="M15 18a3 3 0 1 1-6 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+=======
+            >
+              🔔
+>>>>>>> 0e1f9ed (Initial commit)
             </button>
             <UserMenu />
           </div>
         </header>
+<<<<<<< HEAD
         <main className={`${isCustomize ? 'relative p-0 overflow-hidden' : 'p-6 overflow-auto scrollbar'} flex-1 min-h-0`}>
           <AuthGuard>
             {isCustomize ? (
@@ -179,6 +215,11 @@ export default function DashboardLayout({
             ) : (
               <div className="mx-auto max-w-6xl w-full space-y-4 h-full min-h-0 flex flex-col">{children}</div>
             )}
+=======
+        <main className="p-6">
+          <AuthGuard>
+            <div className="mx-auto max-w-6xl w-full space-y-4">{children}</div>
+>>>>>>> 0e1f9ed (Initial commit)
           </AuthGuard>
         </main>
       </div>

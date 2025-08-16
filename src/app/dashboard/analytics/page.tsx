@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+<<<<<<< HEAD
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 
 // Normalize country values (codes -> display names) for consistent map labels
@@ -135,20 +136,27 @@ function WorldMapChoropleth({ items }: { items: Array<{ name: string; value: num
 }
 
  
+=======
+>>>>>>> 0e1f9ed (Initial commit)
 
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+<<<<<<< HEAD
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [granularity, setGranularity] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
   const [debug, setDebug] = useState(false);
+=======
+  const [data, setData] = useState<any>(null);
+>>>>>>> 0e1f9ed (Initial commit)
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
+<<<<<<< HEAD
         const res = await fetch(`/api/analytics?days=${days}${debug ? '&debug=1' : ''}` , {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -157,22 +165,42 @@ export default function AnalyticsDashboard() {
         setData(payload as AnalyticsData);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load analytics");
+=======
+        const res = await fetch("/api/analytics", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload?.error || "Failed to load analytics");
+        setData(payload);
+      } catch (e: any) {
+        setError(e?.message ?? "Failed to load analytics");
+>>>>>>> 0e1f9ed (Initial commit)
       } finally {
         setLoading(false);
       }
     })();
+<<<<<<< HEAD
   }, [days, debug]);
+=======
+  }, []);
+>>>>>>> 0e1f9ed (Initial commit)
 
   const dailySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.daily ? Object.entries(data.daily) : [];
     return entries.sort((a, b) => a[0].localeCompare(b[0]));
   }, [data]);
 
+<<<<<<< HEAD
   const aggregatedSeries = useMemo(() => aggregateSeries(dailySeries, granularity), [dailySeries, granularity]);
 
   const hourlySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.hourly ? Object.entries(data.hourly) : [];
     return entries.sort((a, b) => Number(a[0]) - Number(b[0]));
+=======
+  const hourlySeries = useMemo(() => {
+    const entries: Array<[string, number]> = data?.hourly ? Object.entries(data.hourly) : [];
+    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+>>>>>>> 0e1f9ed (Initial commit)
   }, [data]);
 
   const weekdaySeries = useMemo(() => {
@@ -181,6 +209,7 @@ export default function AnalyticsDashboard() {
     return order.map((k) => [k, Number(w[k] || 0)]) as Array<[string, number]>;
   }, [data]);
 
+<<<<<<< HEAD
   const dailyTotal = useMemo(() => dailySeries.reduce((s, [, v]) => s + v, 0), [dailySeries]);
   const hourlyTotal = useMemo(() => hourlySeries.reduce((s, [, v]) => s + v, 0), [hourlySeries]);
   const weekdayTotal = useMemo(() => weekdaySeries.reduce((s, [, v]) => s + v, 0), [weekdaySeries]);
@@ -189,6 +218,12 @@ export default function AnalyticsDashboard() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Analytics</h1>
+=======
+  return (
+    <div className="space-y-6">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+>>>>>>> 0e1f9ed (Initial commit)
       </header>
 
       {loading ? (
@@ -202,6 +237,7 @@ export default function AnalyticsDashboard() {
             <StatCard label="Total Links" value={data?.summary?.totalLinks ?? 0} />
             <StatCard label="Avg Clicks / Link" value={avgClicks(data?.summary)} />
           </div>
+<<<<<<< HEAD
           {/* Top row: top day + device donut */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <section className="rounded-xl glass p-5 lg:col-span-2">
@@ -372,12 +408,82 @@ export default function AnalyticsDashboard() {
               )}
             </section>
           )}
+=======
+
+          <section className="rounded-xl glass p-5">
+            <div className="p-0 pb-3 font-medium">Clicks over time (30 days)</div>
+            <DailyBars fromPairs={dailySeries} height={120} />
+          </section>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
+              <DailyBars fromPairs={hourlySeries} height={100} />
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
+              <DailyBars fromPairs={weekdaySeries} height={100} />
+            </section>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Top Links</div>
+              <RankedBars
+                items={(data?.topLinks ?? []).map((x: any) => ({ label: `/${x.code}`, count: x.count }))}
+              />
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Top Referrers</div>
+              <RankedBars items={(data?.topReferrers ?? []).map((x: any) => ({ label: x.referrer, count: x.count }))} />
+            </section>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Countries</div>
+              <RankedBars items={(data?.countries ?? []).map((x: any) => ({ label: x.country, count: x.count }))} />
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Devices</div>
+              <RankedBars items={(data?.devices ?? []).map((x: any) => ({ label: x.device, count: x.count }))} />
+            </section>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Browsers</div>
+              <RankedBars items={(data?.browsers ?? []).map((x: any) => ({ label: x.browser, count: x.count }))} />
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Operating Systems</div>
+              <RankedBars items={(data?.oses ?? []).map((x: any) => ({ label: x.os, count: x.count }))} />
+            </section>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Referrer Domains</div>
+              <RankedBars items={(data?.referrerDomains ?? []).map((x: any) => ({ label: x.domain, count: x.count }))} />
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Regions</div>
+              <RankedBars items={(data?.regions ?? []).map((x: any) => ({ label: x.region, count: x.count }))} />
+            </section>
+          </div>
+
+          <section className="rounded-xl glass p-5">
+            <div className="p-0 pb-3 font-medium">Cities</div>
+            <RankedBars items={(data?.cities ?? []).map((x: any) => ({ label: x.city, count: x.count }))} />
+          </section>
+>>>>>>> 0e1f9ed (Initial commit)
         </>
       )}
     </div>
   );
 }
 
+<<<<<<< HEAD
 // Vertical column chart (with gridlines) for referrers
 function ColumnChart({ items, height = 240 }: { items: Array<{ label: string; value: number }>; height?: number }) {
   const labels = items.map(i => i.label);
@@ -626,19 +732,29 @@ function RangeBtn({ current, value, label, onClick }: { current: 7 | 30 | 90; va
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl glass p-5" title={`${label}: ${value}`}>
+=======
+function StatCard({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-xl glass p-5">
+>>>>>>> 0e1f9ed (Initial commit)
       <div className="text-sm text-[var(--muted)]">{label}</div>
       <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
     </div>
   );
 }
 
+<<<<<<< HEAD
 function avgClicks(summary?: Partial<Summary> | null) {
+=======
+function avgClicks(summary: any) {
+>>>>>>> 0e1f9ed (Initial commit)
   const total = summary?.totalClicks ?? 0;
   const links = summary?.totalLinks ?? 0;
   if (!links) return 0;
   return Math.round((total / links) * 10) / 10;
 }
 
+<<<<<<< HEAD
 function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: Array<[string, number]>; height?: number; withLabels?: boolean }) {
   const max = Math.max(1, ...fromPairs.map(([, v]) => v));
   const labelEvery = Math.max(1, Math.ceil(fromPairs.length / 14));
@@ -680,11 +796,28 @@ function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: 
           })}
         </div>
       )}
+=======
+function DailyBars({ fromPairs, height = 100 }: { fromPairs: Array<[string, number]>; height?: number }) {
+  const max = Math.max(1, ...fromPairs.map(([, v]) => v));
+  return (
+    <div className="flex items-end gap-1" style={{ height }}>
+      {fromPairs.map(([day, v]) => (
+        <div key={day} className="flex-1 min-w-[4px] bg-gray-100 rounded relative" title={`${day}: ${v}`}>
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
+            style={{ height: `${(v / max) * 100}%` }}
+          />
+        </div>
+      ))}
+>>>>>>> 0e1f9ed (Initial commit)
     </div>
   );
 }
 
+<<<<<<< HEAD
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+=======
+>>>>>>> 0e1f9ed (Initial commit)
 function RankedBars({ items }: { items: Array<{ label: string; count: number }> }) {
   const max = Math.max(1, ...items.map((i) => i.count));
   return (
@@ -695,7 +828,11 @@ function RankedBars({ items }: { items: Array<{ label: string; count: number }> 
         items.map((i) => (
           <li key={i.label} className="flex items-center gap-3">
             <div className="w-48 truncate" title={i.label}>{i.label}</div>
+<<<<<<< HEAD
             <div className="flex-1 h-2 rounded" style={{ background: 'color-mix(in oklab, var(--surface) 92%, var(--foreground))' }}>
+=======
+            <div className="flex-1 h-2 bg-gray-100 rounded">
+>>>>>>> 0e1f9ed (Initial commit)
               <div className="h-2 rounded bg-[var(--accent)]" style={{ width: `${(i.count / max) * 100}%` }} />
             </div>
             <div className="w-12 text-right tabular-nums">{i.count}</div>

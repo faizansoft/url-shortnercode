@@ -1,4 +1,5 @@
 "use client";
+<<<<<<< HEAD
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
@@ -7,6 +8,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
+=======
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+>>>>>>> 0e1f9ed (Initial commit)
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
@@ -15,6 +21,7 @@ export default function LinksIndexPage() {
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+<<<<<<< HEAD
   const [showQR, setShowQR] = useState(false);
   const [qrFor, setQrFor] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -36,6 +43,8 @@ export default function LinksIndexPage() {
       l.target_url.toLowerCase().includes(q)
     );
   }, [links, q]);
+=======
+>>>>>>> 0e1f9ed (Initial commit)
 
   useEffect(() => {
     (async () => {
@@ -48,14 +57,20 @@ export default function LinksIndexPage() {
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || "Failed to load links");
         setLinks(payload.links || []);
+<<<<<<< HEAD
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load links");
+=======
+      } catch (e: any) {
+        setError(e?.message ?? "Failed to load links");
+>>>>>>> 0e1f9ed (Initial commit)
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
+<<<<<<< HEAD
   // Dark mode detection removed (not used)
 
   // Generate preview when modal opens or target changes.
@@ -467,6 +482,13 @@ function dataUrlToBlob(dataUrl: string): Blob {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Links</h1>
         <Link className="btn btn-primary" href="/dashboard/create">Create</Link>
+=======
+  return (
+    <div className="space-y-4">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Links</h1>
+        <Link className="btn" href="/dashboard/create">Create</Link>
+>>>>>>> 0e1f9ed (Initial commit)
       </header>
 
       {loading ? (
@@ -487,6 +509,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
               </tr>
             </thead>
             <tbody>
+<<<<<<< HEAD
               {filteredLinks.length === 0 ? (
                 <tr>
                   <td className="p-4 text-[var(--muted)]" colSpan={4}>No matches for &ldquo;{q}&rdquo;</td>
@@ -494,11 +517,16 @@ function dataUrlToBlob(dataUrl: string): Blob {
               ) : null}
               {filteredLinks.map((l) => (
                 <tr key={l.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] transition-colors">
+=======
+              {links.map((l) => (
+                <tr key={l.short_code} className="border-t border-[var(--border)]">
+>>>>>>> 0e1f9ed (Initial commit)
                   <td className="p-3 font-mono">
                     <a className="underline" href={`/${l.short_code}`} target="_blank" rel="noreferrer">
                       /{l.short_code}
                     </a>
                   </td>
+<<<<<<< HEAD
                   <td className="p-3 max-w-[420px] truncate tip" data-tip={l.target_url}>{l.target_url}</td>
                   <td className="p-3">{new Date(l.created_at).toLocaleString()}</td>
                   <td className="p-3">
@@ -525,6 +553,12 @@ function dataUrlToBlob(dataUrl: string): Blob {
                       </Link>
                       
                     </div>
+=======
+                  <td className="p-3 max-w-[420px] truncate" title={l.target_url}>{l.target_url}</td>
+                  <td className="p-3">{new Date(l.created_at).toLocaleString()}</td>
+                  <td className="p-3">
+                    <Link className="btn h-8" href={`/dashboard/links/${l.short_code}`}>View</Link>
+>>>>>>> 0e1f9ed (Initial commit)
                   </td>
                 </tr>
               ))}
@@ -532,6 +566,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
           </table>
         </div>
       )}
+<<<<<<< HEAD
 
       {showShareLink && (
         <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: 'color-mix(in oklab, var(--surface) 60%, transparent)' }}>
@@ -663,6 +698,8 @@ function dataUrlToBlob(dataUrl: string): Blob {
           </div>
         </div>
       )}
+=======
+>>>>>>> 0e1f9ed (Initial commit)
     </div>
   );
 }

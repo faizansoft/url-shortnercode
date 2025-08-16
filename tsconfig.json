@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
+<<<<<<< HEAD
     "target": "ES2020",
+=======
+    "target": "ES2017",
+>>>>>>> 0e1f9ed (Initial commit)
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -18,11 +22,18 @@
         "name": "next"
       }
     ],
+<<<<<<< HEAD
     "typeRoots": ["./src/types", "./node_modules/@types"],
+=======
+>>>>>>> 0e1f9ed (Initial commit)
     "paths": {
       "@/*": ["./src/*"]
     }
   },
+<<<<<<< HEAD
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/types/**/*.d.ts", ".next/types/**/*.ts"],
+=======
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+>>>>>>> 0e1f9ed (Initial commit)
   "exclude": ["node_modules"]
 }

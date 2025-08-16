@@ -1,7 +1,11 @@
 "use client";
+<<<<<<< HEAD
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
+=======
+import { useState } from "react";
+>>>>>>> 0e1f9ed (Initial commit)
 import { supabaseClient } from "@/lib/supabaseClient";
 
 export default function CreateLinkPage() {
@@ -9,6 +13,7 @@ export default function CreateLinkPage() {
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<{ code: string; shortUrl: string } | null>(null);
+<<<<<<< HEAD
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +28,10 @@ export default function CreateLinkPage() {
     mql?.addEventListener?.('change', update);
     return () => mql?.removeEventListener?.('change', update);
   }, []);
+=======
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ kind: "success" | "error"; msg: string } | null>(null);
+>>>>>>> 0e1f9ed (Initial commit)
 
   function validateUrl(u: string) {
     try {
@@ -33,6 +42,7 @@ export default function CreateLinkPage() {
     }
   }
 
+<<<<<<< HEAD
   // Generate QR when created or theme changes
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +68,8 @@ export default function CreateLinkPage() {
     };
   }, [created?.shortUrl, prefersDark]);
 
+=======
+>>>>>>> 0e1f9ed (Initial commit)
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
@@ -87,6 +99,7 @@ export default function CreateLinkPage() {
       const shortCode: string = payload?.short_code;
       if (!shortCode) throw new Error("No short code returned");
 
+<<<<<<< HEAD
       const shortUrl = `${window.location.origin}/${shortCode}`;
       setCreated({ code: shortCode, shortUrl });
       setToast({ kind: "success", msg: "Link created successfully" });
@@ -103,6 +116,14 @@ export default function CreateLinkPage() {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);
       setToast({ kind: "error", msg });
+=======
+      setCreated({ code: shortCode, shortUrl: `${window.location.origin}/${shortCode}` });
+      setToast({ kind: "success", msg: "Link created successfully" });
+      setTimeout(() => setToast(null), 2500);
+    } catch (err: any) {
+      setError(err?.message ?? "Something went wrong");
+      setToast({ kind: "error", msg: err?.message ?? "Something went wrong" });
+>>>>>>> 0e1f9ed (Initial commit)
       setTimeout(() => setToast(null), 3000);
     } finally {
       setCreating(false);
@@ -112,7 +133,11 @@ export default function CreateLinkPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
+<<<<<<< HEAD
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Create short link</h1>
+=======
+        <h1 className="text-2xl font-semibold tracking-tight">Create short link</h1>
+>>>>>>> 0e1f9ed (Initial commit)
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -126,8 +151,12 @@ export default function CreateLinkPage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com/my-long-url"
+<<<<<<< HEAD
                 className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+=======
+                className="w-full h-11 px-3 rounded-md bg-white/5 border border-white/10 outline-none focus:border-[var(--accent)]"
+>>>>>>> 0e1f9ed (Initial commit)
               />
             </div>
             <div className="space-y-2">
@@ -137,20 +166,35 @@ export default function CreateLinkPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\s+/g, "-"))}
                 placeholder="your-alias"
+<<<<<<< HEAD
                 className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+=======
+                className="w-full h-11 px-3 rounded-md bg-white/5 border border-white/10 outline-none focus:border-[var(--accent)]"
+>>>>>>> 0e1f9ed (Initial commit)
               />
             </div>
             {error && (
               <div className="text-sm text-red-600">{error}</div>
             )}
             <div className="flex gap-3">
+<<<<<<< HEAD
               <button disabled={creating || !url || !validateUrl(url)} className="btn btn-primary h-9">
+=======
+              <button
+                disabled={creating || !url || !validateUrl(url)}
+                className="px-4 h-10 rounded-md bg-[var(--accent)] text-white disabled:opacity-50"
+              >
+>>>>>>> 0e1f9ed (Initial commit)
                 {creating ? "Creating…" : "Create link"}
               </button>
               <button
                 type="button"
+<<<<<<< HEAD
                 className="btn btn-secondary h-9"
+=======
+                className="px-4 h-10 rounded-md border border-white/10 hover:bg-white/5"
+>>>>>>> 0e1f9ed (Initial commit)
                 onClick={() => {
                   setUrl("");
                   setCode("");
@@ -169,6 +213,7 @@ export default function CreateLinkPage() {
           {created ? (
             <div className="space-y-3">
               <div className="text-sm">Short URL</div>
+<<<<<<< HEAD
               <div className="p-3 rounded-md font-mono text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {created.shortUrl}
               </div>
@@ -195,6 +240,35 @@ export default function CreateLinkPage() {
                   QR
                 </div>
               )}
+=======
+              <div className="p-3 rounded-md bg-white/5 border border-white/10 font-mono text-sm">
+                {created.shortUrl}
+              </div>
+              <div className="flex gap-2">
+                <a
+                  className="btn btn-secondary h-8"
+                  href={created.shortUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open
+                </a>
+                <button
+                  className="btn h-8"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(created.shortUrl);
+                    setToast({ kind: "success", msg: "Copied to clipboard" });
+                    setTimeout(() => setToast(null), 2000);
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+              <div className="text-sm">QR (placeholder)</div>
+              <div className="aspect-square w-40 bg-white rounded-md grid place-items-center text-black font-semibold">
+                QR
+              </div>
+>>>>>>> 0e1f9ed (Initial commit)
             </div>
           ) : (
             <div className="text-sm text-[var(--muted)]">Fill the form to preview your link and QR.</div>

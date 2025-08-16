@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+<<<<<<< HEAD
 import { getSupabaseServer } from '@/lib/supabaseServer'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
+=======
+import { supabaseServer } from '@/lib/supabaseServer'
+>>>>>>> 0e1f9ed (Initial commit)
 
 // GET /api/analytics
 // Aggregates clicks for the authenticated user's links
@@ -11,7 +15,10 @@ export async function GET(req: NextRequest) {
     const auth = req.headers.get('authorization') || req.headers.get('Authorization')
     const token = auth?.startsWith('Bearer ') ? auth.slice('Bearer '.length) : null
 
+<<<<<<< HEAD
     const supabaseServer = getSupabaseServer()
+=======
+>>>>>>> 0e1f9ed (Initial commit)
     let user_id: string | null = null
     if (token) {
       const { data, error } = await supabaseServer.auth.getUser(token)
@@ -30,6 +37,7 @@ export async function GET(req: NextRequest) {
         topLinks: [],
         countries: [],
         devices: [],
+<<<<<<< HEAD
         diagnostics: { resolvedUserId: null, linkCount: 0, clickCount: 0 },
       })
     }
@@ -41,6 +49,11 @@ export async function GET(req: NextRequest) {
     const allowed = new Set(['7','30','90'])
     const days = allowed.has(daysParam ?? '') ? Number(daysParam) : 30
 
+=======
+      })
+    }
+
+>>>>>>> 0e1f9ed (Initial commit)
     // Get user's links
     const { data: links, error: linksErr } = await supabaseServer
       .from('links')
@@ -58,7 +71,10 @@ export async function GET(req: NextRequest) {
         topLinks: [],
         countries: [],
         devices: [],
+<<<<<<< HEAD
         diagnostics: { resolvedUserId: user_id, linkCount: 0, clickCount: 0 },
+=======
+>>>>>>> 0e1f9ed (Initial commit)
       })
     }
 
@@ -70,6 +86,7 @@ export async function GET(req: NextRequest) {
       .limit(50000)
     if (clicksErr) return NextResponse.json({ error: clicksErr.message }, { status: 500 })
 
+<<<<<<< HEAD
     type AnyRow = Record<string, unknown>
     const getIso = (r: AnyRow): string => {
       const v = (r['created_at'] ?? r['createdAt'] ?? r['timestamp'] ?? r['ts'] ?? r['inserted_at'] ?? r['insertedAt']) as string | number | Date | null | undefined
@@ -213,15 +230,56 @@ export async function GET(req: NextRequest) {
       }
       return s
     }
+=======
+    type AnyRow = Record<string, any>
+    const getIso = (r: AnyRow): string => {
+      const v = r.created_at ?? r.createdAt ?? r.timestamp ?? r.ts ?? r.inserted_at ?? r.insertedAt
+      const d = v ? new Date(v) : new Date(0)
+      return isNaN(d as unknown as number) ? new Date(0).toISOString() : d.toISOString()
+    }
+    const getRef = (r: AnyRow): string => (r.referrer ?? r.referer ?? 'direct') as string
+    const getLinkId = (r: AnyRow): string => (r.link_id ?? r.linkId ?? r.link ?? '') as string
+    const getCountry = (r: AnyRow): string | null => (r.country ?? r.country_code ?? r.countryCode ?? null)
+    const getDevice = (r: AnyRow): string | null => (r.device ?? r.ua_device ?? r.user_agent_device ?? null)
+
+    const linkMap = new Map<string, { short_code: string }>()
+    for (const l of links ?? []) linkMap.set(l.id, { short_code: l.short_code })
+
+    const getRegion = (r: AnyRow): string | null => (r.region ?? r.region_name ?? r.subdivision ?? null)
+    const getCity = (r: AnyRow): string | null => (r.city ?? r.city_name ?? null)
+    const getBrowser = (r: AnyRow): string | null => (r.browser ?? r.ua_browser ?? null)
+    const getOS = (r: AnyRow): string | null => (r.os ?? r.ua_os ?? null)
+    const getRefDomain = (r: AnyRow): string | null => (r.referrer_domain ?? r.referer_domain ?? null)
+
+    const clicks = (rawClicks ?? []).map((r) => ({
+      ts: getIso(r),
+      referrer: getRef(r),
+      referrer_domain: getRefDomain(r),
+      link_id: getLinkId(r),
+      country: getCountry(r),
+      region: getRegion(r),
+      city: getCity(r),
+      device: getDevice(r),
+      browser: getBrowser(r),
+      os: getOS(r),
+    }))
+>>>>>>> 0e1f9ed (Initial commit)
 
     // Summary
     const totalClicks = clicks.length
     const totalLinks = links?.length ?? 0
 
+<<<<<<< HEAD
     // Daily for last N days (7/30/90)
     const dayKey = (d: Date) => d.toISOString().slice(0, 10)
     const daily: Record<string, number> = {}
     for (let i = 0; i < days; i++) {
+=======
+    // Daily for last 30 days
+    const dayKey = (d: Date) => d.toISOString().slice(0, 10)
+    const daily: Record<string, number> = {}
+    for (let i = 0; i < 30; i++) {
+>>>>>>> 0e1f9ed (Initial commit)
       const d = new Date()
       d.setDate(d.getDate() - i)
       daily[dayKey(d)] = 0
@@ -267,7 +325,11 @@ export async function GET(req: NextRequest) {
     // Countries
     const countryCounts: Record<string, number> = {}
     for (const c of clicks) {
+<<<<<<< HEAD
       const cc = c.country || 'Unknown'
+=======
+      const cc = c.country ?? 'Unknown'
+>>>>>>> 0e1f9ed (Initial commit)
       countryCounts[cc] = (countryCounts[cc] || 0) + 1
     }
     const countries = Object.entries(countryCounts)
@@ -275,12 +337,19 @@ export async function GET(req: NextRequest) {
       .slice(0, 20)
       .map(([country, count]) => ({ country, count }))
 
+<<<<<<< HEAD
     const countriesHuman = countries.map(({ country, count }) => ({ code: country, name: toCountryName(country), count }))
 
     // Regions
     const regionCounts: Record<string, number> = {}
     for (const c of clicks) {
       const rg = c.region || 'Unknown'
+=======
+    // Regions
+    const regionCounts: Record<string, number> = {}
+    for (const c of clicks) {
+      const rg = c.region ?? 'Unknown'
+>>>>>>> 0e1f9ed (Initial commit)
       regionCounts[rg] = (regionCounts[rg] || 0) + 1
     }
     const regions = Object.entries(regionCounts)
@@ -291,7 +360,11 @@ export async function GET(req: NextRequest) {
     // Cities
     const cityCounts: Record<string, number> = {}
     for (const c of clicks) {
+<<<<<<< HEAD
       const ct = c.city || 'Unknown'
+=======
+      const ct = c.city ?? 'Unknown'
+>>>>>>> 0e1f9ed (Initial commit)
       cityCounts[ct] = (cityCounts[ct] || 0) + 1
     }
     const cities = Object.entries(cityCounts)
@@ -302,7 +375,11 @@ export async function GET(req: NextRequest) {
     // Devices
     const deviceCounts: Record<string, number> = {}
     for (const c of clicks) {
+<<<<<<< HEAD
       const dv = c.device || 'Unknown'
+=======
+      const dv = c.device ?? 'Unknown'
+>>>>>>> 0e1f9ed (Initial commit)
       deviceCounts[dv] = (deviceCounts[dv] || 0) + 1
     }
     const devices = Object.entries(deviceCounts)
@@ -356,7 +433,10 @@ export async function GET(req: NextRequest) {
       topReferrers,
       topLinks,
       countries,
+<<<<<<< HEAD
       countriesHuman,
+=======
+>>>>>>> 0e1f9ed (Initial commit)
       regions,
       cities,
       devices,
@@ -365,6 +445,7 @@ export async function GET(req: NextRequest) {
       referrerDomains: referrerDomains,
       hourly,
       weekdays,
+<<<<<<< HEAD
       range: { days },
       diagnostics: {
         resolvedUserId: user_id,
@@ -382,5 +463,10 @@ export async function GET(req: NextRequest) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
+=======
+    })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
+>>>>>>> 0e1f9ed (Initial commit)
   }
 }
