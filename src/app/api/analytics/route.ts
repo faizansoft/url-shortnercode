@@ -57,25 +57,25 @@ export async function GET(req: NextRequest) {
       .limit(50000)
     if (clicksErr) return NextResponse.json({ error: clicksErr.message }, { status: 500 })
 
-    type AnyRow = Record<string, any>
+    type AnyRow = Record<string, unknown>
     const getIso = (r: AnyRow): string => {
-      const v = r.created_at ?? r.createdAt ?? r.timestamp ?? r.ts ?? r.inserted_at ?? r.insertedAt
+      const v = (r['created_at'] ?? r['createdAt'] ?? r['timestamp'] ?? r['ts'] ?? r['inserted_at'] ?? r['insertedAt']) as string | number | Date | null | undefined
       const d = v ? new Date(v) : new Date(0)
-      return isNaN(d as unknown as number) ? new Date(0).toISOString() : d.toISOString()
+      return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString()
     }
-    const getRef = (r: AnyRow): string => (r.referrer ?? r.referer ?? 'direct') as string
-    const getLinkId = (r: AnyRow): string => (r.link_id ?? r.linkId ?? r.link ?? '') as string
-    const getCountry = (r: AnyRow): string | null => (r.country ?? r.country_code ?? r.countryCode ?? null)
-    const getDevice = (r: AnyRow): string | null => (r.device ?? r.ua_device ?? r.user_agent_device ?? null)
+    const getRef = (r: AnyRow): string => (r['referrer'] ?? (r as Record<string, unknown>)['referer'] ?? 'direct') as string
+    const getLinkId = (r: AnyRow): string => (r['link_id'] ?? r['linkId'] ?? r['link'] ?? '') as string
+    const getCountry = (r: AnyRow): string | null => (r['country'] ?? r['country_code'] ?? r['countryCode'] ?? null) as string | null
+    const getDevice = (r: AnyRow): string | null => (r['device'] ?? r['ua_device'] ?? r['user_agent_device'] ?? null) as string | null
 
     const linkMap = new Map<string, { short_code: string }>()
     for (const l of links ?? []) linkMap.set(l.id, { short_code: l.short_code })
 
-    const getRegion = (r: AnyRow): string | null => (r.region ?? r.region_name ?? r.subdivision ?? null)
-    const getCity = (r: AnyRow): string | null => (r.city ?? r.city_name ?? null)
-    const getBrowser = (r: AnyRow): string | null => (r.browser ?? r.ua_browser ?? null)
-    const getOS = (r: AnyRow): string | null => (r.os ?? r.ua_os ?? null)
-    const getRefDomain = (r: AnyRow): string | null => (r.referrer_domain ?? r.referer_domain ?? null)
+    const getRegion = (r: AnyRow): string | null => (r['region'] ?? r['region_name'] ?? r['subdivision'] ?? null) as string | null
+    const getCity = (r: AnyRow): string | null => (r['city'] ?? r['city_name'] ?? null) as string | null
+    const getBrowser = (r: AnyRow): string | null => (r['browser'] ?? r['ua_browser'] ?? null) as string | null
+    const getOS = (r: AnyRow): string | null => (r['os'] ?? r['ua_os'] ?? null) as string | null
+    const getRefDomain = (r: AnyRow): string | null => (r['referrer_domain'] ?? (r as Record<string, unknown>)['referer_domain'] ?? null) as string | null
 
     const clicks = (rawClicks ?? []).map((r) => ({
       ts: getIso(r),
@@ -239,7 +239,8 @@ export async function GET(req: NextRequest) {
       hourly,
       weekdays,
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

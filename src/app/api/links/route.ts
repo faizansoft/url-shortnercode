@@ -69,8 +69,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ short_code: inserted.short_code, target_url: inserted.target_url }, { status: 201 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -110,20 +111,16 @@ export async function GET(req: NextRequest) {
       if (clicksErr) return NextResponse.json({ error: clicksErr.message }, { status: 500 })
 
       // Normalize clicks and sort by derived timestamp desc
-      type AnyClick = Record<string, any>
-      const getTs = (c: AnyClick): number => {
-        const v = c.created_at || c.createdAt || c.timestamp || c.ts || c.inserted_at || c.insertedAt
-        const d = v ? new Date(v) : null
-        return d && !isNaN(d as any) ? d.getTime() : 0
-      }
+      type AnyClick = Record<string, unknown>
       const clicks = (rawClicks ?? [])
-        .map((c: AnyClick) => ({
-          created_at: (c.created_at || c.createdAt || c.timestamp || c.ts || c.inserted_at || c.insertedAt)
-            ? new Date(c.created_at || c.createdAt || c.timestamp || c.ts || c.inserted_at || c.insertedAt).toISOString()
-            : new Date(0).toISOString(),
-          referrer: c.referrer ?? null,
-          ip: c.ip ?? null,
-        }))
+        .map((c: AnyClick) => {
+          const tsRaw = (c['created_at'] ?? c['createdAt'] ?? c['timestamp'] ?? c['ts'] ?? c['inserted_at'] ?? c['insertedAt']) as string | number | Date | null | undefined
+          const ts = tsRaw ? new Date(tsRaw) : new Date(0)
+          const created_at = Number.isNaN(ts.getTime()) ? new Date(0).toISOString() : ts.toISOString()
+          const referrer = (c['referrer'] ?? null) as string | null
+          const ip = (c['ip'] ?? null) as string | null
+          return { created_at, referrer, ip }
+        })
         .sort((a, b) => (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
 
       // Build daily counts for last 30 days
@@ -164,8 +161,9 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(20)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ links })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
+    return NextResponse.json({ links: links ?? [] })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
