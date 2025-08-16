@@ -48,39 +48,34 @@ export async function GET(
   const parsedUA = parseUA(ua)
   const geo = await resolveGeo(_req, ip, countryHeader, regionHeader, cityHeader)
 
-  // Best-effort logging; ignore response (avoid PromiseLike catch typing issue)
-  ;(async () => {
-    const clickPayload = {
-      link_id: link.id,
-      ua,
-      referrer: ref,
-      referrer_domain: refDomain,
-      ip,
-      country: geo.country,
-      city: geo.city,
-      region: geo.region,
-      device: parsedUA.device,
-      os: parsedUA.os,
-      browser: parsedUA.browser,
-      created_at: new Date().toISOString(),
-    }
-    try {
-      console.log('[redirect] inserting click', clickPayload)
-      const { error } = await supabaseServer
+  // Synchronous logging (await) to ensure write happens on Edge before redirect
+  const clickPayload = {
+    link_id: link.id,
+    ua,
+    referrer: ref,
+    referrer_domain: refDomain,
+    ip,
+    country: geo.country,
+    city: geo.city,
+    region: geo.region,
+    device: parsedUA.device,
+    os: parsedUA.os,
+    browser: parsedUA.browser,
+    created_at: new Date().toISOString(),
+  }
+  try {
+    const { error } = await supabaseServer
+      .from('clicks')
+      .insert(clickPayload)
+    if (error) {
+      // Fallback minimal insert to avoid losing data entirely
+      await supabaseServer
         .from('clicks')
-        .insert(clickPayload)
-      if (error) {
-        console.error('[redirect] click insert error (enhanced)', error)
-        // Fallback minimal insert to avoid losing data entirely
-        const { error: fbErr } = await supabaseServer
-          .from('clicks')
-          .insert({ link_id: link.id, referrer: ref, ip, created_at: clickPayload.created_at })
-        if (fbErr) console.error('[redirect] click insert error (fallback)', fbErr)
-      }
-    } catch (e) {
-      console.error('[redirect] click insert exception', e)
+        .insert({ link_id: link.id, referrer: ref, ip, created_at: clickPayload.created_at })
     }
-  })()
+  } catch {
+    // Swallow errors to not block redirect
+  }
 
   return NextResponse.redirect(link.target_url, 302)
 }
