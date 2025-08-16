@@ -51,9 +51,10 @@ export default function CreateLinkPage() {
       setCreated({ code: shortCode, shortUrl: `${window.location.origin}/${shortCode}` });
       setToast({ kind: "success", msg: "Link created successfully" });
       setTimeout(() => setToast(null), 2500);
-    } catch (err: any) {
-      setError(err?.message ?? "Something went wrong");
-      setToast({ kind: "error", msg: err?.message ?? "Something went wrong" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      setError(msg);
+      setToast({ kind: "error", msg });
       setTimeout(() => setToast(null), 3000);
     } finally {
       setCreating(false);

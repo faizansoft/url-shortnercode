@@ -3,10 +3,38 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
+type Summary = { totalClicks: number; totalLinks: number };
+type CountItem<TLabel extends string> = { [K in TLabel]: string } & { count: number };
+type TopLink = { code: string; count: number };
+type TopReferrer = CountItem<"referrer">;
+type Country = CountItem<"country">;
+type Device = CountItem<"device">;
+type Browser = CountItem<"browser">;
+type Os = CountItem<"os">;
+type ReferrerDomain = CountItem<"domain">;
+type Region = CountItem<"region">;
+type City = CountItem<"city">;
+
+type AnalyticsData = {
+  summary: Summary;
+  daily: Record<string, number>;
+  hourly: Record<string, number>;
+  weekdays: Record<string, number>;
+  topLinks: TopLink[];
+  topReferrers: TopReferrer[];
+  countries: Country[];
+  devices: Device[];
+  browsers: Browser[];
+  oses: Os[];
+  referrerDomains: ReferrerDomain[];
+  regions: Region[];
+  cities: City[];
+};
+
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AnalyticsData | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -16,11 +44,11 @@ export default function AnalyticsDashboard() {
         const res = await fetch("/api/analytics", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.error || "Failed to load analytics");
-        setData(payload);
-      } catch (e: any) {
-        setError(e?.message ?? "Failed to load analytics");
+        const payload: unknown = await res.json();
+        if (!res.ok) throw new Error((payload as { error?: string })?.error || "Failed to load analytics");
+        setData(payload as AnalyticsData);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load analytics");
       } finally {
         setLoading(false);
       }
@@ -81,51 +109,51 @@ export default function AnalyticsDashboard() {
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Top Links</div>
               <RankedBars
-                items={(data?.topLinks ?? []).map((x: any) => ({ label: `/${x.code}`, count: x.count }))}
+                items={(data?.topLinks ?? []).map((x) => ({ label: `/${x.code}`, count: x.count }))}
               />
             </section>
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Top Referrers</div>
-              <RankedBars items={(data?.topReferrers ?? []).map((x: any) => ({ label: x.referrer, count: x.count }))} />
+              <RankedBars items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, count: x.count }))} />
             </section>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Countries</div>
-              <RankedBars items={(data?.countries ?? []).map((x: any) => ({ label: x.country, count: x.count }))} />
+              <RankedBars items={(data?.countries ?? []).map((x) => ({ label: x.country, count: x.count }))} />
             </section>
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Devices</div>
-              <RankedBars items={(data?.devices ?? []).map((x: any) => ({ label: x.device, count: x.count }))} />
+              <RankedBars items={(data?.devices ?? []).map((x) => ({ label: x.device, count: x.count }))} />
             </section>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Browsers</div>
-              <RankedBars items={(data?.browsers ?? []).map((x: any) => ({ label: x.browser, count: x.count }))} />
+              <RankedBars items={(data?.browsers ?? []).map((x) => ({ label: x.browser, count: x.count }))} />
             </section>
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Operating Systems</div>
-              <RankedBars items={(data?.oses ?? []).map((x: any) => ({ label: x.os, count: x.count }))} />
+              <RankedBars items={(data?.oses ?? []).map((x) => ({ label: x.os, count: x.count }))} />
             </section>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Referrer Domains</div>
-              <RankedBars items={(data?.referrerDomains ?? []).map((x: any) => ({ label: x.domain, count: x.count }))} />
+              <RankedBars items={(data?.referrerDomains ?? []).map((x) => ({ label: x.domain, count: x.count }))} />
             </section>
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Regions</div>
-              <RankedBars items={(data?.regions ?? []).map((x: any) => ({ label: x.region, count: x.count }))} />
+              <RankedBars items={(data?.regions ?? []).map((x) => ({ label: x.region, count: x.count }))} />
             </section>
           </div>
 
           <section className="rounded-xl glass p-5">
             <div className="p-0 pb-3 font-medium">Cities</div>
-            <RankedBars items={(data?.cities ?? []).map((x: any) => ({ label: x.city, count: x.count }))} />
+            <RankedBars items={(data?.cities ?? []).map((x) => ({ label: x.city, count: x.count }))} />
           </section>
         </>
       )}
@@ -142,7 +170,7 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function avgClicks(summary: any) {
+function avgClicks(summary?: Partial<Summary> | null) {
   const total = summary?.totalClicks ?? 0;
   const links = summary?.totalLinks ?? 0;
   if (!links) return 0;
