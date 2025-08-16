@@ -129,12 +129,13 @@ async function resolveGeo(
     // ipapi.co has a permissive free tier with rate limits; replace with your preferred provider if needed
     const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store' })
     if (!resp.ok) return { country: null, region: null, city: null }
-    const j: any = await resp.json()
-    return {
-      country: (j && (j.country_name || j.country)) || null,
-      region: (j && (j.region || j.region_code || j.region_name)) || null,
-      city: (j && j.city) || null,
-    }
+    const j: unknown = await resp.json()
+    const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
+    const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
+    const country = getStr('country_name') ?? getStr('country')
+    const region = getStr('region') ?? getStr('region_code') ?? getStr('region_name')
+    const city = getStr('city')
+    return { country, region, city }
   } catch {
     return { country: null, region: null, city: null }
   }
