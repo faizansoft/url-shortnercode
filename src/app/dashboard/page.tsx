@@ -21,8 +21,8 @@ export default function DashboardHome() {
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || "Failed to load links");
         setLinks(payload.links || []);
-      } catch (e: any) {
-        setError(e?.message ?? "Failed to load links");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load links");
       } finally {
         setLoading(false);
       }

@@ -29,12 +29,11 @@ export async function GET(
   // Fire-and-forget click log (don’t block redirect)
   const ua = _req.headers.get('user-agent') ?? null
   const ref = _req.headers.get('referer') ?? null
-  const ip = (_req.headers.get('x-nf-client-connection-ip') || _req.headers.get('x-forwarded-for'))?.split(',')[0]?.trim() ?? null
+  const ip = _req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
   // Prefer generic/Cloudflare headers (no Vercel-specific headers)
   const countryHeader = _req.headers.get('cf-ipcountry')
   const cityHeader = _req.headers.get('cf-ipcity')
   const regionHeader = _req.headers.get('cf-region')
-  const netlifyGeo = _req.headers.get('x-nf-geo')
 
   const refDomain = (() => {
     if (!ref) return null
@@ -47,7 +46,7 @@ export async function GET(
   })()
 
   const parsedUA = parseUA(ua)
-  const geo = await resolveGeo(_req, ip, countryHeader, regionHeader, cityHeader, netlifyGeo)
+  const geo = await resolveGeo(_req, ip, countryHeader, regionHeader, cityHeader)
 
   // Best-effort logging; ignore response (avoid PromiseLike catch typing issue)
   ;(async () => {
@@ -116,25 +115,13 @@ async function resolveGeo(
   ip: string | null,
   countryHeader: string | null,
   regionHeader: string | null,
-  cityHeader: string | null,
-  netlifyGeoHeader: string | null
+  cityHeader: string | null
 ): Promise<{ country: string | null; region: string | null; city: string | null }> {
   // Prefer already provided headers (e.g., Cloudflare)
   const country = countryHeader ?? null
   const region = regionHeader ?? null
   const city = cityHeader ?? null
   if (country || region || city) return { country, region, city }
-
-  // Netlify: x-nf-geo is a JSON string like { country: "US", subdivision: "CA", city: "San Francisco" }
-  if (netlifyGeoHeader) {
-    try {
-      const g: any = JSON.parse(netlifyGeoHeader)
-      const country = g?.country || g?.country_code || null
-      const region = g?.subdivision || g?.region || null
-      const city = g?.city || null
-      if (country || region || city) return { country, region, city }
-    } catch {}
-  }
 
   // Fallback: use a lightweight public IP geolocation API if IP is available
   if (!ip) return { country: null, region: null, city: null }

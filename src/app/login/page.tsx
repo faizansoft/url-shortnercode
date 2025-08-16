@@ -25,9 +25,9 @@ export default function LoginPage() {
       if (error) throw error;
       setStatus("sent");
       setMessage("Check your email for a magic link to sign in.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus("error");
-      setMessage(err?.message ?? "Failed to send magic link.");
+      setMessage(err instanceof Error ? err.message : "Failed to send magic link.");
     }
   }
 
@@ -35,7 +35,7 @@ export default function LoginPage() {
     <div className="min-h-[60vh] flex items-center justify-center">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-3 bg-white border rounded-lg p-4">
         <h1 className="text-lg font-semibold">Sign in</h1>
-        <p className="text-sm text-neutral-600">We'll email you a magic link to sign in.</p>
+        <p className="text-sm text-neutral-600">We&apos;ll email you a magic link to sign in.</p>
         <input
           type="email"
           required

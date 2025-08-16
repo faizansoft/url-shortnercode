@@ -44,8 +44,8 @@ export default function LinkDetailsPage() {
         setClicks(payload.clicks || []);
         setDaily(payload.daily || {});
         setTopReferrers(payload.topReferrers || []);
-      } catch (e: any) {
-        setError(e?.message ?? "Failed to load link");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load link");
       } finally {
         setLoading(false);
       }
