@@ -293,17 +293,38 @@ export default function Designer({ value }: DesignerProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Patterns</div>
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-2.5 items-center">
               {(["square","rounded","dots","classy","classy-rounded","extra-rounded"] as DotsType[]).map((t) => (
                 <button
                   key={t}
-                  className={`h-10 px-4 rounded border text-xs transition ${dotsType===t? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`}
-                  style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
                   onClick={() => setDotsType(t)}
-                >{t}</button>
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
+                  style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                  title={t}
+                >
+                  <div className="grid grid-cols-5 grid-rows-5 gap-[1px] p-1 bg-[var(--surface)] rounded-md">
+                    {Array.from({ length: 25 }).map((_, i) => {
+                      const base: React.CSSProperties = { width: 6, height: 6, background: 'currentColor', color: 'var(--foreground)' };
+                      const cellIndex = i;
+                      const isEdge = (idx: number) => idx % 5 === 0 || idx % 5 === 4 || idx < 5 || idx >= 20;
+                      const radiusFor = (type: DotsType) => {
+                        switch (type) {
+                          case 'square': return 0;
+                          case 'rounded': return 4;
+                          case 'dots': return 999;
+                          case 'classy': return isEdge(cellIndex) ? 2 : 0;
+                          case 'classy-rounded': return isEdge(cellIndex) ? 6 : 2;
+                          case 'extra-rounded': return 8;
+                          default: return 0;
+                        }
+                      };
+                      return <div key={i} style={{ ...base, borderRadius: radiusFor(t) }} />;
+                    })}
+                  </div>
+                </button>
               ))}
+              <button className="btn btn-secondary h-9" onClick={() => setDotsType('rounded')}>Reset</button>
             </div>
-            <button className="btn btn-secondary h-8" onClick={() => setDotsType("rounded")}>Reset styles</button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Error correction</div>
