@@ -312,13 +312,15 @@ export default function Designer({ value }: DesignerProps) {
                         return <div key={i} style={{ ...common, width: 6, height: 6, borderRadius: 999, margin: 'auto' }} />;
                       }
                       if (t === 'rounded') {
-                        return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 3 }} />;
+                        // Slightly rounded squares (subtle rounding)
+                        return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 2 }} />;
                       }
                       if (t === 'square') {
                         return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 0 }} />;
                       }
                       if (t === 'extra-rounded') {
-                        return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 6 }} />;
+                        // More circular, larger modules to clearly differ from 'rounded'
+                        return <div key={i} style={{ ...common, width: 9, height: 9, borderRadius: 7 }} />;
                       }
                       if (t === 'classy' || t === 'classy-rounded') {
                         const r = t === 'classy' ? 3 : 6;
