@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
+import Designer from "./Designer";
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
 
@@ -13,6 +14,7 @@ export default function QRCodesPage() {
   const [items, setItems] = useState<QRItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string>("");
 
   const origin = useMemo(() => {
     if (typeof window !== "undefined") return window.location.origin;
@@ -55,20 +57,45 @@ export default function QRCodesPage() {
         );
 
         setItems(generated);
+        if (generated.length && !selected) setSelected(`${origin}/${generated[0].short_code}`);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load QR codes");
       } finally {
         setLoading(false);
       }
     })();
-  }, [origin]);
+  }, [origin, selected]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">QR Codes</h1>
         <Link className="btn" href="/dashboard/create">Create</Link>
       </header>
+
+      {/* Designer */}
+      {!loading && !error && (
+        <div className="space-y-3">
+          <div className="rounded-xl glass p-4">
+            <div className="flex flex-wrap items-center gap-3 pb-4">
+              <label className="text-sm text-[var(--muted)]">Select link</label>
+              <select
+                className="h-9 rounded-md px-2 min-w-[280px]"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+              >
+                {items.map((it) => (
+                  <option key={it.short_code} value={it.short_url}>
+                    {it.short_url}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Designer value={selected || (items[0]?.short_url || "")} />
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="p-4 text-sm text-[var(--muted)]">Loading…</div>
