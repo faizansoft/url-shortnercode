@@ -508,12 +508,16 @@ export default function Designer({ value }: DesignerProps) {
                     { label: 'Dot + Square (Cyan)', sq: 'dot' as const, dot: 'square' as const, sc: '#0891b2', dc: '#0891b2' },
                   ];
                   const seen = new Set<string>();
-                  const items = [...builtins, ...cornerPresets].filter((p) => {
-                    const key = `${p.sq}|${p.dot}|${p.sc}|${p.dc}`;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                  });
+                  const items = [...builtins, ...cornerPresets]
+                    // Remove any presets with outer corner type 'square'
+                    .filter((p) => p.sq !== 'square')
+                    // Deduplicate remaining items
+                    .filter((p) => {
+                      const key = `${p.sq}|${p.dot}|${p.sc}|${p.dc}`;
+                      if (seen.has(key)) return false;
+                      seen.add(key);
+                      return true;
+                    });
                   return items.map(({ label, sq, dot, sc, dc }) => (
                     <button
                       key={`${sq}-${dot}-${sc}-${dc}-${label}`}
