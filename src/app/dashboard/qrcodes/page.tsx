@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
+import type QRCodeStyling from "qr-code-styling";
 import type { Options as StyleOptions } from "qr-code-styling";
 // Designer is intentionally not embedded here; customization will open on demand in a modal
 
@@ -61,7 +62,8 @@ export default function QRCodesPage() {
 
   // Preview via qr-code-styling
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const qrStylingRef = useRef<any | null>(null);
+  const qrStylingRef = useRef<QRCodeStyling | null>(null);
+  const [qrReady, setQrReady] = useState<boolean>(false);
 
   const origin = useMemo(() => {
     if (typeof window !== "undefined") return window.location.origin;
@@ -188,24 +190,12 @@ export default function QRCodesPage() {
         if (!qrStylingRef.current) {
           const mod = await import("qr-code-styling");
           if (cancelled) return;
-          const QRCodeStyling = mod.default as any;
-          qrStylingRef.current = new QRCodeStyling({ type: "canvas" });
+          const QRCodeStylingClass = (mod as { default: new (opts?: StyleOptions) => QRCodeStyling }).default;
+          qrStylingRef.current = new QRCodeStylingClass({ type: "canvas" });
           qrStylingRef.current.append(previewRef.current);
         }
-        // Immediately render current state
-        const opts: StyleOptions = {
-          width: size,
-          height: size,
-          data: selected,
-          margin,
-          qrOptions: { errorCorrectionLevel: ecl },
-          backgroundOptions: { color: bgColor },
-          dotsOptions: { type: dotType, color: dotColorA },
-          cornersSquareOptions: { type: cornerSqType, color: cornerSqColor },
-          cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
-          imageOptions: logoDataUrl ? { image: logoDataUrl, imageSize: logoSize, margin: logoMargin, hideBackgroundDots: hideBgDots, crossOrigin: "anonymous" } : undefined,
-        };
-        qrStylingRef.current.update(opts);
+        // Mark ready so the update effect can render with current options
+        setQrReady((v) => !v);
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -229,7 +219,7 @@ export default function QRCodesPage() {
     try {
       qrStylingRef.current.update(opts);
     } catch {}
-  }, [showCustomize, selected, size, margin, ecl, bgColor, dotType, dotColorA, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots]);
+  }, [showCustomize, selected, size, margin, ecl, bgColor, dotType, dotColorA, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots, qrReady]);
 
   const shortCodeOf = (url: string) => {
     try {
