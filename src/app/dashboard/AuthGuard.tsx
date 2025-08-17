@@ -11,16 +11,29 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+    const check = async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
       if (!mounted) return;
-      if (user) {
-        setStatus("authed");
-      } else {
-        setStatus("guest");
-      }
-    })();
-    return () => { mounted = false; };
+      setStatus(session ? "authed" : "guest");
+    };
+    check();
+
+    // Subscribe to auth changes to keep guard in sync (sign-in, sign-out, token refresh)
+    const { data: sub } = supabaseClient.auth.onAuthStateChange(() => {
+      check();
+    });
+
+    // Re-check when tab gets focus (helps after long inactivity)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      mounted = false;
+      sub.subscription?.unsubscribe();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [pathname]);
 
   useEffect(() => {

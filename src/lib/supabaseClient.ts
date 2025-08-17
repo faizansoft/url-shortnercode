@@ -8,4 +8,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const normalizedWithProto = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
 const supabaseUrl = normalizedWithProto.replace(/\/+$/g, '')
 
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'url-shortner-auth',
+  },
+})
