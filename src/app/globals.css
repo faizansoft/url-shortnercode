@@ -117,6 +117,9 @@ a:hover {
 .btn-primary:hover { filter: brightness(1.03); transform: translateY(-.5px); }
 .btn-primary:active { filter: brightness(.98); transform: translateY(0); }
 
+/* Utility: opt-out of hover motion for primary buttons where we need consistent behavior */
+.btn-no-motion:hover { transform: none !important; filter: none !important; }
+
 .btn-secondary {
   color: var(--foreground);
   background: var(--surface);
