@@ -62,7 +62,20 @@ export default function Designer({ value }: DesignerProps) {
   const [crossOrigin, setCrossOrigin] = useState<string>("anonymous");
 
   // Frame (visual wrapper)
-  const [frame, setFrame] = useState<"none" | "rounded" | "thin" | "thick">("none");
+  const [frame, setFrame] = useState<
+    | "none"
+    | "rounded"
+    | "thin"
+    | "thick"
+    | "square"
+    | "accent"
+    | "shadow"
+    | "outline"
+    | "dashed"
+    | "double"
+    | "glow"
+    | "gradient"
+  >("none");
   const [perfMode, setPerfMode] = useState<boolean>(false);
   
   // Built-in icons from public/
@@ -104,13 +117,30 @@ export default function Designer({ value }: DesignerProps) {
     reader.readAsDataURL(file);
   };
   const frameStyle = useMemo(() => {
+    // All frames use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
       case "rounded":
-        return { borderRadius: 16, padding: 10, border: "1px solid var(--border)", background: "var(--surface)" } as React.CSSProperties;
+        return { borderRadius: 16, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "thin":
-        return { borderRadius: 6, padding: 6, border: "1px solid var(--border)" } as React.CSSProperties;
+        return { borderRadius: 6, padding: 0, border: "1px solid var(--border)", overflow: "hidden" } as React.CSSProperties;
       case "thick":
-        return { borderRadius: 12, padding: 14, border: "2px solid color-mix(in oklab, var(--accent) 60%, var(--border))" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, border: "2px solid color-mix(in oklab, var(--accent) 60%, var(--border))", overflow: "hidden" } as React.CSSProperties;
+      case "square":
+        return { borderRadius: 0, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+      case "accent":
+        return { borderRadius: 10, padding: 0, border: "3px solid var(--accent)", background: "transparent", overflow: "hidden" } as React.CSSProperties;
+      case "shadow":
+        return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+      case "outline":
+        return { borderRadius: 8, padding: 0, outline: "2px solid var(--border)", outlineOffset: 0, overflow: "hidden" } as React.CSSProperties;
+      case "dashed":
+        return { borderRadius: 8, padding: 0, border: "2px dashed var(--border)", background: "transparent", overflow: "hidden" } as React.CSSProperties;
+      case "double":
+        return { borderRadius: 10, padding: 0, border: "2px solid var(--border)", outline: "2px solid var(--accent)", outlineOffset: 2, background: "transparent", overflow: "hidden" } as React.CSSProperties;
+      case "glow":
+        return { borderRadius: 12, padding: 0, border: "1px solid var(--border)", boxShadow: "0 0 0 4px color-mix(in oklab, var(--accent) 35%, transparent), 0 12px 28px rgba(0,0,0,0.18)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+      case "gradient":
+        return { borderRadius: 12, padding: 2, background: "conic-gradient(from 0deg, var(--accent), #7c3aed, #22c55e, var(--accent))", overflow: "hidden" } as React.CSSProperties;
       default:
         return {} as React.CSSProperties;
     }
@@ -362,24 +392,68 @@ export default function Designer({ value }: DesignerProps) {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadIcon(f); }} />
                   <span className="text-xs">Upload…</span>
                 </label>
-                <button className="btn btn-secondary h-8" onClick={() => { setLogoUrl(""); setLogoSize(0.25); setHideBgDots(true); }}>Reset logo</button>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex gap-2 items-center">
-          {(["none","rounded","thin","thick"] as const).map((f) => (
-            <button key={f} onClick={() => setFrame(f)} className={`btn btn-secondary h-8 ${frame===f? 'ring-1 ring-[var(--accent)]' : ''}`}>{f}</button>
-          ))}
-          <button className="btn btn-secondary h-8" onClick={() => setFrame("none")}>Reset frame</button>
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-[var(--muted)]">Frames</div>
+          <div className="flex gap-2.5 flex-wrap items-center">
+            {(["none","square","rounded","thin","thick","accent","shadow","outline","dashed","double","glow","gradient"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFrame(f)}
+                className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''}`}
+                style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                title={f}
+              >
+                <div
+                  className="h-10 w-10"
+                  style={(() => {
+                    const common: React.CSSProperties = { background: 'var(--surface)' };
+                    switch (f) {
+                      case 'none':
+                        return { ...common, border: '1px solid var(--border)', padding: 2 } as React.CSSProperties;
+                      case 'square':
+                        return { ...common, border: '1px solid var(--border)' } as React.CSSProperties;
+                      case 'rounded':
+                        return { ...common, border: '1px solid var(--border)', borderRadius: 8 } as React.CSSProperties;
+                      case 'thin':
+                        return { ...common, border: '1px solid var(--border)', borderRadius: 4 } as React.CSSProperties;
+                      case 'thick':
+                        return { ...common, border: '3px solid color-mix(in oklab, var(--accent) 60%, var(--border))', borderRadius: 8 } as React.CSSProperties;
+                      case 'accent':
+                        return { ...common, border: '3px solid var(--accent)', borderRadius: 8 } as React.CSSProperties;
+                      case 'shadow':
+                        return { ...common, borderRadius: 8, boxShadow: '0 8px 16px rgba(0,0,0,0.18)' } as React.CSSProperties;
+                      case 'outline':
+                        return { ...common, borderRadius: 6, outline: '2px solid var(--border)' } as React.CSSProperties;
+                      case 'dashed':
+                        return { ...common, borderRadius: 8, border: '2px dashed var(--border)' } as React.CSSProperties;
+                      case 'double':
+                        return { ...common, borderRadius: 8, border: '2px solid var(--border)', outline: '2px solid var(--accent)', outlineOffset: 2 } as React.CSSProperties;
+                      case 'glow':
+                        return { ...common, borderRadius: 8, border: '1px solid var(--border)', boxShadow: '0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent)' } as React.CSSProperties;
+                      case 'gradient':
+                        return { ...common, borderRadius: 8, padding: 2, background: 'conic-gradient(from 0deg, var(--accent), #7c3aed, #22c55e, var(--accent))' } as React.CSSProperties;
+                      default:
+                        return common;
+                    }
+                  })()}
+                />
+              </button>
+            ))}
+            <button className="btn btn-secondary h-9" onClick={() => setFrame('none')}>Reset frame</button>
+          </div>
         </div>
-        {/* Download buttons moved to Preview section */}
       </div>
-
       <div className="rounded-xl glass p-5 flex flex-col gap-5 items-center">
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
-          <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div
+            className={`rounded-md ${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
+            style={frame === 'none' ? { background: 'var(--surface)', border: '1px solid var(--border)' } : { background: 'transparent' }}
+          >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
         </div>
