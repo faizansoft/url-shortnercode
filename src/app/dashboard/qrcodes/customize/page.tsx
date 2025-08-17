@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import type QRCodeStyling from "qr-code-styling";
 import type { Options as StyleOptions } from "qr-code-styling";
 import QRCode from "qrcode";
@@ -28,7 +28,6 @@ type CustomDesignOptions = {
 
 export default function CustomizeQRPage() {
   const search = useSearchParams();
-  const router = useRouter();
   const url = search.get("url") || "";
 
   // Theme
@@ -203,8 +202,7 @@ export default function CustomizeQRPage() {
       } catch {}
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  }, [url, readyTick]);
 
   // Update when options change
   useEffect(() => {
@@ -321,7 +319,7 @@ export default function CustomizeQRPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm flex flex-col gap-1">
               <span>Error correction</span>
-              <select className="btn btn-secondary h-8 text-left" value={ecl} onChange={(e)=>setEcl(e.target.value as any)}>
+              <select className="btn btn-secondary h-8 text-left" value={ecl} onChange={(e)=>setEcl(e.target.value as "L" | "M" | "Q" | "H")}>
                 <option value="L">L (7%)</option>
                 <option value="M">M (15%)</option>
                 <option value="Q">Q (25%)</option>

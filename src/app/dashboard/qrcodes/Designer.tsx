@@ -40,7 +40,7 @@ export default function Designer({ value }: DesignerProps) {
   const [dotsGradientOn, setDotsGradientOn] = useState(false);
   const [dotsGradA, setDotsGradA] = useState("#0b1220");
   const [dotsGradB, setDotsGradB] = useState("#2563eb");
-  const [dotsGradRotation, setDotsGradRotation] = useState(0);
+  const [dotsGradRotation] = useState(0);
 
   // Corners
   const [cornerSquareType, setCornerSquareType] = useState<"dot" | "square" | "extra-rounded">("square");
@@ -166,7 +166,7 @@ export default function Designer({ value }: DesignerProps) {
         crossOrigin: crossOrigin || undefined,
       },
     };
-  }, [value, size, margin, ecLevel, dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation, cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor, bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType, logoUrl, logoSize, hideBgDots, crossOrigin, perfMode]);
+  }, [value, size, margin, ecLevel, dotsType, dotsColor, dotsGradA, dotsGradB, dotsGradRotation, cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor, bgColor, bgGradA, bgGradB, bgGradType, logoUrl, logoSize, hideBgDots, crossOrigin, perfMode]);
 
   // Initialize
   useEffect(() => {
