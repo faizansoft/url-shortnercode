@@ -16,10 +16,20 @@ export default function QRCodesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string>("");
+  const [prefersDark, setPrefersDark] = useState<boolean>(false);
 
   const origin = useMemo(() => {
     if (typeof window !== "undefined") return window.location.origin;
     return "";
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setPrefersDark(!!mql?.matches);
+    update();
+    mql?.addEventListener?.('change', update);
+    return () => mql?.removeEventListener?.('change', update);
   }, []);
 
   useEffect(() => {
@@ -47,7 +57,7 @@ export default function QRCodesPage() {
               const dataUrl = await QRCode.toDataURL(it.short_url, {
                 errorCorrectionLevel: "M",
                 margin: 1,
-                color: { dark: "#0b1220", light: "#ffffff00" },
+                color: { dark: prefersDark ? "#ffffff" : "#0b1220", light: "#ffffff00" },
                 width: 200,
               });
               return { ...it, qr_data_url: dataUrl };
@@ -65,13 +75,13 @@ export default function QRCodesPage() {
         setLoading(false);
       }
     })();
-  }, [origin, selected]);
+  }, [origin, selected, prefersDark]);
 
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">QR Codes</h1>
-        <Link className="btn" href="/dashboard/create">Create</Link>
+        <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">QR Codes</h1>
+        <Link className="btn btn-primary" href="/dashboard/create">Create</Link>
       </header>
 
       {/* Designer */}

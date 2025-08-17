@@ -32,6 +32,7 @@ export default function Designer({ value }: DesignerProps) {
   const [size, setSize] = useState(220);
   const [margin, setMargin] = useState(2);
   const [ecLevel, setEcLevel] = useState<"L" | "M" | "Q" | "H">("M");
+  const [prefersDark, setPrefersDark] = useState<boolean>(false);
 
   // Dots/pattern
   const [dotsType, setDotsType] = useState<DotsType>("rounded");
@@ -73,6 +74,26 @@ export default function Designer({ value }: DesignerProps) {
       { name: "next", src: "/next.svg" },
     ] as const
   ), []);
+
+  // Detect system dark mode and align default contrast
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setPrefersDark(!!mql?.matches);
+    update();
+    mql?.addEventListener?.('change', update);
+    return () => mql?.removeEventListener?.('change', update);
+  }, []);
+
+  // If user hasn't customized away from default dark code color, flip to white on dark
+  useEffect(() => {
+    if (prefersDark && dotsColor === "#0b1220") {
+      setDotsColor("#ffffff");
+      setCornerSquareColor("#ffffff");
+      setCornerDotColor("#ffffff");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefersDark]);
 
   const onUploadIcon = (file: File) => {
     const reader = new FileReader();
@@ -376,15 +397,17 @@ export default function Designer({ value }: DesignerProps) {
       <div className="rounded-xl glass p-4 flex flex-col gap-3 items-center">
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
-          <div ref={containerRef} className="[&>svg]:block" />
+          <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div ref={containerRef} className="[&>svg]:block" />
+          </div>
         </div>
         <button className="text-xs text-[var(--accent)]" onClick={() => {
           setDotsType("rounded");
-          setDotsColor("#0b1220");
+          setDotsColor(prefersDark ? "#ffffff" : "#0b1220");
           setCornerSquareType("square");
-          setCornerSquareColor("#0b1220");
+          setCornerSquareColor(prefersDark ? "#ffffff" : "#0b1220");
           setCornerDotType("dot");
-          setCornerDotColor("#0b1220");
+          setCornerDotColor(prefersDark ? "#ffffff" : "#0b1220");
           setBgColor("#ffffff00");
           setLogoUrl("");
           setLogoSize(0.25);

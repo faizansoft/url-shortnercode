@@ -33,8 +33,8 @@ export default function LinksIndexPage() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Links</h1>
-        <Link className="btn" href="/dashboard/create">Create</Link>
+        <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Links</h1>
+        <Link className="btn btn-primary" href="/dashboard/create">Create</Link>
       </header>
 
       {loading ? (
@@ -56,7 +56,7 @@ export default function LinksIndexPage() {
             </thead>
             <tbody>
               {links.map((l) => (
-                <tr key={l.short_code} className="border-t border-[var(--border)]">
+                <tr key={l.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] transition-colors">
                   <td className="p-3 font-mono">
                     <a className="underline" href={`/${l.short_code}`} target="_blank" rel="noreferrer">
                       /{l.short_code}
@@ -65,7 +65,7 @@ export default function LinksIndexPage() {
                   <td className="p-3 max-w-[420px] truncate" title={l.target_url}>{l.target_url}</td>
                   <td className="p-3">{new Date(l.created_at).toLocaleString()}</td>
                   <td className="p-3">
-                    <Link className="btn h-8" href={`/dashboard/links/${l.short_code}`}>View</Link>
+                    <Link className="btn btn-secondary h-8" href={`/dashboard/links/${l.short_code}`}>View</Link>
                   </td>
                 </tr>
               ))}

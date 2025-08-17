@@ -13,6 +13,16 @@ export default function CreateLinkPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; msg: string } | null>(null);
+  const [prefersDark, setPrefersDark] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setPrefersDark(!!mql?.matches);
+    update();
+    mql?.addEventListener?.('change', update);
+    return () => mql?.removeEventListener?.('change', update);
+  }, []);
 
   function validateUrl(u: string) {
     try {
@@ -23,7 +33,7 @@ export default function CreateLinkPage() {
     }
   }
 
-  // Generate QR when created changes
+  // Generate QR when created or theme changes
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -32,7 +42,7 @@ export default function CreateLinkPage() {
           const dataUrl = await QRCode.toDataURL(created.shortUrl, {
             errorCorrectionLevel: "M",
             margin: 1,
-            color: { dark: "#0b1220", light: "#ffffff00" },
+            color: { dark: prefersDark ? "#ffffff" : "#0b1220", light: "#ffffff00" },
             width: 200,
           });
           if (!cancelled) setQrDataUrl(dataUrl);
@@ -46,7 +56,7 @@ export default function CreateLinkPage() {
     return () => {
       cancelled = true;
     };
-  }, [created?.shortUrl]);
+  }, [created?.shortUrl, prefersDark]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -102,7 +112,7 @@ export default function CreateLinkPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Create short link</h1>
+        <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Create short link</h1>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -135,16 +145,12 @@ export default function CreateLinkPage() {
               <div className="text-sm text-red-600">{error}</div>
             )}
             <div className="flex gap-3">
-              <button
-                disabled={creating || !url || !validateUrl(url)}
-                className="px-4 h-10 rounded-md bg-[var(--accent)] text-white disabled:opacity-50"
-              >
+              <button disabled={creating || !url || !validateUrl(url)} className="btn btn-primary h-10">
                 {creating ? "Creating…" : "Create link"}
               </button>
               <button
                 type="button"
-                className="px-4 h-10 rounded-md"
-                style={{ border: '1px solid var(--border)', background: 'transparent' }}
+                className="btn btn-secondary h-10"
                 onClick={() => {
                   setUrl("");
                   setCode("");
@@ -167,26 +173,14 @@ export default function CreateLinkPage() {
                 {created.shortUrl}
               </div>
               <div className="flex gap-2">
-                <a
-                  className="btn btn-secondary h-8"
-                  href={created.shortUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open
-                </a>
-                <button
-                  className="btn h-8"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(created.shortUrl);
-                    setCopied(true);
-                    setToast({ kind: "success", msg: "Copied to clipboard" });
-                    setTimeout(() => setToast(null), 2000);
-                    setTimeout(() => setCopied(false), 1200);
-                  }}
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
+                <a className="btn btn-secondary h-8" href={created.shortUrl} target="_blank" rel="noreferrer">Open</a>
+                <button className="btn h-8" onClick={async () => {
+                  await navigator.clipboard.writeText(created.shortUrl);
+                  setCopied(true);
+                  setToast({ kind: "success", msg: "Copied to clipboard" });
+                  setTimeout(() => setToast(null), 2000);
+                  setTimeout(() => setCopied(false), 1200);
+                }}>{copied ? "Copied" : "Copy"}</button>
               </div>
               <div className="text-sm">QR (placeholder)</div>
               {qrDataUrl ? (
