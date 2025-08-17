@@ -302,23 +302,38 @@ export default function Designer({ value }: DesignerProps) {
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
                   title={t}
                 >
-                  <div className="grid grid-cols-5 grid-rows-5 gap-[1px] p-1 bg-[var(--surface)] rounded-md">
+                  <div className="grid grid-cols-5 grid-rows-5 gap-[2px] p-1.5 bg-[var(--surface)] rounded-md">
                     {Array.from({ length: 25 }).map((_, i) => {
-                      const base: React.CSSProperties = { width: 6, height: 6, background: 'currentColor', color: 'var(--foreground)' };
-                      const cellIndex = i;
-                      const isEdge = (idx: number) => idx % 5 === 0 || idx % 5 === 4 || idx < 5 || idx >= 20;
-                      const radiusFor = (type: DotsType) => {
-                        switch (type) {
-                          case 'square': return 0;
-                          case 'rounded': return 4;
-                          case 'dots': return 999;
-                          case 'classy': return isEdge(cellIndex) ? 2 : 0;
-                          case 'classy-rounded': return isEdge(cellIndex) ? 6 : 2;
-                          case 'extra-rounded': return 8;
-                          default: return 0;
+                      const row = Math.floor(i / 5);
+                      const col = i % 5;
+                      const common: React.CSSProperties = { background: 'currentColor', color: 'var(--foreground)' };
+                      if (t === 'dots') {
+                        // Smaller centered circles with more whitespace to clearly indicate "dots"
+                        return <div key={i} style={{ ...common, width: 6, height: 6, borderRadius: 999, margin: 'auto' }} />;
+                      }
+                      if (t === 'rounded') {
+                        return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 3 }} />;
+                      }
+                      if (t === 'square') {
+                        return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 0 }} />;
+                      }
+                      if (t === 'extra-rounded') {
+                        return <div key={i} style={{ ...common, width: 8, height: 8, borderRadius: 6 }} />;
+                      }
+                      if (t === 'classy' || t === 'classy-rounded') {
+                        const r = t === 'classy' ? 3 : 6;
+                        // Asymmetric rounding to suggest "classy" style
+                        const style: React.CSSProperties = { ...common, width: 8, height: 8, borderRadius: 0 };
+                        if ((row + col) % 2 === 0) {
+                          style.borderTopLeftRadius = r;
+                          style.borderBottomRightRadius = r;
+                        } else {
+                          style.borderTopRightRadius = r;
+                          style.borderBottomLeftRadius = r;
                         }
-                      };
-                      return <div key={i} style={{ ...base, borderRadius: radiusFor(t) }} />;
+                        return <div key={i} style={style} />;
+                      }
+                      return <div key={i} style={{ ...common, width: 8, height: 8 }} />;
                     })}
                   </div>
                 </button>
