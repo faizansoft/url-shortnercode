@@ -64,6 +64,7 @@ export default function QRCodesPage() {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const qrStylingRef = useRef<QRCodeStyling | null>(null);
   const [qrReady, setQrReady] = useState<boolean>(false);
+  const [hasRendered, setHasRendered] = useState<boolean>(false);
 
   const origin = useMemo(() => {
     if (typeof window !== "undefined") return window.location.origin;
@@ -193,10 +194,13 @@ export default function QRCodesPage() {
           if (cancelled) return;
           const QRCodeStylingClass = (mod as { default: new (opts?: StyleOptions) => QRCodeStyling }).default;
           qrStylingRef.current = new QRCodeStylingClass({ type: "canvas" });
+          // Ensure clean mount point then append
+          try { container.innerHTML = ""; } catch {}
           qrStylingRef.current.append(container);
         }
-        // Mark ready so the update effect can render with current options
-        setQrReady((v) => !v);
+        // Delay first update to next frame so DOM is ready
+        setHasRendered(false);
+        requestAnimationFrame(() => setQrReady((v) => !v));
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -219,6 +223,7 @@ export default function QRCodesPage() {
     };
     try {
       qrStylingRef.current.update(opts);
+      setHasRendered(true);
     } catch {}
   }, [showCustomize, selected, size, margin, ecl, bgColor, dotType, dotColorA, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots, qrReady]);
 
@@ -307,7 +312,6 @@ export default function QRCodesPage() {
           <div className="w-[min(98vw,1200px)] h-[92vh] rounded-xl glass p-5 space-y-4 overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold">Custom QR</div>
-              <button className="btn btn-secondary h-8" onClick={() => setShowCustomize(false)}>Close</button>
             </div>
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr] h-[calc(92vh-64px)]">
               {/* Controls */}
@@ -415,18 +419,34 @@ export default function QRCodesPage() {
                 </div>
               </div>
               {/* Preview */}
-              <div className="rounded-md p-4 flex flex-col items-center gap-4 overflow-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <div ref={previewRef} className="w-full grid place-items-center" style={{ minHeight: 360 }} />
-                <button className="btn btn-primary btn-no-motion" onClick={async ()=>{
-                  if (!qrStylingRef.current) return;
-                  const blob = await qrStylingRef.current.getRawData('png');
-                  if (!blob) return;
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url; a.download = 'qr-custom.png'; a.click();
-                  setTimeout(()=>URL.revokeObjectURL(url), 5000);
-                }}>Download PNG</button>
-                <div className="flex justify-end gap-2 w-full">
+              <div className="rounded-md p-0 flex flex-col overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="p-4">
+                  <div ref={previewRef} className="w-full grid place-items-center" style={{ minHeight: 380 }}>
+                    {!hasRendered && (
+                      <div className="w-[260px] h-[260px] rounded-md animate-pulse" style={{ background: 'var(--panel)' }} />
+                    )}
+                  </div>
+                </div>
+                <div className="px-4 pb-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-xs text-[var(--muted)]">Preview</div>
+                    <div className="flex items-center gap-2">
+                      {(!hasRendered) && (
+                        <button className="btn btn-secondary h-8" onClick={()=>setQrReady(v=>!v)}>Retry</button>
+                      )}
+                      <button className="btn btn-primary btn-no-motion h-8" disabled={!hasRendered} onClick={async ()=>{
+                        if (!qrStylingRef.current) return;
+                        const blob = await qrStylingRef.current.getRawData('png');
+                        if (!blob) return;
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = 'qr-custom.png'; a.click();
+                        setTimeout(()=>URL.revokeObjectURL(url), 5000);
+                      }}>Download PNG</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-4 py-3 border-t mt-0 flex justify-end gap-2" style={{ borderColor: 'var(--border)' }}>
                   <button className="btn btn-secondary h-8" onClick={() => setShowCustomize(false)}>Cancel</button>
                   <button className="btn btn-primary btn-no-motion h-8" onClick={saveCustomDesign}>Save Changes</button>
                 </div>
