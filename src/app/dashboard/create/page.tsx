@@ -78,7 +78,8 @@ export default function CreateLinkPage() {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com/my-long-url"
-                className="w-full h-11 px-3 rounded-md bg-white/5 border border-white/10 outline-none focus:border-[var(--accent)]"
+                className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
               />
             </div>
             <div className="space-y-2">
@@ -88,7 +89,8 @@ export default function CreateLinkPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\s+/g, "-"))}
                 placeholder="your-alias"
-                className="w-full h-11 px-3 rounded-md bg-white/5 border border-white/10 outline-none focus:border-[var(--accent)]"
+                className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
               />
             </div>
             {error && (
@@ -103,7 +105,8 @@ export default function CreateLinkPage() {
               </button>
               <button
                 type="button"
-                className="px-4 h-10 rounded-md border border-white/10 hover:bg-white/5"
+                className="px-4 h-10 rounded-md"
+                style={{ border: '1px solid var(--border)', background: 'transparent' }}
                 onClick={() => {
                   setUrl("");
                   setCode("");
@@ -122,7 +125,7 @@ export default function CreateLinkPage() {
           {created ? (
             <div className="space-y-3">
               <div className="text-sm">Short URL</div>
-              <div className="p-3 rounded-md bg-white/5 border border-white/10 font-mono text-sm">
+              <div className="p-3 rounded-md font-mono text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {created.shortUrl}
               </div>
               <div className="flex gap-2">
@@ -146,7 +149,7 @@ export default function CreateLinkPage() {
                 </button>
               </div>
               <div className="text-sm">QR (placeholder)</div>
-              <div className="aspect-square w-40 bg-white rounded-md grid place-items-center text-black font-semibold">
+              <div className="aspect-square w-40 rounded-md grid place-items-center font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
                 QR
               </div>
             </div>

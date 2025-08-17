@@ -96,14 +96,15 @@ export default function DashboardLayout({
             {/* Removed header Create button as requested */}
             <button
               aria-label="Notifications"
-              className="btn btn-ghost h-9 w-9 p-0 rounded-full"
+              className="btn btn-ghost h-10 w-10 p-0 rounded-full"
               style={{ color: 'var(--muted)' }}
             >
               <svg
-                width="18"
-                height="18"
+                width="24"
+                height="24"
                 viewBox="0 0 24 24"
                 fill="none"
+                className="block"
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <path d="M15 18a3 3 0 1 1-6 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>

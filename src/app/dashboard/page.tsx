@@ -60,7 +60,7 @@ export default function DashboardHome() {
             </thead>
             <tbody>
               {links.map((r) => (
-                <tr key={r.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_4%,#fff)]">
+                <tr key={r.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] transition-colors">
                   <td className="p-3 font-mono">{r.short_code}</td>
                   <td className="p-3 max-w-[520px] truncate">{r.target_url}</td>
                   <td className="p-3">{new Date(r.created_at).toLocaleString()}</td>
