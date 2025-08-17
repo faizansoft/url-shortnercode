@@ -381,6 +381,54 @@ export default function Designer({ value }: DesignerProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Corners</div>
+            {/* Composite corner style previews (one-line scrollable) */}
+            <div className="flex flex-nowrap gap-2.5 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none]">
+              {([
+                { sq: 'square' as const, dot: 'dot' as const, label: 'Square + Dot' },
+                { sq: 'square' as const, dot: 'square' as const, label: 'Square + Square' },
+                { sq: 'extra-rounded' as const, dot: 'dot' as const, label: 'Extra-rounded + Dot' },
+                { sq: 'extra-rounded' as const, dot: 'square' as const, label: 'Extra-rounded + Square' },
+                { sq: 'dot' as const, dot: 'dot' as const, label: 'Dot + Dot' },
+                { sq: 'dot' as const, dot: 'square' as const, label: 'Dot + Square' },
+              ]).map(({ sq, dot, label }) => (
+                <button
+                  key={label}
+                  onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); }}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                  style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                  title={label}
+                >
+                  <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
+                    <div style={{
+                      width: 26,
+                      height: 26,
+                      background: 'currentColor',
+                      color: 'var(--foreground)',
+                      borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 10 : 999,
+                      display: 'grid',
+                      placeItems: 'center',
+                    }}>
+                      <div style={{
+                        width: 18,
+                        height: 18,
+                        background: 'var(--surface)',
+                        borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 8 : 999,
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}>
+                        <div style={{
+                          width: 10,
+                          height: 10,
+                          background: 'currentColor',
+                          color: 'var(--foreground)',
+                          borderRadius: dot === 'dot' ? 999 : 2,
+                        }}/>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2.5 items-center">
                 {(["square","dot","extra-rounded"] as const).map((t) => (
@@ -427,6 +475,7 @@ export default function Designer({ value }: DesignerProps) {
                 ))}
               </div>
               <div className="flex gap-2 flex-wrap items-center">
+                <div className="w-full text-xs text-[var(--muted)]">Outer corner color</div>
                 {palette.map((c) => (
                   <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerSquareColor(c)} />
                 ))}
@@ -478,6 +527,7 @@ export default function Designer({ value }: DesignerProps) {
                 ))}
               </div>
               <div className="flex gap-2 flex-wrap items-center">
+                <div className="w-full text-xs text-[var(--muted)]">Inner corner color</div>
                 {palette.map((c) => (
                   <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerDotColor(c)} />
                 ))}
