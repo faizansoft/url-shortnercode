@@ -144,15 +144,7 @@ export default function LinksIndexPage() {
                   <td className="p-3">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
-                        onClick={() => { setQrFor(`${origin}/${l.short_code}`); setShowQR(true); }}
-                        title="Show QR"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm6-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h-2v2h2v-2zm2 0v2h2v-2h-2zm-4 4h-2v2h2v-2zm4 0h-2v2h2v-2zm2 0v2h2v-2h-2z"/></svg>
-                        QR
-                      </button>
-                      <button
-                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
+                        className="btn btn-secondary btn-link-hover h-8 inline-flex items-center gap-1"
                         onClick={() => { setQrFor(`${origin}/${l.short_code}`); setShowQR(true); }}
                         title="Share QR"
                       >
@@ -160,7 +152,7 @@ export default function LinksIndexPage() {
                         Share QR
                       </button>
                       <button
-                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
+                        className="btn btn-secondary btn-link-hover h-8 inline-flex items-center gap-1"
                         onClick={() => { setShareFor(`${origin}/${l.short_code}`); setShowShareLink(true); }}
                         title="Share Link"
                       >
@@ -171,14 +163,7 @@ export default function LinksIndexPage() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 5c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.14-7-7 3.14-7 7-7Zm0-2C6.48 3 2 7.48 2 13s4.48 10 10 10 10-4.48 10-10S17.52 3 12 3Zm0 5a5 5 0 0 0-5 5h2a3 3 0 1 1 3 3v2a5 5 0 0 0 0-10Z"/></svg>
                         View
                       </Link>
-                      <button
-                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
-                        onClick={async () => { const url = `${origin}/${l.short_code}`; try { await navigator.clipboard.writeText(url); setCopied(l.short_code); setTimeout(()=>setCopied(null),1500);} catch {} }}
-                        title="Copy link"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 7a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V7Zm-3 3h1v8a3 3 0 0 0 3 3h8v1H9a4 4 0 0 1-4-4v-8Z"/></svg>
-                        {copied === l.short_code ? "Copied" : "Copy"}
-                      </button>
+                      
                     </div>
                   </td>
                 </tr>
