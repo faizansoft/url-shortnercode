@@ -182,10 +182,13 @@ export default function CreateLinkPage() {
                   setTimeout(() => setCopied(false), 1200);
                 }}>{copied ? "Copied" : "Copy"}</button>
               </div>
-              <div className="text-sm">QR (placeholder)</div>
+              <div className="text-sm">QR code</div>
               {qrDataUrl ? (
-                <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="rounded-md p-3 space-y-3 flex flex-col items-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <Image src={qrDataUrl} alt="QR code for short URL" width={160} height={160} className="w-40 h-40" />
+                  <div className="flex gap-2">
+                    <a className="btn h-8" href={qrDataUrl} download={`qr-${created.code}.png`}>Download PNG</a>
+                  </div>
                 </div>
               ) : (
                 <div className="aspect-square w-40 rounded-md grid place-items-center font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
