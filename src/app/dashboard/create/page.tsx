@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 export default function CreateLinkPage() {
@@ -7,6 +8,8 @@ export default function CreateLinkPage() {
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<{ code: string; shortUrl: string } | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; msg: string } | null>(null);
 
@@ -18,6 +21,31 @@ export default function CreateLinkPage() {
       return false;
     }
   }
+
+  // Generate QR when created changes
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (created?.shortUrl) {
+        try {
+          const dataUrl = await QRCode.toDataURL(created.shortUrl, {
+            errorCorrectionLevel: "M",
+            margin: 1,
+            color: { dark: "#0b1220", light: "#ffffff00" },
+            width: 200,
+          });
+          if (!cancelled) setQrDataUrl(dataUrl);
+        } catch {
+          if (!cancelled) setQrDataUrl(null);
+        }
+      } else {
+        setQrDataUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [created?.shortUrl]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,9 +76,18 @@ export default function CreateLinkPage() {
       const shortCode: string = payload?.short_code;
       if (!shortCode) throw new Error("No short code returned");
 
-      setCreated({ code: shortCode, shortUrl: `${window.location.origin}/${shortCode}` });
+      const shortUrl = `${window.location.origin}/${shortCode}`;
+      setCreated({ code: shortCode, shortUrl });
       setToast({ kind: "success", msg: "Link created successfully" });
       setTimeout(() => setToast(null), 2500);
+      setTimeout(() => {
+        navigator.clipboard.writeText(shortUrl).then(() => {
+          setCopied(true);
+          setToast({ kind: "success", msg: "Copied to clipboard" });
+          setTimeout(() => setToast(null), 2000);
+          setTimeout(() => setCopied(false), 1200);
+        });
+      }, 1000);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);
@@ -141,17 +178,25 @@ export default function CreateLinkPage() {
                   className="btn h-8"
                   onClick={async () => {
                     await navigator.clipboard.writeText(created.shortUrl);
+                    setCopied(true);
                     setToast({ kind: "success", msg: "Copied to clipboard" });
                     setTimeout(() => setToast(null), 2000);
+                    setTimeout(() => setCopied(false), 1200);
                   }}
                 >
-                  Copy
+                  {copied ? "Copied" : "Copy"}
                 </button>
               </div>
               <div className="text-sm">QR (placeholder)</div>
-              <div className="aspect-square w-40 rounded-md grid place-items-center font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
-                QR
-              </div>
+              {qrDataUrl ? (
+                <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <img src={qrDataUrl} alt="QR code for short URL" className="w-40 h-40" />
+                </div>
+              ) : (
+                <div className="aspect-square w-40 rounded-md grid place-items-center font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
+                  QR
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-sm text-[var(--muted)]">Fill the form to preview your link and QR.</div>

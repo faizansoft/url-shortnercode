@@ -52,6 +52,22 @@ export default function DashboardLayout({
             }
           />
           <NavItem
+            href="/dashboard/qrcodes"
+            label="QR Codes"
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3h6v6H3z" />
+                <path d="M15 3h6v6h-6z" />
+                <path d="M15 15h6v6h-6z" />
+                <path d="M3 15h6v6H3z" />
+                <path d="M12 7v2" />
+                <path d="M12 15v2" />
+                <path d="M7 12h2" />
+                <path d="M15 12h2" />
+              </svg>
+            }
+          />
+          <NavItem
             href="/dashboard/analytics"
             label="Analytics"
             icon={

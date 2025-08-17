@@ -119,19 +119,19 @@ a:hover {
 
 .btn-secondary {
   color: var(--foreground);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 1px 0 rgba(16,24,40,.04);
 }
-.btn-secondary:hover { background: color-mix(in oklab, #fff 92%, var(--accent) 8%); }
-.btn-secondary:active { background: color-mix(in oklab, #fff 88%, var(--accent) 12%); }
+.btn-secondary:hover { background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%); }
+.btn-secondary:active { background: color-mix(in oklab, var(--surface) 85%, var(--accent) 15%); }
 
 .btn-ghost {
   color: var(--foreground);
   background: transparent;
-  border: 1px solid color-mix(in oklab, var(--border) 70%, #fff 30%);
+  border: 1px solid color-mix(in oklab, var(--border) 70%, var(--surface) 30%);
 }
-.btn-ghost:hover { background: color-mix(in oklab, #fff 92%, var(--accent) 8%); }
+.btn-ghost:hover { background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%); }
 
 /* Subtle gradient ring wrapper */
 .ring-gradient { position: relative; border-radius: .7rem; padding: 1px; }
