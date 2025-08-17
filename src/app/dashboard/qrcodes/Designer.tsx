@@ -158,8 +158,8 @@ export default function Designer({ value }: DesignerProps) {
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
       backgroundOptions: perfMode ? { color: bgColor } : bg,
-      image: logoUrl || undefined,
       imageOptions: {
+        image: logoUrl || undefined,
         imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
         hideBackgroundDots: hideBgDots,
         margin: 2,
