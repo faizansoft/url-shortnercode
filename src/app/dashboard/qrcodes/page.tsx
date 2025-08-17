@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
-import Designer from "./Designer";
+// Designer is intentionally not embedded here; customization will open on demand in a modal
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
 
@@ -17,6 +17,7 @@ export default function QRCodesPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string>("");
   const [prefersDark, setPrefersDark] = useState<boolean>(false);
+  const [showCustomize, setShowCustomize] = useState<boolean>(false);
 
   const origin = useMemo(() => {
     if (typeof window !== "undefined") return window.location.origin;
@@ -84,29 +85,7 @@ export default function QRCodesPage() {
         <Link className="btn btn-primary" href="/dashboard/create">Create</Link>
       </header>
 
-      {/* Designer */}
-      {!loading && !error && (
-        <div className="space-y-3">
-          <div className="rounded-xl glass p-4">
-            <div className="flex flex-wrap items-center gap-3 pb-4">
-              <label className="text-sm text-[var(--muted)]">Select link</label>
-              <select
-                className="h-9 rounded-md px-2 min-w-[280px]"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-              >
-                {items.map((it) => (
-                  <option key={it.short_code} value={it.short_url}>
-                    {it.short_url}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Designer value={selected || (items[0]?.short_url || "")} />
-          </div>
-        </div>
-      )}
+      {/* No always-visible designer. Customizer opens only when user clicks the button. */}
 
       {loading ? (
         <div className="p-4 text-sm text-[var(--muted)]">Loading…</div>
@@ -135,9 +114,29 @@ export default function QRCodesPage() {
                 {it.qr_data_url ? (
                   <a className="btn h-8" href={it.qr_data_url} download={`qr-${it.short_code}.png`}>Download PNG</a>
                 ) : null}
+                <button className="btn h-8" onClick={() => { setSelected(it.short_url); setShowCustomize(true); }}>Customize logo</button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {showCustomize && (
+        <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: 'color-mix(in oklab, var(--surface) 60%, transparent)' }}>
+          <div className="w-[min(96vw,720px)] rounded-xl glass p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-lg font-semibold">Customize Logo</div>
+              <button className="btn btn-secondary h-8" onClick={() => setShowCustomize(false)}>Close</button>
+            </div>
+            <div className="text-sm text-[var(--muted)]">
+              Select a logo and options will appear here. This modal intentionally loads only on demand.
+            </div>
+            {/* Placeholder area for future logo customizer UI */}
+            <div className="rounded-md p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="text-sm">Selected link</div>
+              <div className="font-mono text-sm mt-1">{selected}</div>
+            </div>
+          </div>
         </div>
       )}
     </div>

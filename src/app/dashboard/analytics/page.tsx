@@ -74,7 +74,7 @@ export default function AnalyticsDashboard() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+        <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Analytics</h1>
       </header>
 
       {loading ? (
@@ -182,7 +182,12 @@ function DailyBars({ fromPairs, height = 100 }: { fromPairs: Array<[string, numb
   return (
     <div className="flex items-end gap-1" style={{ height }}>
       {fromPairs.map(([day, v]) => (
-        <div key={day} className="flex-1 min-w-[4px] bg-gray-100 rounded relative" title={`${day}: ${v}`}>
+        <div
+          key={day}
+          className="flex-1 min-w-[4px] rounded relative"
+          style={{ background: 'color-mix(in oklab, var(--surface) 92%, var(--foreground))' }}
+          title={`${day}: ${v}`}
+        >
           <div
             className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
             style={{ height: `${(v / max) * 100}%` }}
@@ -203,7 +208,7 @@ function RankedBars({ items }: { items: Array<{ label: string; count: number }> 
         items.map((i) => (
           <li key={i.label} className="flex items-center gap-3">
             <div className="w-48 truncate" title={i.label}>{i.label}</div>
-            <div className="flex-1 h-2 bg-gray-100 rounded">
+            <div className="flex-1 h-2 rounded" style={{ background: 'color-mix(in oklab, var(--surface) 92%, var(--foreground))' }}>
               <div className="h-2 rounded bg-[var(--accent)]" style={{ width: `${(i.count / max) * 100}%` }} />
             </div>
             <div className="w-12 text-right tabular-nums">{i.count}</div>

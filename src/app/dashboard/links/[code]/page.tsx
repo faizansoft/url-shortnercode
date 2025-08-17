@@ -57,7 +57,7 @@ export default function LinkDetailsPage() {
       <header className="flex items-center justify-between">
         <div>
           <div className="text-sm"><Link href="/dashboard">← Back to Dashboard</Link></div>
-          <h1 className="text-2xl font-semibold tracking-tight mt-1">Link Details</h1>
+          <h1 className="text-2xl font-semibold tracking-tight mt-1 bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Link Details</h1>
         </div>
         {link && (
           <a className="btn btn-secondary" href={`/${link.short_code}`} target="_blank" rel="noreferrer">
@@ -125,7 +125,7 @@ export default function LinkDetailsPage() {
                 </thead>
                 <tbody>
                   {clicks.map((c, i) => (
-                    <tr key={i} className="border-t border-[var(--border)]">
+                    <tr key={i} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] transition-colors">
                       <td className="p-3">{new Date(c.created_at).toLocaleString()}</td>
                       <td className="p-3 max-w-[420px] truncate">{c.referrer || "—"}</td>
                       <td className="p-3">{c.ip || "—"}</td>
