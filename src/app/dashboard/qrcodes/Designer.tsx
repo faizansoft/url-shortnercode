@@ -498,85 +498,59 @@ export default function Designer({ value }: DesignerProps) {
                 >Save current as preset</button>
               </div>
               <div className="flex flex-nowrap gap-2.5 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none]">
-                {([
-                  { label: 'Square + Square (Dark)', sq: 'square' as const, dot: 'square' as const, sc: '#0b1220', dc: '#0b1220' },
-                  { label: 'Square + Dot (Blue)', sq: 'square' as const, dot: 'dot' as const, sc: '#2563eb', dc: '#2563eb' },
-                  { label: 'Extra + Dot (Violet)', sq: 'extra-rounded' as const, dot: 'dot' as const, sc: '#7c3aed', dc: '#7c3aed' },
-                  { label: 'Extra + Square (Orange)', sq: 'extra-rounded' as const, dot: 'square' as const, sc: '#ea580c', dc: '#ea580c' },
-                  { label: 'Dot + Dot (Green)', sq: 'dot' as const, dot: 'dot' as const, sc: '#22c55e', dc: '#22c55e' },
-                  { label: 'Dot + Square (Cyan)', sq: 'dot' as const, dot: 'square' as const, sc: '#0891b2', dc: '#0891b2' },
-                ]).map(({ label, sq, dot, sc, dc }) => (
-                  <button
-                    key={label}
-                    onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
-                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''}`}
-                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                    title={label}
-                  >
-                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                      <div style={{
-                        width: 26,
-                        height: 26,
-                        background: sc,
-                        borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 10 : 999,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}>
+                {(() => {
+                  const builtins = [
+                    { label: 'Square + Square (Dark)', sq: 'square' as const, dot: 'square' as const, sc: '#0b1220', dc: '#0b1220' },
+                    { label: 'Square + Dot (Blue)', sq: 'square' as const, dot: 'dot' as const, sc: '#2563eb', dc: '#2563eb' },
+                    { label: 'Extra + Dot (Violet)', sq: 'extra-rounded' as const, dot: 'dot' as const, sc: '#7c3aed', dc: '#7c3aed' },
+                    { label: 'Extra + Square (Orange)', sq: 'extra-rounded' as const, dot: 'square' as const, sc: '#ea580c', dc: '#ea580c' },
+                    { label: 'Dot + Dot (Green)', sq: 'dot' as const, dot: 'dot' as const, sc: '#22c55e', dc: '#22c55e' },
+                    { label: 'Dot + Square (Cyan)', sq: 'dot' as const, dot: 'square' as const, sc: '#0891b2', dc: '#0891b2' },
+                  ];
+                  const seen = new Set<string>();
+                  const items = [...builtins, ...cornerPresets].filter((p) => {
+                    const key = `${p.sq}|${p.dot}|${p.sc}|${p.dc}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                  });
+                  return items.map(({ label, sq, dot, sc, dc }) => (
+                    <button
+                      key={`${sq}-${dot}-${sc}-${dc}-${label}`}
+                      onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
+                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                      style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                      title={label}
+                    >
+                      <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
                         <div style={{
-                          width: 18,
-                          height: 18,
-                          background: 'var(--surface)',
-                          borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 8 : 999,
+                          width: 26,
+                          height: 26,
+                          background: sc,
+                          borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 10 : 999,
                           display: 'grid',
                           placeItems: 'center',
                         }}>
                           <div style={{
-                            width: 10,
-                            height: 10,
-                            background: dc,
-                            borderRadius: dot === 'dot' ? 999 : 2,
-                          }}/>
+                            width: 18,
+                            height: 18,
+                            background: 'var(--surface)',
+                            borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 8 : 999,
+                            display: 'grid',
+                            placeItems: 'center',
+                          }}>
+                            <div style={{
+                              width: 10,
+                              height: 10,
+                              background: dc,
+                              borderRadius: dot === 'dot' ? 999 : 2,
+                            }}/>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
-                {cornerPresets.map(({ label, sq, dot, sc, dc }) => (
-                  <button
-                    key={label}
-                    onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
-                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''}`}
-                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                    title={label}
-                  >
-                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                      <div style={{
-                        width: 26,
-                        height: 26,
-                        background: sc,
-                        borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 10 : 999,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}>
-                        <div style={{
-                          width: 18,
-                          height: 18,
-                          background: 'var(--surface)',
-                          borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 8 : 999,
-                          display: 'grid',
-                          placeItems: 'center',
-                        }}>
-                          <div style={{
-                            width: 10,
-                            height: 10,
-                            background: dc,
-                            borderRadius: dot === 'dot' ? 999 : 2,
-                          }}/>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ));
+                })()}
               </div>
             </div>
             <div className="space-y-2">
