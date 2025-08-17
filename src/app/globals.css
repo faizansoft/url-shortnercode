@@ -30,6 +30,30 @@
     --surface: #0f1626; /* slightly elevated surface */
     --border: #21304d; /* subtle border for dark */
   }
+
+  /* Dark theme: unify hover to match View link style across the site */
+  a:hover {
+    color: color-mix(in oklab, var(--accent) 90%, var(--foreground) 10%);
+    background-color: color-mix(in oklab, #fff 94%, var(--accent) 6%);
+    text-shadow: 0 0 .01px currentColor;
+  }
+
+  .btn-secondary:hover {
+    background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%);
+    color: var(--accent);
+  }
+
+  .btn-ghost:hover {
+    background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%);
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--border) 40%, var(--accent) 60%);
+  }
+
+  /* Keep primary readable; just keep its existing motion and ensure text stays white */
+  .btn-primary:hover { color: #fff; }
+
+  /* Nav items hover should also adopt accent text color */
+  .nav-item:hover { color: var(--accent); }
 }
 
 /* App chrome */
