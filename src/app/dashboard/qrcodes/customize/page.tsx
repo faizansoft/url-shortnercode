@@ -89,7 +89,7 @@ export default function CustomizeQRPage() {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
-        const res = await fetch(`/api/qr?short_code=${encodeURIComponent(shortCode)}`, {
+        const res = await fetch(`/api/qr?code=${encodeURIComponent(shortCode)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
