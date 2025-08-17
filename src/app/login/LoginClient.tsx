@@ -5,8 +5,12 @@ import { supabaseClient } from "@/lib/supabaseClient";
 
 type Mode = "login" | "signup";
 
-export default function LoginClient() {
-  const [mode, setMode] = useState<Mode>("login");
+type Props = {
+  defaultMode?: Mode;
+};
+
+export default function LoginClient({ defaultMode = "login" }: Props) {
+  const [mode, setMode] = useState<Mode>(defaultMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
