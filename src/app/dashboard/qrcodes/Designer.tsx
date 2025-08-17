@@ -382,9 +382,28 @@ export default function Designer({ value }: DesignerProps) {
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Corners</div>
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-2.5 items-center">
                 {(["square","dot","extra-rounded"] as const).map((t) => (
-                  <button key={t} className={`h-10 px-4 rounded border text-xs transition ${cornerSquareType===t? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerSquareType(t)}>{t}</button>
+                  <button
+                    key={t}
+                    onClick={() => setCornerSquareType(t)}
+                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
+                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                    title={`corner-square: ${t}`}
+                  >
+                    {/* Finder square preview */}
+                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          background: 'currentColor',
+                          color: 'var(--foreground)',
+                          borderRadius: t === 'square' ? 2 : t === 'extra-rounded' ? 8 : 999,
+                        }}
+                      />
+                    </div>
+                  </button>
                 ))}
               </div>
               <div className="flex gap-2 flex-wrap items-center">
@@ -394,9 +413,28 @@ export default function Designer({ value }: DesignerProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-2.5 items-center">
                 {(["dot","square"] as const).map((t) => (
-                  <button key={t} className={`h-10 px-4 rounded border text-xs transition ${cornerDotType===t? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerDotType(t)}>{t}</button>
+                  <button
+                    key={t}
+                    onClick={() => setCornerDotType(t)}
+                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerDotType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
+                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                    title={`corner-dot: ${t}`}
+                  >
+                    {/* Finder inner dot preview */}
+                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
+                      <div
+                        style={{
+                          width: 10,
+                          height: 10,
+                          background: 'currentColor',
+                          color: 'var(--foreground)',
+                          borderRadius: t === 'dot' ? 999 : 2,
+                        }}
+                      />
+                    </div>
+                  </button>
                 ))}
               </div>
               <div className="flex gap-2 flex-wrap items-center">
