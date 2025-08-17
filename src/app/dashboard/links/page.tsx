@@ -144,7 +144,7 @@ export default function LinksIndexPage() {
                   <td className="p-3">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        className="btn btn-secondary btn-link-hover h-8 inline-flex items-center gap-1"
+                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
                         onClick={() => { setQrFor(`${origin}/${l.short_code}`); setShowQR(true); }}
                         title="Share QR"
                       >
@@ -152,7 +152,7 @@ export default function LinksIndexPage() {
                         Share QR
                       </button>
                       <button
-                        className="btn btn-secondary btn-link-hover h-8 inline-flex items-center gap-1"
+                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
                         onClick={() => { setShareFor(`${origin}/${l.short_code}`); setShowShareLink(true); }}
                         title="Share Link"
                       >

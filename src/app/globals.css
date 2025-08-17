@@ -126,7 +126,10 @@ a:hover {
   border: 1px solid var(--border);
   box-shadow: 0 1px 0 rgba(16,24,40,.04);
 }
-.btn-secondary:hover { background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%); }
+.btn-secondary:hover { 
+  background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%);
+  color: var(--accent);
+}
 .btn-secondary:active { background: color-mix(in oklab, var(--surface) 85%, var(--accent) 15%); }
 
 /* Make button hover look like anchor hover (used to match View link style in tables) */
@@ -135,6 +138,9 @@ a:hover {
   background-color: color-mix(in oklab, #fff 94%, var(--accent) 6%);
   text-shadow: 0 0 .01px currentColor;
 }
+
+/* Accent-colored button text to match link-style buttons */
+.btn-text-accent { color: var(--accent); }
 
 .btn-ghost {
   color: var(--foreground);
