@@ -78,6 +78,9 @@ export default function Designer({ value }: DesignerProps) {
   >("none");
   const [perfMode, setPerfMode] = useState<boolean>(false);
   
+  // Corner custom presets (runtime only)
+  const [cornerPresets, setCornerPresets] = useState<Array<{ label: string; sq: "dot" | "square" | "extra-rounded"; dot: "dot" | "square"; sc: string; dc: string }>>([]);
+  
   // Built-in icons from public/
   const builtinIcons = useMemo(() => (
     [
@@ -215,6 +218,55 @@ export default function Designer({ value }: DesignerProps) {
   useEffect(() => {
     qrRef.current?.update(options);
   }, [options]);
+
+  // Handlers
+  const resetAll = () => {
+    setSize(220);
+    setMargin(2);
+    setEcLevel("M");
+    setPerfMode(false);
+    // Dots
+    setDotsType("rounded");
+    setDotsColor("#0b1220");
+    setDotsGradientOn(false);
+    setDotsGradA("#0b1220");
+    setDotsGradB("#2563eb");
+    // Corners
+    setCornerSquareType("square");
+    setCornerSquareColor("#0b1220");
+    setCornerDotType("dot");
+    setCornerDotColor("#0b1220");
+    // Background
+    setBgColor("#ffffff00");
+    setBgGradientOn(false);
+    setBgGradA("#ffffff");
+    setBgGradB("#e2e8f0");
+    setBgGradType("linear");
+    // Logo
+    setLogoUrl("");
+    setLogoSize(0.25);
+    setHideBgDots(true);
+    setCrossOrigin("anonymous");
+    // Frame
+    setFrame("none");
+  };
+
+  const saveChanges = () => {
+    if (typeof window === 'undefined') return;
+    const payload = {
+      size, margin, ecLevel, perfMode,
+      dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation,
+      cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor,
+      bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType,
+      logoUrl, logoSize, hideBgDots, crossOrigin,
+      frame,
+      value,
+      ts: Date.now(),
+    };
+    try {
+      window.localStorage.setItem('qrDesigner:last', JSON.stringify(payload));
+    } catch {}
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -431,7 +483,20 @@ export default function Designer({ value }: DesignerProps) {
             </div>
             {/* Corner presets (supported types only) */}
             <div className="space-y-1 mt-2">
-              <div className="text-xs font-medium text-[var(--muted)]">Corner presets</div>
+              <div className="flex items-center justify-between pr-1">
+                <div className="text-xs font-medium text-[var(--muted)]">Corner presets</div>
+                <button
+                  className="h-7 px-2 rounded border text-xs"
+                  style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                  onClick={() => {
+                    const label = `Custom ${cornerPresets.length + 1}`;
+                    setCornerPresets((prev) => [
+                      ...prev,
+                      { label, sq: cornerSquareType, dot: cornerDotType, sc: cornerSquareColor, dc: cornerDotColor },
+                    ]);
+                  }}
+                >Save current as preset</button>
+              </div>
               <div className="flex flex-nowrap gap-2.5 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none]">
                 {([
                   { label: 'Square + Square (Dark)', sq: 'square' as const, dot: 'square' as const, sc: '#0b1220', dc: '#0b1220' },
@@ -441,6 +506,42 @@ export default function Designer({ value }: DesignerProps) {
                   { label: 'Dot + Dot (Green)', sq: 'dot' as const, dot: 'dot' as const, sc: '#22c55e', dc: '#22c55e' },
                   { label: 'Dot + Square (Cyan)', sq: 'dot' as const, dot: 'square' as const, sc: '#0891b2', dc: '#0891b2' },
                 ]).map(({ label, sq, dot, sc, dc }) => (
+                  <button
+                    key={label}
+                    onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
+                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
+                    title={label}
+                  >
+                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
+                      <div style={{
+                        width: 26,
+                        height: 26,
+                        background: sc,
+                        borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 10 : 999,
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}>
+                        <div style={{
+                          width: 18,
+                          height: 18,
+                          background: 'var(--surface)',
+                          borderRadius: sq === 'square' ? 0 : sq === 'extra-rounded' ? 8 : 999,
+                          display: 'grid',
+                          placeItems: 'center',
+                        }}>
+                          <div style={{
+                            width: 10,
+                            height: 10,
+                            background: dc,
+                            borderRadius: dot === 'dot' ? 999 : 2,
+                          }}/>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                {cornerPresets.map(({ label, sq, dot, sc, dc }) => (
                   <button
                     key={label}
                     onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
@@ -531,50 +632,6 @@ export default function Designer({ value }: DesignerProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2.5 items-center">
-                {(["dot","square"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setCornerDotType(t)}
-                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerDotType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
-                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                    title={`corner-dot: ${t}`}
-                  >
-                    {/* Finder preview with fixed square outer and variable center */}
-                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                      {/* Outer dark layer (square) */}
-                      <div style={{
-                        width: 26,
-                        height: 26,
-                        background: 'currentColor',
-                        color: 'var(--foreground)',
-                        borderRadius: 0,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}>
-                        {/* Inner light layer */}
-                        <div style={{
-                          width: 18,
-                          height: 18,
-                          background: 'var(--surface)',
-                          borderRadius: 0,
-                          display: 'grid',
-                          placeItems: 'center',
-                        }}>
-                          {/* Center dot shape according to t */}
-                          <div style={{
-                            width: 10,
-                            height: 10,
-                            background: 'currentColor',
-                            color: 'var(--foreground)',
-                            borderRadius: t === 'dot' ? 999 : 2,
-                          }}/>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
               <div className="flex gap-2 flex-wrap items-center">
                 <div className="w-full text-xs text-[var(--muted)]">Inner corner color</div>
                 {palette.map((c) => (
@@ -675,6 +732,13 @@ export default function Designer({ value }: DesignerProps) {
         <div className="flex flex-wrap gap-3 items-center justify-center w-full">
           <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
           <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
+          <button
+            className="btn btn-primary h-10 px-4"
+            title="Save current configuration"
+            onClick={saveChanges}
+          >
+            Save changes
+          </button>
           <button
             className="btn btn-secondary h-10 px-4 flex items-center gap-2"
             title="Reset to default"
