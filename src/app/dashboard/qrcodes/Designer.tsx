@@ -152,14 +152,14 @@ export default function Designer({ value }: DesignerProps) {
       height: size,
       data: value,
       margin,
-      type: "svg",
+      type: logoUrl ? "canvas" : "svg",
       qrOptions: { errorCorrectionLevel: ecLevel },
       dotsOptions: perfMode ? { color: dotsColor, type: "square" } : dots,
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
       backgroundOptions: perfMode ? { color: bgColor } : bg,
+      image: logoUrl || undefined,
       imageOptions: {
-        image: logoUrl || undefined,
         imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
         hideBackgroundDots: hideBgDots,
         margin: 2,
@@ -283,25 +283,23 @@ export default function Designer({ value }: DesignerProps) {
         {/* Select styles */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <div className="text-xs font-medium text-[var(--muted)]">Pattern</div>
-            <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={dotsType} onChange={(e) => setDotsType(e.target.value as DotsType)}>
-              <option value="dots">dots</option>
-              <option value="rounded">rounded</option>
-              <option value="classy">classy</option>
-              <option value="classy-rounded">classy-rounded</option>
-              <option value="square">square</option>
-              <option value="extra-rounded">extra-rounded</option>
-            </select>
+            <div className="text-xs font-medium text-[var(--muted)]">Patterns</div>
+            <div className="flex flex-wrap gap-2">
+              {(["square","rounded","dots","classy","classy-rounded","extra-rounded"] as DotsType[]).map((t) => (
+                <button key={t} className={`h-9 px-3 rounded border text-xs ${dotsType===t? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setDotsType(t)}>{t}</button>
+              ))}
+            </div>
             <button className="btn btn-secondary h-8" onClick={() => setDotsType("rounded")}>Reset styles</button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Error correction</div>
-            <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={ecLevel} onChange={(e) => setEcLevel(e.target.value as "L" | "M" | "Q" | "H")}>
-              <option value="L">L (7%)</option>
-              <option value="M">M (15%)</option>
-              <option value="Q">Q (25%)</option>
-              <option value="H">H (30%)</option>
-            </select>
+            <div className="flex flex-wrap gap-2">
+              {(["L","M","Q","H"] as const).map((lvl) => (
+                <button key={lvl} className={`h-9 px-3 rounded border text-xs ${ecLevel===lvl? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setEcLevel(lvl)}>
+                  {lvl}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -331,23 +329,24 @@ export default function Designer({ value }: DesignerProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Corners</div>
-            <div className="grid grid-cols-2 gap-2">
-              <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerSquareType} onChange={(e) => setCornerSquareType(e.target.value as "square" | "dot" | "extra-rounded")}>
-                <option value="square">square</option>
-                <option value="dot">dot</option>
-                <option value="extra-rounded">extra-rounded</option>
-              </select>
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {(["square","dot","extra-rounded"] as const).map((t) => (
+                  <button key={t} className={`h-9 px-3 rounded border text-xs ${cornerSquareType===t? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerSquareType(t)}>{t}</button>
+                ))}
+              </div>
               <div className="flex gap-2 flex-wrap items-center">
                 {palette.map((c) => (
                   <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerSquareColor(c)} />
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerDotType} onChange={(e) => setCornerDotType(e.target.value as "dot" | "square")}>
-                <option value="dot">dot</option>
-                <option value="square">square</option>
-              </select>
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {(["dot","square"] as const).map((t) => (
+                  <button key={t} className={`h-9 px-3 rounded border text-xs ${cornerDotType===t? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerDotType(t)}>{t}</button>
+                ))}
+              </div>
               <div className="flex gap-2 flex-wrap items-center">
                 {palette.map((c) => (
                   <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerDotColor(c)} />

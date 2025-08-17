@@ -47,6 +47,7 @@ declare module "qr-code-styling" {
     dotsOptions?: DotsOptions;
     cornersSquareOptions?: CornersSquareOptions;
     cornersDotOptions?: CornersDotOptions;
+    image?: string; // root image source (many versions of qr-code-styling expect this)
     imageOptions?: ImageOptions;
   }
 
