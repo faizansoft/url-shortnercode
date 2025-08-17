@@ -195,28 +195,7 @@ export default function Designer({ value }: DesignerProps) {
             <span className="text-xs text-[var(--muted)]">Performance mode</span>
             <input type="checkbox" checked={perfMode} onChange={(e) => setPerfMode(e.target.checked)} />
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            <button className="btn btn-secondary h-8" onClick={() => {
-              // Reset all to defaults
-              setDotsType("rounded");
-              setDotsColor("#0b1220");
-              setDotsGradientOn(false);
-              setCornerSquareType("square");
-              setCornerSquareColor("#0b1220");
-              setCornerDotType("dot");
-              setCornerDotColor("#0b1220");
-              setBgColor("#ffffff00");
-              setBgGradientOn(false);
-              setLogoUrl("");
-              setLogoSize(0.25);
-              setHideBgDots(true);
-              setCrossOrigin("anonymous");
-              setFrame("none");
-              setEcLevel("M");
-              setSize(220);
-              setMargin(2);
-            }}>Reset all</button>
-          </div>
+          {/* Removed 'Reset all' button as per request */}
         </div>
 
         {/* Presets */}
@@ -389,34 +368,44 @@ export default function Designer({ value }: DesignerProps) {
           ))}
           <button className="btn btn-secondary h-8" onClick={() => setFrame("none")}>Reset frame</button>
         </div>
-        <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
-        <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
+        {/* Download buttons moved to Preview section */}
       </div>
 
-      <div className="rounded-xl glass p-4 flex flex-col gap-3 items-center">
+      <div className="rounded-xl glass p-4 flex flex-col gap-4 items-center">
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             <div ref={containerRef} className="[&>svg]:block" />
           </div>
         </div>
-        <button className="text-xs text-[var(--accent)]" onClick={() => {
-          setDotsType("rounded");
-          setDotsColor(prefersDark ? "#ffffff" : "#0b1220");
-          setCornerSquareType("square");
-          setCornerSquareColor(prefersDark ? "#ffffff" : "#0b1220");
-          setCornerDotType("dot");
-          setCornerDotColor(prefersDark ? "#ffffff" : "#0b1220");
-          setBgColor("#ffffff00");
-          setLogoUrl("");
-          setLogoSize(0.25);
-          setHideBgDots(true);
-          setCrossOrigin("anonymous");
-          setFrame("none");
-          setEcLevel("M");
-          setSize(220);
-          setMargin(2);
-        }}>Reset to default</button>
+        <div className="flex flex-wrap gap-2 items-center justify-center w-full">
+          <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
+          <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
+          <button
+            className="btn btn-secondary h-9 flex items-center gap-2"
+            title="Reset to default"
+            onClick={() => {
+              setDotsType("rounded");
+              setDotsColor(prefersDark ? "#ffffff" : "#0b1220");
+              setCornerSquareType("square");
+              setCornerSquareColor(prefersDark ? "#ffffff" : "#0b1220");
+              setCornerDotType("dot");
+              setCornerDotColor(prefersDark ? "#ffffff" : "#0b1220");
+              setBgColor("#ffffff00");
+              setLogoUrl("");
+              setLogoSize(0.25);
+              setHideBgDots(true);
+              setCrossOrigin("anonymous");
+              setFrame("none");
+              setEcLevel("M");
+              setSize(220);
+              setMargin(2);
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/></svg>
+            <span>Reset to default</span>
+          </button>
+        </div>
       </div>
     </div>
   );
