@@ -10,8 +10,6 @@ export default function LoginClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpStep, setOtpStep] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>("");
   const [variant, setVariant] = useState<"error" | "success" | "info">("info");
@@ -43,14 +41,12 @@ export default function LoginClient() {
         const { error } = await supabaseClient.auth.signUp({
           email,
           password,
-          // With Email OTP enabled in Supabase Auth settings, this sends a 6-digit code.
-          // No redirect needed for OTP flow.
-          options: {},
+          // Use email confirmation link flow with redirect to our callback page
+          options: { emailRedirectTo: `${siteUrl}/auth/callback` },
         });
         if (error) throw error;
-        setVariant("info");
-        setOtpStep(true);
-        setMessage("Enter the 6-digit verification code sent to your email.");
+        setVariant("success");
+        setMessage("Check your email inbox for the confirmation link to activate your account.");
       } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -61,45 +57,6 @@ export default function LoginClient() {
     } catch (err: unknown) {
       setVariant("error");
       setMessage(err instanceof Error ? err.message : "Authentication failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
-    setVariant("info");
-    try {
-      const { error } = await supabaseClient.auth.verifyOtp({
-        email,
-        token: otp,
-        type: "signup",
-      });
-      if (error) throw error;
-      setVariant("success");
-      setMessage("Verified. Redirecting…");
-      setTimeout(() => window.location.assign("/dashboard"), 500);
-    } catch (err: unknown) {
-      setVariant("error");
-      setMessage(err instanceof Error ? err.message : "Invalid or expired code.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleResend() {
-    setLoading(true);
-    setMessage("");
-    setVariant("info");
-    try {
-      const { error } = await supabaseClient.auth.resend({ type: "signup", email });
-      if (error) throw error;
-      setMessage("A new code has been sent.");
-    } catch (err: unknown) {
-      setVariant("error");
-      setMessage(err instanceof Error ? err.message : "Failed to resend code.");
     } finally {
       setLoading(false);
     }
@@ -143,7 +100,6 @@ export default function LoginClient() {
 
         {/* Auth palette right column */}
         <div className="rounded-2xl p-6 border border-[var(--border)]" style={{ background: 'var(--surface)' }}>
-          {!otpStep && (
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => { setMode("login"); setMessage(""); }}
@@ -154,9 +110,6 @@ export default function LoginClient() {
               className={`btn h-8 ${mode === "signup" ? "btn-primary" : "btn-secondary"}`}
             >Sign up</button>
           </div>
-          )}
-
-          {!otpStep ? (
           <form onSubmit={handleEmailAuth} className="space-y-3">
             <div>
               <label className="block text-sm mb-1">Email</label>
@@ -207,33 +160,6 @@ export default function LoginClient() {
               }`}>{message}</div>
             )}
           </form>
-          ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-3">
-            <div>
-              <label className="block text-sm mb-1">Verification code</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                required
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Enter 6-digit code"
-                className="w-full h-10 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-              />
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" disabled={loading || otp.length !== 6} className="btn btn-primary flex-1 justify-center">Verify</button>
-              <button type="button" disabled={loading} onClick={handleResend} className="btn btn-secondary">Resend</button>
-            </div>
-            {message && (
-              <div className={`text-sm ${
-                variant === "error" ? "text-red-600" : variant === "success" ? "text-green-700" : "text-[var(--muted)]"
-              }`}>{message}</div>
-            )}
-          </form>
-          )}
 
           <div className="my-4 w-full h-px" style={{ background: 'var(--border)' }} />
           <div className="text-sm mb-2 text-[color-mix(in_oklab,var(--foreground)_80%,#666)]">Continue with</div>
