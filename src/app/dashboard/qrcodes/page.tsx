@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
-import QRCodeStyling, { type Options as StyleOptions } from "qr-code-styling";
+import type { Options as StyleOptions } from "qr-code-styling";
 // Designer is intentionally not embedded here; customization will open on demand in a modal
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
@@ -61,7 +61,7 @@ export default function QRCodesPage() {
 
   // Preview via qr-code-styling
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const qrStylingRef = useRef<QRCodeStyling | null>(null);
+  const qrStylingRef = useRef<any | null>(null);
 
   const origin = useMemo(() => {
     if (typeof window !== "undefined") return window.location.origin;
@@ -179,14 +179,36 @@ export default function QRCodesPage() {
     })();
   }, [showCustomize, selected]);
 
-  // Initialize qr-code-styling once when modal opens
+  // Initialize qr-code-styling once when modal opens (dynamic import to avoid SSR issues)
   useEffect(() => {
     if (!showCustomize || !selected || !previewRef.current) return;
-    if (!qrStylingRef.current) {
-      qrStylingRef.current = new QRCodeStyling({ type: "canvas" });
-      qrStylingRef.current.append(previewRef.current);
-    }
-    return () => {};
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!qrStylingRef.current) {
+          const mod = await import("qr-code-styling");
+          if (cancelled) return;
+          const QRCodeStyling = mod.default as any;
+          qrStylingRef.current = new QRCodeStyling({ type: "canvas" });
+          qrStylingRef.current.append(previewRef.current);
+        }
+        // Immediately render current state
+        const opts: StyleOptions = {
+          width: size,
+          height: size,
+          data: selected,
+          margin,
+          qrOptions: { errorCorrectionLevel: ecl },
+          backgroundOptions: { color: bgColor },
+          dotsOptions: { type: dotType, color: dotColorA },
+          cornersSquareOptions: { type: cornerSqType, color: cornerSqColor },
+          cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
+          imageOptions: logoDataUrl ? { image: logoDataUrl, imageSize: logoSize, margin: logoMargin, hideBackgroundDots: hideBgDots, crossOrigin: "anonymous" } : undefined,
+        };
+        qrStylingRef.current.update(opts);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
   }, [showCustomize, selected]);
 
   // Update preview when options change
@@ -400,10 +422,6 @@ export default function QRCodesPage() {
                     </select>
                   </label>
                 </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button className="btn btn-secondary h-8" onClick={() => setShowCustomize(false)}>Cancel</button>
-                  <button className="btn btn-primary btn-no-motion h-8" onClick={saveCustomDesign}>Save Changes</button>
-                </div>
               </div>
               {/* Preview */}
               <div className="rounded-md p-4 flex flex-col items-center gap-4 overflow-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -417,6 +435,10 @@ export default function QRCodesPage() {
                   a.href = url; a.download = 'qr-custom.png'; a.click();
                   setTimeout(()=>URL.revokeObjectURL(url), 5000);
                 }}>Download PNG</button>
+                <div className="flex justify-end gap-2 w-full">
+                  <button className="btn btn-secondary h-8" onClick={() => setShowCustomize(false)}>Cancel</button>
+                  <button className="btn btn-primary btn-no-motion h-8" onClick={saveCustomDesign}>Save Changes</button>
+                </div>
               </div>
             </div>
           </div>
