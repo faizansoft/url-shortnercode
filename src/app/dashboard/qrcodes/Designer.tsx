@@ -5,6 +5,8 @@ import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
 // Explicit local helper types to satisfy TS
 type DotsOpts = NonNullable<QRStyleOptions["dotsOptions"]>;
 type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
+type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
+type BgGradType = "linear" | "radial";
 
 export type DesignerProps = {
   value: string;
@@ -31,7 +33,7 @@ export default function Designer({ value }: DesignerProps) {
   const [ecLevel, setEcLevel] = useState<"L" | "M" | "Q" | "H">("M");
 
   // Dots/pattern
-  const [dotsType, setDotsType] = useState<QRStyleOptions["dotsOptions"] extends infer T ? T extends { type?: string } ? T["type"] : any : any>("rounded");
+  const [dotsType, setDotsType] = useState<DotsType>("rounded");
   const [dotsColor, setDotsColor] = useState("#0b1220");
   const [dotsGradientOn, setDotsGradientOn] = useState(false);
   const [dotsGradA, setDotsGradA] = useState("#0b1220");
@@ -49,7 +51,7 @@ export default function Designer({ value }: DesignerProps) {
   const [bgGradientOn, setBgGradientOn] = useState(false);
   const [bgGradA, setBgGradA] = useState("#ffffff");
   const [bgGradB, setBgGradB] = useState("#e2e8f0");
-  const [bgGradType, setBgGradType] = useState<"linear" | "radial">("linear");
+  const [bgGradType, setBgGradType] = useState<BgGradType>("linear");
 
   // Image / logo
   const [logoUrl, setLogoUrl] = useState<string>("");
@@ -84,9 +86,9 @@ export default function Designer({ value }: DesignerProps) {
               { offset: 1, color: dotsGradB },
             ],
           },
-          type: dotsType as any,
+          type: dotsType,
         }
-      : { color: dotsColor, type: dotsType as any };
+      : { color: dotsColor, type: dotsType };
     const bg: BgOpts = bgGradientOn
       ? {
           gradient: {
@@ -123,11 +125,12 @@ export default function Designer({ value }: DesignerProps) {
 
   // Initialize
   useEffect(() => {
-    if (!containerRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
     qrRef.current = new QRCodeStyling(options);
-    qrRef.current.append(containerRef.current);
+    qrRef.current.append(el);
     return () => {
-      containerRef.current!.innerHTML = "";
+      if (el) el.innerHTML = "";
       qrRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,7 +147,7 @@ export default function Designer({ value }: DesignerProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Dots style</div>
-            <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={String(dotsType)} onChange={(e) => setDotsType(e.target.value as any)}>
+            <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={dotsType} onChange={(e) => setDotsType(e.target.value as DotsType)}>
               <option value="dots">dots</option>
               <option value="rounded">rounded</option>
               <option value="classy">classy</option>
@@ -155,7 +158,7 @@ export default function Designer({ value }: DesignerProps) {
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Error correction</div>
-            <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={ecLevel} onChange={(e) => setEcLevel(e.target.value as any)}>
+            <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={ecLevel} onChange={(e) => setEcLevel(e.target.value as "L" | "M" | "Q" | "H")}>
               <option value="L">L (7%)</option>
               <option value="M">M (15%)</option>
               <option value="Q">Q (25%)</option>
@@ -199,7 +202,7 @@ export default function Designer({ value }: DesignerProps) {
             <label className="block text-xs mt-2">Gradient</label>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={bgGradientOn} onChange={(e) => setBgGradientOn(e.target.checked)} />
-              <select className="h-8 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={bgGradType} onChange={(e) => setBgGradType(e.target.value as any)}>
+              <select className="h-8 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={bgGradType} onChange={(e) => setBgGradType(e.target.value as BgGradType)}>
                 <option value="linear">linear</option>
                 <option value="radial">radial</option>
               </select>
@@ -217,7 +220,7 @@ export default function Designer({ value }: DesignerProps) {
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Corners</div>
             <div className="grid grid-cols-2 gap-2">
-              <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerSquareType} onChange={(e) => setCornerSquareType(e.target.value as any)}>
+              <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerSquareType} onChange={(e) => setCornerSquareType(e.target.value as "square" | "dot" | "extra-rounded")}>
                 <option value="square">square</option>
                 <option value="dot">dot</option>
                 <option value="extra-rounded">extra-rounded</option>
@@ -225,7 +228,7 @@ export default function Designer({ value }: DesignerProps) {
               <input className="h-9" type="color" value={cornerSquareColor} onChange={(e) => setCornerSquareColor(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerDotType} onChange={(e) => setCornerDotType(e.target.value as any)}>
+              <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerDotType} onChange={(e) => setCornerDotType(e.target.value as "dot" | "square")}>
                 <option value="dot">dot</option>
                 <option value="square">square</option>
               </select>

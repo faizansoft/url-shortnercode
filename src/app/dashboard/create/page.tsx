@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
 
@@ -190,7 +191,7 @@ export default function CreateLinkPage() {
               <div className="text-sm">QR (placeholder)</div>
               {qrDataUrl ? (
                 <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                  <img src={qrDataUrl} alt="QR code for short URL" className="w-40 h-40" />
+                  <Image src={qrDataUrl} alt="QR code for short URL" width={160} height={160} className="w-40 h-40" />
                 </div>
               ) : (
                 <div className="aspect-square w-40 rounded-md grid place-items-center font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>

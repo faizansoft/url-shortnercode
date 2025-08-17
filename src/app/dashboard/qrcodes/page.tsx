@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
 import Designer from "./Designer";
@@ -114,7 +115,7 @@ export default function QRCodesPage() {
               <div className="truncate text-sm" title={it.target_url}>{it.target_url}</div>
               <div className="rounded-md p-3 self-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {it.qr_data_url ? (
-                  <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} className="w-40 h-40" />
+                  <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" />
                 ) : (
                   <div className="w-40 h-40 grid place-items-center text-sm text-[var(--muted)]">QR</div>
                 )}
