@@ -63,6 +63,7 @@ export default function QRCodesPage() {
   // Preview via qr-code-styling
   const previewRef = useRef<HTMLDivElement | null>(null);
   const qrStylingRef = useRef<QRCodeStyling | null>(null);
+  const qrCtorRef = useRef<null | (new (opts?: StyleOptions) => QRCodeStyling)>(null);
   const [qrReady, setQrReady] = useState<boolean>(false);
   const [hasRendered, setHasRendered] = useState<boolean>(false);
 
@@ -78,6 +79,19 @@ export default function QRCodesPage() {
     update();
     mql?.addEventListener?.('change', update);
     return () => mql?.removeEventListener?.('change', update);
+  }, []);
+
+  // Preload qr-code-styling constructor on mount for instant availability
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mod = await import("qr-code-styling");
+        if (cancelled) return;
+        qrCtorRef.current = (mod as { default: new (opts?: StyleOptions) => QRCodeStyling }).default;
+      } catch {}
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -182,25 +196,47 @@ export default function QRCodesPage() {
     })();
   }, [showCustomize, selected]);
 
-  // Initialize qr-code-styling once when modal opens (dynamic import to avoid SSR issues)
+  // Initialize qr-code-styling each time the modal opens (dynamic import to avoid SSR issues)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!showCustomize || !selected || !previewRef.current) return;
     const container = previewRef.current as unknown as HTMLElement;
     let cancelled = false;
     (async () => {
       try {
-        if (!qrStylingRef.current) {
+        let QRCodeStylingClass = qrCtorRef.current;
+        if (!QRCodeStylingClass) {
           const mod = await import("qr-code-styling");
           if (cancelled) return;
-          const QRCodeStylingClass = (mod as { default: new (opts?: StyleOptions) => QRCodeStyling }).default;
-          qrStylingRef.current = new QRCodeStylingClass({ type: "canvas" });
-          // Ensure clean mount point then append
-          try { container.innerHTML = ""; } catch {}
-          qrStylingRef.current.append(container);
+          QRCodeStylingClass = (mod as { default: new (opts?: StyleOptions) => QRCodeStyling }).default;
+          qrCtorRef.current = QRCodeStylingClass;
         }
-        // Delay first update to next frame so DOM is ready
-        setHasRendered(false);
-        requestAnimationFrame(() => setQrReady((v) => !v));
+        // Build full initial options and create a fresh instance
+        const initialOpts: StyleOptions = {
+          type: "canvas",
+          width: size,
+          height: size,
+          data: selected,
+          margin,
+          qrOptions: { errorCorrectionLevel: ecl },
+          backgroundOptions: { color: bgColor },
+          dotsOptions: { type: dotType, color: dotColorA },
+          cornersSquareOptions: { type: cornerSqType, color: cornerSqColor },
+          cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
+          imageOptions: logoDataUrl ? { image: logoDataUrl, imageSize: logoSize, margin: logoMargin, hideBackgroundDots: hideBgDots, crossOrigin: "anonymous" } : undefined,
+        };
+        qrStylingRef.current = new QRCodeStylingClass!(initialOpts);
+        try { container.innerHTML = ""; } catch {}
+        qrStylingRef.current.append(container);
+        setHasRendered(true);
+        // let the update effect run if user changes options after open
+        setQrReady(v=>!v);
+        // Fallback: if not rendered within 1s, force re-update
+        setTimeout(() => {
+          if (!hasRendered && qrStylingRef.current) {
+            try { qrStylingRef.current.update(initialOpts); setHasRendered(true); } catch {}
+          }
+        }, 1000);
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -226,6 +262,15 @@ export default function QRCodesPage() {
       setHasRendered(true);
     } catch {}
   }, [showCustomize, selected, size, margin, ecl, bgColor, dotType, dotColorA, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots, qrReady]);
+
+  // Cleanup when modal closes: clear container and drop instance to avoid stale canvases
+  useEffect(() => {
+    if (showCustomize) return;
+    const container = previewRef.current as unknown as HTMLElement | undefined;
+    try { if (container) container.innerHTML = ""; } catch {}
+    qrStylingRef.current = null;
+    setHasRendered(false);
+  }, [showCustomize]);
 
   const shortCodeOf = (url: string) => {
     try {
@@ -300,7 +345,7 @@ export default function QRCodesPage() {
                 {it.qr_data_url ? (
                   <a className="btn btn-primary btn-no-motion h-8" href={it.qr_data_url} download={`qr-${it.short_code}.png`}>Download PNG</a>
                 ) : null}
-                <button className="btn btn-secondary h-8" onClick={() => { setSelected(it.short_url); setShowCustomize(true); }}>Custom QR</button>
+                <button className="btn btn-secondary h-8" onClick={() => { setSelected(it.short_url); requestAnimationFrame(()=>setShowCustomize(true)); }}>Custom QR</button>
               </div>
             </div>
           ))}
