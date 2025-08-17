@@ -75,7 +75,8 @@ export default function CustomizeQRPage() {
   // Defaults when page loads
   useEffect(() => {
     setDotColorA(prefersDark ? "#ffffff" : "#0b1220");
-    setBgColor("#ffffff");
+    // Transparent background by default for better contrast on all themes
+    setBgColor("#ffffff00");
     setSize(264);
     setMargin(1);
     setEcl("M");
@@ -174,14 +175,19 @@ export default function CustomizeQRPage() {
         qrRef.current = new Ctor!(initial);
         try { container.innerHTML = ""; } catch {}
         qrRef.current.append(container);
-        setHasRendered(true);
-        setReadyTick((v)=>v+1);
-        // Fallbacks
+        // Check if something actually rendered
+        const markIfRendered = () => {
+          const renderedNode = container.querySelector('canvas, svg');
+          if (renderedNode) setHasRendered(true);
+        };
+        // Try an explicit update, then check
+        try { qrRef.current.update(initial); } catch {}
         setTimeout(() => {
-          if (cancelled || hasRendered) return;
-          try { qrRef.current?.update(initial); } catch {}
-          setTimeout(async () => {
-            if (cancelled || hasRendered) return;
+          if (cancelled) return;
+          const hasNode = !!container.querySelector('canvas, svg');
+          if (hasNode) { setHasRendered(true); return; }
+          // Fallback to basic canvas if still not rendered
+          (async () => {
             try {
               container.innerHTML = "";
               const canvas = document.createElement('canvas');
@@ -197,8 +203,8 @@ export default function CustomizeQRPage() {
               container.appendChild(canvas);
               setHasRendered(true);
             } catch {}
-          }, 500);
-        }, 800);
+          })();
+        }, 400);
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -219,7 +225,11 @@ export default function CustomizeQRPage() {
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
       imageOptions: logoDataUrl ? { image: logoDataUrl, imageSize: logoSize, margin: logoMargin, hideBackgroundDots: hideBgDots, crossOrigin: "anonymous" } : undefined,
     };
-    try { qrRef.current.update(opts); setHasRendered(true); } catch {}
+    try {
+      qrRef.current.update(opts);
+      const container = previewRef.current as unknown as HTMLElement | null;
+      if (container && container.querySelector('canvas, svg')) setHasRendered(true);
+    } catch {}
   }, [url, size, margin, ecl, bgColor, dotType, dotColorA, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots]);
 
   // Save
