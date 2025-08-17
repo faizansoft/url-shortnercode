@@ -202,7 +202,7 @@ export default function QRCodesPage() {
                   </label>
                   <label className="text-sm flex flex-col gap-1 col-span-2">
                     <span>Error correction</span>
-                    <select className="btn btn-secondary h-8 text-left" value={ecl} onChange={(e)=>setEcl(e.target.value as any)}>
+                    <select className="btn btn-secondary h-8 text-left" value={ecl} onChange={(e: React.ChangeEvent<HTMLSelectElement>)=>setEcl(e.target.value as "L"|"M"|"Q"|"H")}>
                       <option value="L">L (7%)</option>
                       <option value="M">M (15%)</option>
                       <option value="Q">Q (25%)</option>
