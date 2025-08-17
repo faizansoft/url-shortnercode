@@ -43,12 +43,9 @@ export default function QRCodesPage() {
   const [size, setSize] = useState<number>(220);
   const [margin, setMargin] = useState<number>(1);
   const [ecl, setEcl] = useState<"L" | "M" | "Q" | "H">("M");
-  // Dot styles
+  // Dot styles (no gradients)
   const [dotType, setDotType] = useState<"square"|"dots"|"rounded"|"classy"|"classy-rounded"|"extra-rounded">("square");
-  const [dotColorMode, setDotColorMode] = useState<"single"|"linear">("single");
   const [dotColorA, setDotColorA] = useState<string>("#ffffff");
-  const [dotColorB, setDotColorB] = useState<string>("#7ea6ff");
-  const [dotRotation, setDotRotation] = useState<number>(45);
   // Corners
   const [cornerSqType, setCornerSqType] = useState<"square"|"dot"|"extra-rounded">("square");
   const [cornerSqColor, setCornerSqColor] = useState<string>("#ffffff");
@@ -130,7 +127,6 @@ export default function QRCodesPage() {
     if (!showCustomize) return;
     // Palette aligned to theme
     setDotColorA(prefersDark ? "#ffffff" : "#0b1220");
-    setDotColorB("#7ea6ff");
     setBgColor("#ffffff00");
     setSize(264);
     setMargin(1);
@@ -144,10 +140,7 @@ export default function QRCodesPage() {
     if (typeof opt.margin === 'number') setMargin(opt.margin);
     if (opt.ecl) setEcl(opt.ecl);
     if (opt.dotType) setDotType(opt.dotType);
-    if (opt.dotColorMode) setDotColorMode(opt.dotColorMode);
     if (opt.dotColorA) setDotColorA(opt.dotColorA);
-    if (opt.dotColorB) setDotColorB(opt.dotColorB);
-    if (typeof opt.dotRotation === 'number') setDotRotation(opt.dotRotation);
     if (opt.cornerSqType) setCornerSqType(opt.cornerSqType);
     if (opt.cornerSqColor) setCornerSqColor(opt.cornerSqColor);
     if (opt.cornerDotType) setCornerDotType(opt.cornerDotType);
@@ -206,9 +199,7 @@ export default function QRCodesPage() {
       margin,
       qrOptions: { errorCorrectionLevel: ecl },
       backgroundOptions: { color: bgColor },
-      dotsOptions: dotColorMode === "single"
-        ? { type: dotType, color: dotColorA }
-        : { type: dotType, gradient: { type: "linear", rotation: dotRotation, colorStops: [{ offset: 0, color: dotColorA }, { offset: 1, color: dotColorB }] } },
+      dotsOptions: { type: dotType, color: dotColorA },
       cornersSquareOptions: { type: cornerSqType, color: cornerSqColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
       imageOptions: logoDataUrl ? { image: logoDataUrl, imageSize: logoSize, margin: logoMargin, hideBackgroundDots: hideBgDots, crossOrigin: "anonymous" } : undefined,
@@ -216,7 +207,7 @@ export default function QRCodesPage() {
     try {
       qrStylingRef.current.update(opts);
     } catch {}
-  }, [showCustomize, selected, size, margin, ecl, bgColor, dotType, dotColorMode, dotColorA, dotColorB, dotRotation, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots]);
+  }, [showCustomize, selected, size, margin, ecl, bgColor, dotType, dotColorA, cornerSqType, cornerSqColor, cornerDotType, cornerDotColor, logoDataUrl, logoSize, logoMargin, hideBgDots]);
 
   const shortCodeOf = (url: string) => {
     try {
@@ -230,7 +221,7 @@ export default function QRCodesPage() {
       data: selected,
       options: {
         size, margin, ecl,
-        dotType, dotColorMode, dotColorA, dotColorB, dotRotation,
+        dotType, dotColorA,
         cornerSqType, cornerSqColor, cornerDotType, cornerDotColor,
         bgColor, logoDataUrl, logoSize, logoMargin, hideBgDots,
       },
@@ -300,14 +291,14 @@ export default function QRCodesPage() {
 
       {showCustomize && (
         <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: 'color-mix(in oklab, var(--surface) 60%, transparent)' }}>
-          <div className="w-[min(98vw,1120px)] rounded-xl glass p-5 space-y-4">
+          <div className="w-[min(98vw,1200px)] h-[92vh] rounded-xl glass p-5 space-y-4 overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold">Custom QR</div>
               <button className="btn btn-secondary h-8" onClick={() => setShowCustomize(false)}>Close</button>
             </div>
-            <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr] h-[calc(92vh-64px)]">
               {/* Controls */}
-              <div className="rounded-md p-4 space-y-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="rounded-md p-4 space-y-4 overflow-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <div>
                   <div className="text-sm mb-1">Short link</div>
                   <div className="font-mono text-sm break-all">{selected}</div>
@@ -322,56 +313,50 @@ export default function QRCodesPage() {
                     <input type="range" min={0} max={8} step={1} value={margin} onChange={(e)=>setMargin(parseInt(e.target.value,10))} />
                   </label>
                   <div className="col-span-2 border-t border-[var(--border)] pt-2 text-sm font-medium">Code style</div>
-                  <label className="text-sm flex flex-col gap-1">
-                    <span>Dots</span>
-                    <select className="btn btn-secondary h-8 text-left" value={dotType} onChange={(e)=>setDotType(e.target.value as typeof dotType)}>
-                      <option value="square">Square</option>
-                      <option value="dots">Dots</option>
-                      <option value="rounded">Rounded</option>
-                      <option value="classy">Classy</option>
-                      <option value="classy-rounded">Classy Rounded</option>
-                      <option value="extra-rounded">Extra Rounded</option>
-                    </select>
-                  </label>
-                  <label className="text-sm flex flex-col gap-1">
-                    <span>Color mode</span>
-                    <select className="btn btn-secondary h-8 text-left" value={dotColorMode} onChange={(e)=>setDotColorMode(e.target.value as "single"|"linear")}>
-                      <option value="single">Single</option>
-                      <option value="linear">Linear gradient</option>
-                    </select>
-                  </label>
+                  <div className="col-span-2 flex flex-wrap gap-2 items-center">
+                    <span className="text-sm">Dots</span>
+                    {([
+                      {key:'square', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><rect x="3" y="3" width="5" height="5"/><rect x="10.5" y="3" width="5" height="5"/><rect x="18" y="3" width="3" height="3"/><rect x="3" y="10.5" width="5" height="5"/><rect x="10.5" y="10.5" width="5" height="5"/></svg>},
+                      {key:'dots', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><circle cx="5.5" cy="5.5" r="2.2"/><circle cx="12" cy="5.5" r="2.2"/><circle cx="5.5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/></svg>},
+                      {key:'rounded', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><rect x="3" y="3" width="5" height="5" rx="2"/><rect x="10.5" y="3" width="5" height="5" rx="2"/><rect x="3" y="10.5" width="5" height="5" rx="2"/><rect x="10.5" y="10.5" width="5" height="5" rx="2"/></svg>},
+                      {key:'classy', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><path d="M3 3h5v3H6v2H3V3Z"/><path d="M10.5 3H16v3h-2v2h-3.5V3Z"/></svg>},
+                      {key:'classy-rounded', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><path d="M3 5a2 2 0 0 1 2-2h3v3H6v2H3V5Z"/><path d="M10.5 5a2 2 0 0 1 2-2H16v3h-2v2h-3.5V5Z"/></svg>},
+                      {key:'extra-rounded', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><rect x="3" y="3" width="5" height="5" rx="3"/><rect x="10.5" y="3" width="5" height="5" rx="3"/><rect x="3" y="10.5" width="5" height="5" rx="3"/><rect x="10.5" y="10.5" width="5" height="5" rx="3"/></svg>},
+                    ] as const).map(opt => (
+                      <button key={opt.key} className={`btn btn-secondary h-8 w-10 p-0 inline-grid place-items-center ${dotType===opt.key ? 'ring-2 ring-[var(--accent)]' : ''}`} onClick={()=>setDotType(opt.key as typeof dotType)} title={opt.key.replace('-', ' ')} aria-pressed={dotType===opt.key}>
+                        {opt.svg}
+                      </button>
+                    ))}
+                  </div>
                   <label className="text-sm flex flex-col gap-1">
                     <span>Color A</span>
                     <input type="color" value={dotColorA} onChange={(e)=>setDotColorA(e.target.value)} />
                   </label>
-                  <label className="text-sm flex flex-col gap-1">
-                    <span>Color B</span>
-                    <input type="color" disabled={dotColorMode!=="linear"} value={dotColorB} onChange={(e)=>setDotColorB(e.target.value)} />
-                  </label>
-                  <label className="text-sm flex flex-col gap-1">
-                    <span>Gradient rotation</span>
-                    <input type="range" min={0} max={360} step={1} disabled={dotColorMode!=="linear"} value={dotRotation} onChange={(e)=>setDotRotation(parseInt(e.target.value,10))} />
-                  </label>
                   <div className="col-span-2 border-t border-[var(--border)] pt-2 text-sm font-medium">Corners</div>
-                  <label className="text-sm flex flex-col gap-1">
-                    <span>Squares</span>
-                    <select className="btn btn-secondary h-8 text-left" value={cornerSqType} onChange={(e)=>setCornerSqType(e.target.value as typeof cornerSqType)}>
-                      <option value="square">Square</option>
-                      <option value="dot">Dot</option>
-                      <option value="extra-rounded">Extra Rounded</option>
-                    </select>
-                  </label>
+                  <div className="col-span-2 flex flex-wrap gap-2 items-center">
+                    <span className="text-sm">Squares</span>
+                    {([
+                      {key:'square', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><rect x="2" y="2" width="8" height="8"/></svg>},
+                      {key:'dot', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><circle cx="6" cy="6" r="4"/></svg>},
+                      {key:'extra-rounded', svg:<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><rect x="2" y="2" width="8" height="8" rx="3"/></svg>},
+                    ] as const).map(opt => (
+                      <button key={opt.key} className={`btn btn-secondary h-8 w-10 p-0 inline-grid place-items-center ${cornerSqType===opt.key ? 'ring-2 ring-[var(--accent)]' : ''}`} onClick={()=>setCornerSqType(opt.key as typeof cornerSqType)} title={opt.key} aria-pressed={cornerSqType===opt.key}>
+                        {opt.svg}
+                      </button>
+                    ))}
+                  </div>
                   <label className="text-sm flex flex-col gap-1">
                     <span>Square color</span>
                     <input type="color" value={cornerSqColor} onChange={(e)=>setCornerSqColor(e.target.value)} />
                   </label>
-                  <label className="text-sm flex flex-col gap-1">
+                  <div className="text-sm flex items-center gap-2">
                     <span>Dots</span>
-                    <select className="btn btn-secondary h-8 text-left" value={cornerDotType} onChange={(e)=>setCornerDotType(e.target.value as typeof cornerDotType)}>
-                      <option value="square">Square</option>
-                      <option value="dot">Dot</option>
-                    </select>
-                  </label>
+                    {(['square','dot'] as const).map(opt => (
+                      <button key={opt} className={`btn btn-secondary h-8 w-10 p-0 inline-grid place-items-center ${cornerDotType===opt ? 'ring-2 ring-[var(--accent)]' : ''}`} onClick={()=>setCornerDotType(opt)} title={opt} aria-pressed={cornerDotType===opt}>
+                        {opt==='square' ? <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><rect x="5" y="5" width="6" height="6"/></svg> : <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><circle cx="8" cy="8" r="3.5"/></svg>}
+                      </button>
+                    ))}
+                  </div>
                   <label className="text-sm flex flex-col gap-1">
                     <span>Dot color</span>
                     <input type="color" value={cornerDotColor} onChange={(e)=>setCornerDotColor(e.target.value)} />
@@ -421,8 +406,8 @@ export default function QRCodesPage() {
                 </div>
               </div>
               {/* Preview */}
-              <div className="rounded-md p-4 flex flex-col items-center gap-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <div ref={previewRef} className="w-full grid place-items-center" style={{ minHeight: 320 }} />
+              <div className="rounded-md p-4 flex flex-col items-center gap-4 overflow-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div ref={previewRef} className="w-full grid place-items-center" style={{ minHeight: 360 }} />
                 <button className="btn btn-primary btn-no-motion" onClick={async ()=>{
                   if (!qrStylingRef.current) return;
                   const blob = await qrStylingRef.current.getRawData('png');
