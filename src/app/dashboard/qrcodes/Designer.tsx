@@ -97,8 +97,9 @@ export default function Designer({ value }: DesignerProps) {
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
-    const useDotsGradient = dotsGradientOn && !perfMode;
-    const useBgGradient = bgGradientOn && !perfMode;
+    // Gradients fully disabled per requirements
+    const useDotsGradient = false;
+    const useBgGradient = false;
     const dots: DotsOpts = useDotsGradient
       ? {
           gradient: {
@@ -167,12 +168,39 @@ export default function Designer({ value }: DesignerProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
       <div className="rounded-xl glass p-4 space-y-4">
-        {/* Presets & performance */}
+        {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-[var(--muted)]">Performance mode</span>
             <input type="checkbox" checked={perfMode} onChange={(e) => setPerfMode(e.target.checked)} />
           </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <button className="btn btn-secondary h-8" onClick={() => {
+              // Reset all to defaults
+              setDotsType("rounded");
+              setDotsColor("#0b1220");
+              setDotsGradientOn(false);
+              setCornerSquareType("square");
+              setCornerSquareColor("#0b1220");
+              setCornerDotType("dot");
+              setCornerDotColor("#0b1220");
+              setBgColor("#ffffff00");
+              setBgGradientOn(false);
+              setLogoUrl("");
+              setLogoSize(0.25);
+              setHideBgDots(true);
+              setCrossOrigin("anonymous");
+              setFrame("none");
+              setEcLevel("M");
+              setSize(220);
+              setMargin(2);
+            }}>Reset all</button>
+          </div>
+        </div>
+
+        {/* Presets */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs font-medium text-[var(--muted)]">Presets</div>
           <div className="flex flex-wrap gap-2">
             {([
               {
@@ -231,9 +259,10 @@ export default function Designer({ value }: DesignerProps) {
           </div>
         </div>
 
+        {/* Select styles */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <div className="text-xs font-medium text-[var(--muted)]">Dots style</div>
+            <div className="text-xs font-medium text-[var(--muted)]">Pattern</div>
             <select className="w-full h-9 rounded-md px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={dotsType} onChange={(e) => setDotsType(e.target.value as DotsType)}>
               <option value="dots">dots</option>
               <option value="rounded">rounded</option>
@@ -242,6 +271,7 @@ export default function Designer({ value }: DesignerProps) {
               <option value="square">square</option>
               <option value="extra-rounded">extra-rounded</option>
             </select>
+            <button className="btn btn-secondary h-8" onClick={() => setDotsType("rounded")}>Reset styles</button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Error correction</div>
@@ -252,71 +282,31 @@ export default function Designer({ value }: DesignerProps) {
               <option value="H">H (30%)</option>
             </select>
           </div>
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-[var(--muted)]">Size</div>
-            <input type="range" min={160} max={480} value={size} onChange={(e) => setSize(parseInt(e.target.value))} />
-          </div>
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-[var(--muted)]">Margin</div>
-            <input type="range" min={0} max={12} value={margin} onChange={(e) => setMargin(parseInt(e.target.value))} />
-          </div>
         </div>
 
+        {/* Choose your colors */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <div className="text-xs font-medium text-[var(--muted)]">Dots color</div>
+            <div className="text-xs font-medium text-[var(--muted)]">Code color</div>
             <div className="flex gap-2 flex-wrap">
               {palette.map((c) => (
                 <button key={c} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setDotsColor(c)} />
               ))}
             </div>
-            <label className="text-xs">Custom</label>
-            <input type="color" value={dotsColor} onChange={(e) => setDotsColor(e.target.value)} />
-            <div className="mt-2">
-              <div className="text-xs font-medium text-[var(--muted)] mb-1">Brand palettes</div>
-              <div className="flex flex-wrap gap-2">
-                {([
-                  {n:"Indigo", d:"#4f46e5", b:"#eef2ff"},
-                  {n:"Emerald", d:"#10b981", b:"#ecfdf5"},
-                  {n:"Amber", d:"#f59e0b", b:"#fffbeb"}
-                ] as const).map((bp) => (
-                  <button key={bp.n} className="btn btn-secondary h-8" onClick={() => { setDotsColor(bp.d); setBgColor(bp.b + "00"); }}>
-                    {bp.n}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="inline-flex items-center gap-2 text-xs mt-2">
-              <input type="checkbox" checked={dotsGradientOn} onChange={(e) => setDotsGradientOn(e.target.checked)} /> Gradient
-            </label>
-            {dotsGradientOn && (
-              <div className="grid grid-cols-3 gap-2 items-center mt-2">
-                <input type="color" value={dotsGradA} onChange={(e) => setDotsGradA(e.target.value)} />
-                <input type="color" value={dotsGradB} onChange={(e) => setDotsGradB(e.target.value)} />
-                <input type="range" min={0} max={360} value={dotsGradRotation} onChange={(e) => setDotsGradRotation(parseInt(e.target.value))} />
-              </div>
-            )}
+            <button className="btn btn-secondary h-8" onClick={() => setDotsColor("#0b1220")}>Reset colors</button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Background</div>
-            <input className="w-32" type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
-            <label className="block text-xs mt-2">Gradient</label>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" checked={bgGradientOn} onChange={(e) => setBgGradientOn(e.target.checked)} />
-              <select className="h-8 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={bgGradType} onChange={(e) => setBgGradType(e.target.value as BgGradType)}>
-                <option value="linear">linear</option>
-                <option value="radial">radial</option>
-              </select>
+            <div className="flex gap-2 flex-wrap items-center">
+              <button className="h-6 px-2 rounded border text-xs" style={{ background: 'transparent', borderColor: 'var(--border)' }} onClick={() => setBgColor('#ffffff00')}>None</button>
+              {['#ffffff','#f1f5f9','#e2e8f0','#cbd5e1','#94a3b8'].map((c) => (
+                <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setBgColor(c)} />
+              ))}
             </div>
-            {bgGradientOn && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <input type="color" value={bgGradA} onChange={(e) => setBgGradA(e.target.value)} />
-                <input type="color" value={bgGradB} onChange={(e) => setBgGradB(e.target.value)} />
-              </div>
-            )}
           </div>
         </div>
 
+        {/* Corners and Logo */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Corners</div>
@@ -326,14 +316,22 @@ export default function Designer({ value }: DesignerProps) {
                 <option value="dot">dot</option>
                 <option value="extra-rounded">extra-rounded</option>
               </select>
-              <input className="h-9" type="color" value={cornerSquareColor} onChange={(e) => setCornerSquareColor(e.target.value)} />
+              <div className="flex gap-2 flex-wrap items-center">
+                {palette.map((c) => (
+                  <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerSquareColor(c)} />
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <select className="h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={cornerDotType} onChange={(e) => setCornerDotType(e.target.value as "dot" | "square")}>
                 <option value="dot">dot</option>
                 <option value="square">square</option>
               </select>
-              <input className="h-9" type="color" value={cornerDotColor} onChange={(e) => setCornerDotColor(e.target.value)} />
+              <div className="flex gap-2 flex-wrap items-center">
+                {palette.map((c) => (
+                  <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerDotColor(c)} />
+                ))}
+              </div>
             </div>
           </div>
           <div className="space-y-2">
@@ -360,14 +358,16 @@ export default function Designer({ value }: DesignerProps) {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadIcon(f); }} />
                   <span className="text-xs">Upload…</span>
                 </label>
+                <button className="btn btn-secondary h-8" onClick={() => { setLogoUrl(""); setLogoSize(0.25); setHideBgDots(true); }}>Reset logo</button>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {(["none","rounded","thin","thick"] as const).map((f) => (
             <button key={f} onClick={() => setFrame(f)} className={`btn btn-secondary h-8 ${frame===f? 'ring-1 ring-[var(--accent)]' : ''}`}>{f}</button>
           ))}
+          <button className="btn btn-secondary h-8" onClick={() => setFrame("none")}>Reset frame</button>
         </div>
         <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
         <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
@@ -378,6 +378,23 @@ export default function Designer({ value }: DesignerProps) {
         <div style={frameStyle}>
           <div ref={containerRef} className="[&>svg]:block" />
         </div>
+        <button className="text-xs text-[var(--accent)]" onClick={() => {
+          setDotsType("rounded");
+          setDotsColor("#0b1220");
+          setCornerSquareType("square");
+          setCornerSquareColor("#0b1220");
+          setCornerDotType("dot");
+          setCornerDotColor("#0b1220");
+          setBgColor("#ffffff00");
+          setLogoUrl("");
+          setLogoSize(0.25);
+          setHideBgDots(true);
+          setCrossOrigin("anonymous");
+          setFrame("none");
+          setEcLevel("M");
+          setSize(220);
+          setMargin(2);
+        }}>Reset to default</button>
       </div>
     </div>
   );
