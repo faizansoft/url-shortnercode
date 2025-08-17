@@ -649,7 +649,20 @@ export default function Designer({ value }: DesignerProps) {
                 />
               </button>
             ))}
-            <button className="btn btn-secondary h-9" onClick={() => setFrame('none')}>Reset frame</button>
+            <button
+              onClick={() => setFrame('none')}
+              className="h-14 w-14 rounded-md border grid place-items-center"
+              style={{ background: 'transparent', borderColor: 'var(--border)' }}
+              title="Reset frame (None)"
+              aria-label="Reset frame (None)"
+            >
+              <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
+                {/* NONE sign: a ring with a slash */}
+                <div style={{ position:'relative', width: 22, height: 22, borderRadius: 999, border: '2px solid var(--border)' }}>
+                  <div style={{ position:'absolute', left: -2, right: -2, top: '50%', height: 2, background: 'var(--border)', transform: 'rotate(-45deg)' }} />
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -674,8 +687,10 @@ export default function Designer({ value }: DesignerProps) {
             Save changes
           </button>
           <button
-            className="btn btn-secondary h-10 px-4 flex items-center gap-2"
+            className="h-14 w-14 rounded-md border grid place-items-center"
+            style={{ background: 'transparent', borderColor: 'var(--border)' }}
             title="Reset to default"
+            aria-label="Reset to default"
             onClick={() => {
               setDotsType("rounded");
               setDotsColor(prefersDark ? "#ffffff" : "#0b1220");
@@ -694,8 +709,11 @@ export default function Designer({ value }: DesignerProps) {
               setMargin(2);
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/></svg>
-            <span>Reset to default</span>
+            <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/>
+              </svg>
+            </div>
           </button>
         </div>
       </div>
