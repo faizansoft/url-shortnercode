@@ -558,50 +558,6 @@ export default function Designer({ value }: DesignerProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2.5 items-center">
-                {(["square","dot","extra-rounded"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setCornerSquareType(t)}
-                    className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
-                    style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                    title={`corner-square: ${t}`}
-                  >
-                    {/* Finder preview with outer, inner, and center layers */}
-                    <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                      {/* Outer dark layer */}
-                      <div style={{
-                        width: 26,
-                        height: 26,
-                        background: 'currentColor',
-                        color: 'var(--foreground)',
-                        borderRadius: t === 'square' ? 0 : t === 'extra-rounded' ? 10 : 999,
-                        display: 'grid',
-                        placeItems: 'center',
-                      }}>
-                        {/* Inner light layer */}
-                        <div style={{
-                          width: 18,
-                          height: 18,
-                          background: 'var(--surface)',
-                          borderRadius: t === 'square' ? 0 : t === 'extra-rounded' ? 8 : 999,
-                          display: 'grid',
-                          placeItems: 'center',
-                        }}>
-                          {/* Center dot reflects current cornerDotType */}
-                          <div style={{
-                            width: 10,
-                            height: 10,
-                            background: 'currentColor',
-                            color: 'var(--foreground)',
-                            borderRadius: cornerDotType === 'dot' ? 999 : 2,
-                          }}/>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
               <div className="flex gap-2 flex-wrap items-center">
                 <div className="w-full text-xs text-[var(--muted)]">Outer corner color</div>
                 {palette.map((c) => (
