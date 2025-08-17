@@ -391,17 +391,37 @@ export default function Designer({ value }: DesignerProps) {
                     style={{ background: 'transparent', borderColor: 'var(--border)' }}
                     title={`corner-square: ${t}`}
                   >
-                    {/* Finder square preview */}
+                    {/* Finder preview with outer, inner, and center layers */}
                     <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                      <div
-                        style={{
-                          width: 20,
-                          height: 20,
-                          background: 'currentColor',
-                          color: 'var(--foreground)',
-                          borderRadius: t === 'square' ? 2 : t === 'extra-rounded' ? 8 : 999,
-                        }}
-                      />
+                      {/* Outer dark layer */}
+                      <div style={{
+                        width: 26,
+                        height: 26,
+                        background: 'currentColor',
+                        color: 'var(--foreground)',
+                        borderRadius: t === 'square' ? 0 : t === 'extra-rounded' ? 10 : 999,
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}>
+                        {/* Inner light layer */}
+                        <div style={{
+                          width: 18,
+                          height: 18,
+                          background: 'var(--surface)',
+                          borderRadius: t === 'square' ? 0 : t === 'extra-rounded' ? 8 : 999,
+                          display: 'grid',
+                          placeItems: 'center',
+                        }}>
+                          {/* Center dot reflects current cornerDotType */}
+                          <div style={{
+                            width: 10,
+                            height: 10,
+                            background: 'currentColor',
+                            color: 'var(--foreground)',
+                            borderRadius: cornerDotType === 'dot' ? 999 : 2,
+                          }}/>
+                        </div>
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -422,17 +442,37 @@ export default function Designer({ value }: DesignerProps) {
                     style={{ background: 'transparent', borderColor: 'var(--border)' }}
                     title={`corner-dot: ${t}`}
                   >
-                    {/* Finder inner dot preview */}
+                    {/* Finder preview with fixed square outer and variable center */}
                     <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                      <div
-                        style={{
-                          width: 10,
-                          height: 10,
-                          background: 'currentColor',
-                          color: 'var(--foreground)',
-                          borderRadius: t === 'dot' ? 999 : 2,
-                        }}
-                      />
+                      {/* Outer dark layer (square) */}
+                      <div style={{
+                        width: 26,
+                        height: 26,
+                        background: 'currentColor',
+                        color: 'var(--foreground)',
+                        borderRadius: 0,
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}>
+                        {/* Inner light layer */}
+                        <div style={{
+                          width: 18,
+                          height: 18,
+                          background: 'var(--surface)',
+                          borderRadius: 0,
+                          display: 'grid',
+                          placeItems: 'center',
+                        }}>
+                          {/* Center dot shape according to t */}
+                          <div style={{
+                            width: 10,
+                            height: 10,
+                            background: 'currentColor',
+                            color: 'var(--foreground)',
+                            borderRadius: t === 'dot' ? 999 : 2,
+                          }}/>
+                        </div>
+                      </div>
                     </div>
                   </button>
                 ))}
