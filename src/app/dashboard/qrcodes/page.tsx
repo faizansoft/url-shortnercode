@@ -53,7 +53,7 @@ export default function QRCodesPage() {
   const [cornerDotType, setCornerDotType] = useState<"square"|"dot">("square");
   const [cornerDotColor, setCornerDotColor] = useState<string>("#ffffff");
   // Background
-  const [bgColor, setBgColor] = useState<string>("#ffffff00");
+  const [bgColor, setBgColor] = useState<string>("#ffffff");
   // Logo
   const [logoDataUrl, setLogoDataUrl] = useState<string | undefined>(undefined);
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
@@ -144,7 +144,7 @@ export default function QRCodesPage() {
     if (!showCustomize) return;
     // Palette aligned to theme
     setDotColorA(prefersDark ? "#ffffff" : "#0b1220");
-    setBgColor("#ffffff00");
+    setBgColor("#ffffff");
     setSize(264);
     setMargin(1);
     setEcl("M");
@@ -162,7 +162,12 @@ export default function QRCodesPage() {
     if (opt.cornerSqColor) setCornerSqColor(opt.cornerSqColor);
     if (opt.cornerDotType) setCornerDotType(opt.cornerDotType);
     if (opt.cornerDotColor) setCornerDotColor(opt.cornerDotColor);
-    if (opt.bgColor) setBgColor(opt.bgColor);
+    if (opt.bgColor) {
+      // Sanitize to #rrggbb (strip alpha if #rrggbbaa)
+      const c = opt.bgColor;
+      if (/^#([0-9a-fA-F]{8})$/.test(c)) setBgColor('#' + c.slice(1, 7));
+      else if (/^#([0-9a-fA-F]{6})$/.test(c)) setBgColor(c);
+    }
     if (typeof opt.logoSize === 'number') setLogoSize(opt.logoSize);
     if (typeof opt.logoMargin === 'number') setLogoMargin(opt.logoMargin);
     if (typeof opt.hideBgDots === 'boolean') setHideBgDots(opt.hideBgDots);
