@@ -26,6 +26,9 @@
     --accent: #60a5fa; /* lighter blue */
     --accent-2: #34d399;
     --accent-3: #fbbf24;
+    /* ensure surfaces and borders are darker in dark mode */
+    --surface: #0f1626; /* slightly elevated surface */
+    --border: #21304d; /* subtle border for dark */
   }
 }
 
@@ -52,7 +55,7 @@ input::placeholder, textarea::placeholder {
   color: color-mix(in oklab, var(--foreground) 45%, #94a3b8);
   opacity: 1;
 }
-input, textarea, select { color: var(--foreground); }
+input, textarea, select { color: var(--foreground); caret-color: var(--accent); }
 
 /* Links */
 a {

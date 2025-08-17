@@ -33,16 +33,27 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
-      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-3 bg-white border rounded-lg p-4">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm space-y-3 rounded-lg p-4"
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+        }}
+      >
         <h1 className="text-lg font-semibold">Sign in</h1>
-        <p className="text-sm text-neutral-600">We&apos;ll email you a magic link to sign in.</p>
+        <p className="text-sm" style={{ color: "var(--muted)" }}>We&apos;ll email you a magic link to sign in.</p>
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="w-full h-10 px-3 rounded-md bg-white border border-[color-mix(in_oklab,var(--accent)_20%,#e5e7eb)] outline-none focus:border-[var(--accent)]"
+          className="w-full h-10 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+          }}
         />
         <button
           type="submit"
