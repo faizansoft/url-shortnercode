@@ -236,12 +236,31 @@ export default function QRCodesPage() {
         setHasRendered(true);
         // let the update effect run if user changes options after open
         setQrReady(v=>!v);
-        // Fallback: if not rendered within 1s, force re-update
+        // Fallbacks: retry update, then render basic QR via qrcode if still not painted
         setTimeout(() => {
-          if (!hasRendered && qrStylingRef.current) {
-            try { qrStylingRef.current.update(initialOpts); setHasRendered(true); } catch {}
-          }
-        }, 1000);
+          if (cancelled || hasRendered) return;
+          try { qrStylingRef.current?.update(initialOpts); } catch {}
+          setTimeout(async () => {
+            if (cancelled || hasRendered) return;
+            // Render a basic QR using the qrcode library as a safety net
+            try {
+              container.innerHTML = "";
+              const canvas = document.createElement('canvas');
+              await QRCode.toCanvas(canvas, selected, {
+                errorCorrectionLevel: ecl,
+                margin,
+                width: size,
+                color: {
+                  dark: dotColorA || (prefersDark ? "#ffffff" : "#0b1220"),
+                  // allow transparent background as used elsewhere in app
+                  light: "#ffffff00",
+                },
+              });
+              container.appendChild(canvas);
+              setHasRendered(true);
+            } catch {}
+          }, 500);
+        }, 800);
       } catch {}
     })();
     return () => { cancelled = true; };
