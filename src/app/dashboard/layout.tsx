@@ -9,7 +9,7 @@ export default function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-screen grid grid-cols-[240px_1fr]">
-      <aside className="border-r text-sm p-4 flex flex-col gap-3 bg-[var(--background)] relative overflow-hidden">
+      <aside className="border-r border-[var(--border)] text-sm p-4 flex flex-col gap-3 bg-[var(--background)] relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
           <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%)'}} />
           <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 60%)'}} />
@@ -75,21 +75,40 @@ export default function DashboardLayout({
         {/* Removed footer branding */}
       </aside>
       <div className="flex flex-col min-h-screen">
-        <header className="sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b bg-white/50">
+        <header
+          className="sticky top-0 z-10 backdrop-blur border-b border-[var(--border)]"
+          style={{
+            background: "color-mix(in oklab, var(--background) 70%, transparent)",
+          }}
+        >
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-3">
             <form className="flex-1">
               <input
                 type="search"
                 placeholder="Search links…"
-                className="w-full h-9 px-3 rounded-md bg-white border border-[color-mix(in_oklab,var(--accent)_20%,#e5e7eb)] outline-none focus:border-[var(--accent)]"
+                className="w-full h-9 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                }}
               />
             </form>
             {/* Removed header Create button as requested */}
             <button
               aria-label="Notifications"
               className="btn btn-ghost h-9 w-9 p-0 rounded-full"
+              style={{ color: 'var(--muted)' }}
             >
-              🔔
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M15 18a3 3 0 1 1-6 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 7h18s-3 0-3-7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
             <UserMenu />
           </div>
