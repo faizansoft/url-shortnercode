@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
 // Explicit local helper types to satisfy TS
 type DotsOpts = NonNullable<QRStyleOptions["dotsOptions"]>;
@@ -61,6 +62,26 @@ export default function Designer({ value }: DesignerProps) {
 
   // Frame (visual wrapper)
   const [frame, setFrame] = useState<"none" | "rounded" | "thin" | "thick">("none");
+  const [perfMode, setPerfMode] = useState<boolean>(false);
+  
+  // Built-in icons from public/
+  const builtinIcons = useMemo(() => (
+    [
+      { name: "favicon", src: "/favicon.svg" },
+      { name: "globe", src: "/globe.svg" },
+      { name: "file", src: "/file.svg" },
+      { name: "next", src: "/next.svg" },
+    ] as const
+  ), []);
+
+  const onUploadIcon = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (result) setLogoUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
   const frameStyle = useMemo(() => {
     switch (frame) {
       case "rounded":
@@ -76,7 +97,9 @@ export default function Designer({ value }: DesignerProps) {
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
-    const dots: DotsOpts = dotsGradientOn
+    const useDotsGradient = dotsGradientOn && !perfMode;
+    const useBgGradient = bgGradientOn && !perfMode;
+    const dots: DotsOpts = useDotsGradient
       ? {
           gradient: {
             type: "linear",
@@ -89,7 +112,7 @@ export default function Designer({ value }: DesignerProps) {
           type: dotsType,
         }
       : { color: dotsColor, type: dotsType };
-    const bg: BgOpts = bgGradientOn
+    const bg: BgOpts = useBgGradient
       ? {
           gradient: {
             type: bgGradType,
@@ -109,19 +132,19 @@ export default function Designer({ value }: DesignerProps) {
       margin,
       type: "svg",
       qrOptions: { errorCorrectionLevel: ecLevel },
-      dotsOptions: dots,
+      dotsOptions: perfMode ? { color: dotsColor, type: "square" } : dots,
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
-      backgroundOptions: bg,
+      backgroundOptions: perfMode ? { color: bgColor } : bg,
       imageOptions: {
         image: logoUrl || undefined,
-        imageSize: logoSize,
+        imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
         hideBackgroundDots: hideBgDots,
         margin: 2,
         crossOrigin: crossOrigin || undefined,
       },
     };
-  }, [value, size, margin, ecLevel, dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation, cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor, bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType, logoUrl, logoSize, hideBgDots, crossOrigin]);
+  }, [value, size, margin, ecLevel, dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation, cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor, bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType, logoUrl, logoSize, hideBgDots, crossOrigin, perfMode]);
 
   // Initialize
   useEffect(() => {
@@ -144,6 +167,70 @@ export default function Designer({ value }: DesignerProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
       <div className="rounded-xl glass p-4 space-y-4">
+        {/* Presets & performance */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--muted)]">Performance mode</span>
+            <input type="checkbox" checked={perfMode} onChange={(e) => setPerfMode(e.target.checked)} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              {
+                name: "Classic",
+                apply: () => {
+                  setDotsType("square");
+                  setDotsColor("#0b1220");
+                  setDotsGradientOn(false);
+                  setBgColor("#ffffff00");
+                  setBgGradientOn(false);
+                  setCornerSquareType("square");
+                  setCornerSquareColor("#0b1220");
+                  setCornerDotType("square");
+                  setCornerDotColor("#0b1220");
+                  setEcLevel("M");
+                },
+              },
+              {
+                name: "Brand Blue",
+                apply: () => {
+                  setDotsType("rounded");
+                  setDotsColor("#2563eb");
+                  setDotsGradientOn(false);
+                  setBgColor("#ffffff00");
+                  setBgGradientOn(false);
+                  setCornerSquareType("dot");
+                  setCornerSquareColor("#2563eb");
+                  setCornerDotType("square");
+                  setCornerDotColor("#2563eb");
+                  setEcLevel("Q");
+                },
+              },
+              {
+                name: "Sunset Gradient",
+                apply: () => {
+                  setDotsType("rounded");
+                  setDotsGradientOn(true);
+                  setDotsGradA("#db2777");
+                  setDotsGradB("#ea580c");
+                  setDotsColor("#db2777");
+                  setBgGradientOn(true);
+                  setBgGradType("linear");
+                  setBgGradA("#ffffff");
+                  setBgGradB("#fde68a");
+                  setBgColor("#ffffff");
+                  setCornerSquareType("extra-rounded");
+                  setCornerSquareColor("#db2777");
+                  setCornerDotType("dot");
+                  setCornerDotColor("#ea580c");
+                  setEcLevel("H");
+                },
+              },
+            ] as const).map((p) => (
+              <button key={p.name} className="btn btn-secondary h-8" onClick={p.apply}>{p.name}</button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Dots style</div>
@@ -185,6 +272,20 @@ export default function Designer({ value }: DesignerProps) {
             </div>
             <label className="text-xs">Custom</label>
             <input type="color" value={dotsColor} onChange={(e) => setDotsColor(e.target.value)} />
+            <div className="mt-2">
+              <div className="text-xs font-medium text-[var(--muted)] mb-1">Brand palettes</div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  {n:"Indigo", d:"#4f46e5", b:"#eef2ff"},
+                  {n:"Emerald", d:"#10b981", b:"#ecfdf5"},
+                  {n:"Amber", d:"#f59e0b", b:"#fffbeb"}
+                ] as const).map((bp) => (
+                  <button key={bp.n} className="btn btn-secondary h-8" onClick={() => { setDotsColor(bp.d); setBgColor(bp.b + "00"); }}>
+                    {bp.n}
+                  </button>
+                ))}
+              </div>
+            </div>
             <label className="inline-flex items-center gap-2 text-xs mt-2">
               <input type="checkbox" checked={dotsGradientOn} onChange={(e) => setDotsGradientOn(e.target.checked)} /> Gradient
             </label>
@@ -246,22 +347,30 @@ export default function Designer({ value }: DesignerProps) {
               <label className="text-xs">crossOrigin</label>
               <input className="h-8 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={crossOrigin} onChange={(e) => setCrossOrigin(e.target.value)} />
             </div>
+            <div className="mt-2">
+              <div className="text-xs font-medium text-[var(--muted)] mb-1">Pick an icon</div>
+              <div className="flex flex-wrap gap-2">
+                {builtinIcons.map(icon => (
+                  <button key={icon.name} className={`h-9 px-2 rounded border flex items-center gap-2 ${logoUrl===icon.src? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setLogoUrl(icon.src)}>
+                    <Image src={icon.src} alt={icon.name} width={16} height={16} />
+                    <span className="text-xs">{icon.name}</span>
+                  </button>
+                ))}
+                <label className="h-9 px-2 rounded border flex items-center gap-2 cursor-pointer" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadIcon(f); }} />
+                  <span className="text-xs">Upload…</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-[var(--muted)]">Frame</div>
-          <div className="flex gap-2">
-            {(["none","rounded","thin","thick"] as const).map(f => (
-              <button key={f} onClick={() => setFrame(f)} className={`btn btn-secondary h-8 ${frame===f? 'ring-1 ring-[var(--accent)]' : ''}`}>{f}</button>
-            ))}
-          </div>
+        <div className="flex gap-2">
+          {(["none","rounded","thin","thick"] as const).map((f) => (
+            <button key={f} onClick={() => setFrame(f)} className={`btn btn-secondary h-8 ${frame===f? 'ring-1 ring-[var(--accent)]' : ''}`}>{f}</button>
+          ))}
         </div>
-
-        <div className="flex gap-2 justify-end pt-2">
-          <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
-          <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
-        </div>
+        <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
+        <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
       </div>
 
       <div className="rounded-xl glass p-4 flex flex-col gap-3 items-center">
