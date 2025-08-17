@@ -263,18 +263,23 @@ export default function Designer({ value }: DesignerProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Patterns</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {(["square","rounded","dots","classy","classy-rounded","extra-rounded"] as DotsType[]).map((t) => (
-                <button key={t} className={`h-9 px-3 rounded border text-xs ${dotsType===t? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setDotsType(t)}>{t}</button>
+                <button
+                  key={t}
+                  className={`h-10 px-4 rounded border text-xs transition ${dotsType===t? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`}
+                  style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                  onClick={() => setDotsType(t)}
+                >{t}</button>
               ))}
             </div>
             <button className="btn btn-secondary h-8" onClick={() => setDotsType("rounded")}>Reset styles</button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Error correction</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {(["L","M","Q","H"] as const).map((lvl) => (
-                <button key={lvl} className={`h-9 px-3 rounded border text-xs ${ecLevel===lvl? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setEcLevel(lvl)}>
+                <button key={lvl} className={`h-10 px-4 rounded border text-xs transition ${ecLevel===lvl? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setEcLevel(lvl)}>
                   {lvl}
                 </button>
               ))}
@@ -309,9 +314,9 @@ export default function Designer({ value }: DesignerProps) {
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Corners</div>
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {(["square","dot","extra-rounded"] as const).map((t) => (
-                  <button key={t} className={`h-9 px-3 rounded border text-xs ${cornerSquareType===t? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerSquareType(t)}>{t}</button>
+                  <button key={t} className={`h-10 px-4 rounded border text-xs transition ${cornerSquareType===t? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerSquareType(t)}>{t}</button>
                 ))}
               </div>
               <div className="flex gap-2 flex-wrap items-center">
@@ -321,9 +326,9 @@ export default function Designer({ value }: DesignerProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {(["dot","square"] as const).map((t) => (
-                  <button key={t} className={`h-9 px-3 rounded border text-xs ${cornerDotType===t? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerDotType(t)}>{t}</button>
+                  <button key={t} className={`h-10 px-4 rounded border text-xs transition ${cornerDotType===t? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setCornerDotType(t)}>{t}</button>
                 ))}
               </div>
               <div className="flex gap-2 flex-wrap items-center">
@@ -371,18 +376,18 @@ export default function Designer({ value }: DesignerProps) {
         {/* Download buttons moved to Preview section */}
       </div>
 
-      <div className="rounded-xl glass p-4 flex flex-col gap-4 items-center">
+      <div className="rounded-xl glass p-5 flex flex-col gap-5 items-center">
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div className="rounded-md p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div ref={containerRef} className="[&>svg]:block" />
+            <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 items-center justify-center w-full">
-          <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
-          <button className="btn btn-secondary h-9" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
+        <div className="flex flex-wrap gap-3 items-center justify-center w-full">
+          <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
+          <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
           <button
-            className="btn btn-secondary h-9 flex items-center gap-2"
+            className="btn btn-secondary h-10 px-4 flex items-center gap-2"
             title="Reset to default"
             onClick={() => {
               setDotsType("rounded");
@@ -402,7 +407,7 @@ export default function Designer({ value }: DesignerProps) {
               setMargin(2);
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/></svg>
             <span>Reset to default</span>
           </button>
         </div>
