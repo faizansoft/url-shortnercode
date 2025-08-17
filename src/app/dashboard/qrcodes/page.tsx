@@ -184,6 +184,7 @@ export default function QRCodesPage() {
   // Initialize qr-code-styling once when modal opens (dynamic import to avoid SSR issues)
   useEffect(() => {
     if (!showCustomize || !selected || !previewRef.current) return;
+    const container = previewRef.current as unknown as HTMLElement;
     let cancelled = false;
     (async () => {
       try {
@@ -192,7 +193,7 @@ export default function QRCodesPage() {
           if (cancelled) return;
           const QRCodeStylingClass = (mod as { default: new (opts?: StyleOptions) => QRCodeStyling }).default;
           qrStylingRef.current = new QRCodeStylingClass({ type: "canvas" });
-          qrStylingRef.current.append(previewRef.current);
+          qrStylingRef.current.append(container);
         }
         // Mark ready so the update effect can render with current options
         setQrReady((v) => !v);
