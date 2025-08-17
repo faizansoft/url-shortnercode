@@ -350,7 +350,7 @@ export default function Designer({ value }: DesignerProps) {
                 <button
                   key={t}
                   onClick={() => setDotsType(t)}
-                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--panel)]' : ''}`}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
                   title={t}
                 >
@@ -446,7 +446,7 @@ export default function Designer({ value }: DesignerProps) {
                 <button
                   key={label}
                   onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); }}
-                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--panel)]' : ''}`}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'ring-2 ring-[var(--accent)]' : ''}`}
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
                   title={label}
                 >
@@ -522,7 +522,7 @@ export default function Designer({ value }: DesignerProps) {
                     <button
                       key={`${sq}-${dot}-${sc}-${dc}-${label}`}
                       onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
-                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--panel)]' : ''}`}
+                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''}`}
                       style={{ background: 'transparent', borderColor: 'var(--border)' }}
                       title={label}
                     >
@@ -609,7 +609,7 @@ export default function Designer({ value }: DesignerProps) {
               <button
                 key={f}
                 onClick={() => setFrame(f)}
-                className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--panel)]' : ''}`}
+                className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''}`}
                 style={{ background: 'transparent', borderColor: 'var(--border)' }}
                 title={f}
               >
