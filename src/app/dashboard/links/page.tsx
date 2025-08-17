@@ -106,7 +106,7 @@ export default function LinksIndexPage() {
                   <td className="p-3">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        className="btn btn-secondary h-8 inline-flex items-center gap-1"
+                        className="btn btn-secondary h-8 inline-flex items-center gap-1 transition hover:opacity-90"
                         onClick={() => { setQrFor(`${origin}/${l.short_code}`); setShowQR(true); }}
                         title="Show QR"
                       >
@@ -115,7 +115,7 @@ export default function LinksIndexPage() {
                       </button>
                       <Link className="btn btn-secondary h-8" href={`/dashboard/links/${l.short_code}`}>View</Link>
                       <button
-                        className="btn btn-secondary h-8"
+                        className="btn btn-secondary h-8 transition hover:opacity-90"
                         onClick={async () => { const url = `${origin}/${l.short_code}`; try { await navigator.clipboard.writeText(url); setCopied(l.short_code); setTimeout(()=>setCopied(null),1500);} catch {} }}
                         title="Copy link"
                       >{copied === l.short_code ? "Copied" : "Copy"}</button>
@@ -140,11 +140,24 @@ export default function LinksIndexPage() {
                   <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" />
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <a className="btn h-8" href={qrDataUrl} download={`qr-${qrFor.replace(`${origin}/`, '')}.png`}>Download PNG</a>
-                    <button className="btn h-8" onClick={async () => { try { await navigator.clipboard.writeText(qrFor); setCopied("modal"); setTimeout(()=>setCopied(null),1500);} catch {} }}>{copied === "modal" ? "Copied" : "Copy link"}</button>
-                    <a className="btn h-8" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">Share on X</a>
-                    <a className="btn h-8" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">Facebook</a>
-                    <a className="btn h-8" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">LinkedIn</a>
-                    <a className="btn h-8" href={`https://api.whatsapp.com/send?text=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                  </div>
+                  <div className="w-full h-px" style={{ background: 'var(--border)' }} />
+                  <div className="w-full">
+                    <div className="text-sm mb-2 text-[color-mix(in_oklab,var(--foreground)_80%,#666)]">Share</div>
+                    <div className="flex gap-2 flex-wrap">
+                      <a className="btn h-8 w-9 p-0 inline-grid place-items-center" aria-label="Share on X" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2H21l-6.56 7.49L22.5 22H15.4l-5.14-6.68L3.62 22H1l7.06-8.06L1.5 2h7.26l4.64 6.13L18.244 2Zm-2.45 18h1.7L8.32 4h-1.7l9.174 16Z"/></svg>
+                      </a>
+                      <a className="btn h-8 w-9 p-0 inline-grid place-items-center" aria-label="Share on Facebook" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M13.5 22v-8h2.6l.4-3h-3V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.2-.1-2.2 0-3.8 1.3-3.8 3.9V11H8v3h3v8h2.5Z"/></svg>
+                      </a>
+                      <a className="btn h-8 w-9 p-0 inline-grid place-items-center" aria-label="Share on LinkedIn" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M6.94 6.5A2.44 2.44 0 1 1 2.06 6.5a2.44 2.44 0 0 1 4.88 0ZM3 21.5h3.9V9.03H3V21.5Zm7.2-12.47H14V10c.6-1.2 2.01-2.2 4.16-2.2 4.45 0 5.27 2.76 5.27 6.35v7.36h-3.9v-6.53c0-1.56-.03-3.56-2.17-3.56-2.17 0-2.5 1.7-2.5 3.45v6.64H8.2V9.03h1.99Z"/></svg>
+                      </a>
+                      <a className="btn h-8 w-9 p-0 inline-grid place-items-center" aria-label="Share on WhatsApp" href={`https://api.whatsapp.com/send?text=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M20.5 3.5A11 11 0 0 0 3.02 17.6L2 22l4.5-1.02A11 11 0 1 0 20.5 3.5Zm-8.5 18a9 9 0 0 1-4.59-1.27l-.33-.2-2.72.62.58-2.65-.22-.34a9 9 0 1 1 7.28 3.84Zm5.15-6.51c-.28-.14-1.65-.82-1.9-.91-.25-.09-.44-.14-.62.14-.19.28-.72.9-.88 1.08-.16.19-.33.21-.61.07-.28-.14-1.17-.43-2.23-1.36-.82-.73-1.38-1.63-1.54-1.91-.16-.28-.02-.43.12-.57.12-.12.28-.33.42-.49.14-.16.19-.28.28-.47.09-.19.05-.35-.02-.49-.07-.14-.62-1.49-.85-2.05-.22-.53-.45-.46-.62-.46l-.53-.01c-.19 0-.49.07-.75.35-.26.28-.98.96-.98 2.34 0 1.38 1.01 2.72 1.14 2.9.14.19 1.99 3.04 4.83 4.26.68.29 1.21.46 1.63.59.68.22 1.3.19 1.79.12.55-.08 1.65-.67 1.88-1.31.23-.65.23-1.19.16-1.31-.07-.12-.26-.19-.54-.33Z"/></svg>
+                      </a>
+                    </div>
                   </div>
                 </>
               ) : (
