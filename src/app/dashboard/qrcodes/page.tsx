@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { QRCodeToStringOptions } from "qrcode";
 import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
@@ -83,13 +84,14 @@ export default function QRCodesPage() {
   // Download SVG for a QR item
   async function handleDownloadSvg(shortUrl: string, code: string) {
     try {
-      const svg = await QRCode.toString(shortUrl, {
+      const options: QRCodeToStringOptions = {
         type: 'svg',
         errorCorrectionLevel: 'M',
         margin: 1,
         color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#00000000' },
         width: 200,
-      } as any);
+      };
+      const svg = await QRCode.toString(shortUrl, options);
       const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
