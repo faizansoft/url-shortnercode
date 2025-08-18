@@ -31,7 +31,7 @@ function CustomizeQRInner() {
       </div>
 
       {/* Fixed-height scrollable customization panel */}
-      <div className="glass p-4 min-h-0 h-[calc(100dvh-10rem)]">
+      <div className="p-4 min-h-0 h-[calc(100dvh-10rem)]" style={{ background: 'transparent' }}>
         <div className="h-full overflow-auto scrollbar">
           <Designer value={url} />
         </div>

@@ -104,7 +104,7 @@ export default function Designer({ value }: DesignerProps) {
   };
   const frameStyle = useMemo(() => {
     const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-    const effectiveBg = transparentBg ? '#ffffff' : bgColor;
+    const effectiveBg = transparentBg ? 'transparent' : bgColor;
     // All frames use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
       case "rounded":
@@ -124,11 +124,18 @@ export default function Designer({ value }: DesignerProps) {
     return bgColor;
   }, [bgColor]);
 
+  // Whether the selected background is transparent
+  const isTransparentBg = useMemo(() => {
+    const v = (bgColor || '').toLowerCase();
+    return v === '#ffffff00' || v === 'transparent' || v.endsWith('00');
+  }, [bgColor]);
+
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
     // Gradients fully disabled per requirements
     const useDotsGradient = false;
     const useBgGradient = false;
+    const isTransparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
     const dots: DotsOpts = useDotsGradient
       ? {
           gradient: {
@@ -142,7 +149,9 @@ export default function Designer({ value }: DesignerProps) {
           type: dotsType,
         }
       : { color: dotsColor, type: dotsType };
-    const bg: BgOpts = useBgGradient
+    const bg: BgOpts = isTransparentBg
+      ? { color: 'transparent' }
+      : useBgGradient
       ? {
           gradient: {
             type: bgGradType,
@@ -165,7 +174,7 @@ export default function Designer({ value }: DesignerProps) {
       dotsOptions: perfMode ? { color: dotsColor, type: "square" } : dots,
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
-      backgroundOptions: perfMode ? { color: bgColor } : bg,
+      backgroundOptions: perfMode ? (isTransparentBg ? { color: 'transparent' } : { color: bgColor }) : bg,
       image: logoUrl || undefined,
       imageOptions: {
         imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
@@ -834,7 +843,7 @@ export default function Designer({ value }: DesignerProps) {
           </div>
         </div>
       </div>
-      <div className="rounded-xl glass border border-[var(--border)] p-4 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-hidden">
+      <div className={`${isTransparentBg ? '' : 'glass'} rounded-xl border border-[var(--border)] p-4 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-hidden`} style={{ background: isTransparentBg ? 'transparent' : undefined }}>
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div
