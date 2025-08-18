@@ -145,7 +145,7 @@ export default function LinksIndexPage() {
             <tbody>
               {filteredLinks.length === 0 ? (
                 <tr>
-                  <td className="p-4 text-[var(--muted)]" colSpan={4}>No matches for "{q}"</td>
+                  <td className="p-4 text-[var(--muted)]" colSpan={4}>No matches for &ldquo;{q}&rdquo;</td>
                 </tr>
               ) : null}
               {filteredLinks.map((l) => (
