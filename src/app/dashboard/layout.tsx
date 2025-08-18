@@ -168,9 +168,17 @@ export default function DashboardLayout({
             <UserMenu />
           </div>
         </header>
-        <main className={`p-6 flex-1 min-h-0 ${isCustomize ? 'overflow-hidden' : 'overflow-auto scrollbar'}`}>
+        <main className={`${isCustomize ? 'relative p-0 overflow-hidden' : 'p-6 overflow-auto scrollbar'} flex-1 min-h-0`}>
           <AuthGuard>
-            <div className="mx-auto max-w-6xl w-full space-y-4 h-full min-h-0 flex flex-col">{children}</div>
+            {isCustomize ? (
+              <div className="absolute inset-0">
+                <div className="mx-auto max-w-6xl w-full h-full min-h-0 flex flex-col p-6 space-y-4">
+                  {children}
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto max-w-6xl w-full space-y-4 h-full min-h-0 flex flex-col">{children}</div>
+            )}
           </AuthGuard>
         </main>
       </div>
