@@ -318,6 +318,49 @@ export default function Designer({ value }: DesignerProps) {
     });
   }
 
+  // ---- Color + canvas sampling helpers (for blank detection) ----
+  function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const h = hex.replace('#', '').trim();
+    if (h.length === 3) {
+      const r = parseInt(h[0] + h[0], 16);
+      const g = parseInt(h[1] + h[1], 16);
+      const b = parseInt(h[2] + h[2], 16);
+      return { r, g, b };
+    }
+    if (h.length === 6 || h.length === 8) {
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return { r, g, b };
+    }
+    return null;
+  }
+
+  function isCanvasMostlyColor(canvas: HTMLCanvasElement, targetHex: string, tolerance = 8): boolean {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    const rgb = hexToRgb(targetHex) || { r: 255, g: 255, b: 255 };
+    const W = canvas.width, H = canvas.height;
+    if (W === 0 || H === 0) return false;
+    // sample a 6x6 grid avoiding the outer 5% border to skip stroke
+    const samples = 36;
+    let matches = 0;
+    let checked = 0;
+    for (let yi = 0; yi < 6; yi++) {
+      for (let xi = 0; xi < 6; xi++) {
+        const x = Math.round((0.05 + (xi + 0.5) / 6 * 0.90) * W);
+        const y = Math.round((0.05 + (yi + 0.5) / 6 * 0.90) * H);
+        const data = ctx.getImageData(Math.min(Math.max(x, 0), W - 1), Math.min(Math.max(y, 0), H - 1), 1, 1).data;
+        const dr = Math.abs(data[0] - rgb.r);
+        const dg = Math.abs(data[1] - rgb.g);
+        const db = Math.abs(data[2] - rgb.b);
+        if (dr <= tolerance && dg <= tolerance && db <= tolerance) matches++;
+        checked++;
+      }
+    }
+    return checked > 0 && matches / checked > 0.92; // mostly background
+  }
+
   function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
     const rr = Math.max(0, r);
     ctx.beginPath();
@@ -420,6 +463,49 @@ export default function Designer({ value }: DesignerProps) {
       octx.imageSmoothingEnabled = false;
       octx.imageSmoothingQuality = 'low';
       octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
+
+      // Blank-detection: if final canvas is mostly background color, retry once
+      const bgHex = effectiveBg || '#ffffff';
+      let canvasIsBlank = isCanvasMostlyColor(outCanvas, bgHex);
+      if (canvasIsBlank) {
+        try { qrRef.current?.update(options); } catch {}
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        // re-snapshot and recompose once
+        const retryBlob = await getQrBlobFromRendered();
+        if (retryBlob) {
+          const rimg = new window.Image();
+          rimg.src = URL.createObjectURL(retryBlob);
+          await new Promise((res, rej) => { rimg.onload = () => res(null); rimg.onerror = rej; });
+          // redraw QR path only
+          const workCanvas2 = document.createElement('canvas');
+          workCanvas2.width = workSize; workCanvas2.height = workSize;
+          const wctx2 = workCanvas2.getContext('2d'); if (wctx2) {
+            wctx2.imageSmoothingEnabled = false;
+            drawRoundedRect(wctx2 as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+            wctx2.fillStyle = effectiveBg; wctx2.fill();
+            // stroke again
+            wctx2.lineJoin = 'round' as CanvasLineJoin;
+            wctx2.lineCap = 'round' as CanvasLineCap;
+            if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
+              const lw = 1 * workScale; wctx2.lineWidth = lw; wctx2.strokeStyle = border; strokeInsetRect(lw); wctx2.stroke();
+            }
+            // clip + draw
+            wctx2.save();
+            drawRoundedRect(wctx2 as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+            wctx2.clip();
+            wctx2.imageSmoothingEnabled = false;
+            wctx2.drawImage(rimg, sx, sy, sw, sh, 0, 0, workSize, workSize);
+            wctx2.restore();
+
+            octx.clearRect(0, 0, exportOuter, exportOuter);
+            octx.imageSmoothingEnabled = false;
+            octx.imageSmoothingQuality = 'low';
+            octx.drawImage(workCanvas2, 0, 0, exportOuter, exportOuter);
+            canvasIsBlank = isCanvasMostlyColor(outCanvas, bgHex);
+          }
+          URL.revokeObjectURL(rimg.src);
+        }
+      }
 
       const finalBlob = await canvasToPngBlob(outCanvas);
       if (finalBlob) downloadBlob(finalBlob, 'qr-framed.png');
