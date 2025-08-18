@@ -220,6 +220,126 @@ export default function Designer({ value }: DesignerProps) {
   }, [options]);
 
   // Handlers
+  async function getThemeColor(varName: string, fallback: string) {
+    if (typeof window === 'undefined') return fallback;
+    const v = getComputedStyle(document.documentElement).getPropertyValue(varName);
+    return (v && v.trim()) || fallback;
+  }
+
+  async function getQrBlobPng(): Promise<Blob | null> {
+    try { return await qrRef.current?.getRawData?.("png") as Blob; } catch { return null; }
+  }
+
+  function downloadBlob(blob: Blob, name: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    const rr = Math.max(0, r);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  async function handleDownload(ext: 'png' | 'svg') {
+    const pad = 16; // outer padding inside frame
+    const borderW = (frame === 'thick' || frame === 'accent') ? 3 : (frame === 'thin' ? 1 : (frame === 'double' ? 2 : 1));
+    const outer = size + pad * 2;
+
+    const surface = await getThemeColor('--surface', '#ffffff');
+    const border = await getThemeColor('--border', '#e5e7eb');
+    const accent = await getThemeColor('--accent', '#2563eb');
+
+    if (ext === 'png') {
+      const qrBlob = await getQrBlobPng();
+      if (!qrBlob) { try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { return; } }
+      const img = new window.Image();
+      img.src = URL.createObjectURL(qrBlob);
+      await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+      const canvas = document.createElement('canvas');
+      canvas.width = outer; canvas.height = outer;
+      const ctx = canvas.getContext('2d'); if (!ctx) return;
+
+      // Background fill
+      ctx.fillStyle = surface; ctx.fillRect(0, 0, outer, outer);
+
+      // Frame stroke/fill
+      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 12 : (frame === 'outline' ? 8 : (frame === 'thin' ? 4 : (frame === 'thick' ? 10 : (frame === 'double' ? 8 : 0))));
+      drawRoundedRect(ctx, 2, 2, outer - 4, outer - 4, rx);
+      if (frame === 'accent') {
+        ctx.lineWidth = 3; ctx.strokeStyle = accent; ctx.stroke();
+      } else if (frame === 'double') {
+        ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke();
+        drawRoundedRect(ctx, 6, 6, outer - 12, outer - 12, Math.max(0, rx - 4));
+        ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.stroke();
+      } else if (frame === 'dashed') {
+        ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
+      } else if (frame === 'outline') {
+        ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke();
+      } else if (frame === 'thick') {
+        ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke();
+      } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
+        ctx.lineWidth = 1; ctx.strokeStyle = border; ctx.stroke();
+      } else if (frame === 'glow') {
+        ctx.shadowColor = accent; ctx.shadowBlur = 18; ctx.lineWidth = 1; ctx.strokeStyle = border; ctx.stroke(); ctx.shadowBlur = 0;
+      } else if (frame === 'shadow') {
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 8; ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
+      } else if (frame === 'gradient') {
+        // Simple gradient stroke approximation
+        const g = ctx.createLinearGradient(0, 0, outer, outer);
+        g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
+        ctx.lineWidth = 2; ctx.strokeStyle = g; ctx.stroke();
+      }
+
+      // Draw QR centered
+      const qrX = (outer - size) / 2; const qrY = (outer - size) / 2;
+      ctx.drawImage(img, qrX, qrY, size, size);
+
+      canvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
+      URL.revokeObjectURL(img.src);
+      return;
+    }
+
+    // SVG path: wrap inner SVG with outer frame SVG
+    try {
+      const raw = await (qrRef.current?.getRawData?.('svg') as Promise<Blob>);
+      const svgText = await raw.text();
+      const inner = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '').replace(/\n/g, '');
+      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 12 : (frame === 'outline' ? 8 : (frame === 'thin' ? 4 : (frame === 'thick' ? 10 : (frame === 'double' ? 8 : 0))));
+      const border = await getThemeColor('--border', '#e5e7eb');
+      const accent = await getThemeColor('--accent', '#2563eb');
+      const surface = await getThemeColor('--surface', '#ffffff');
+      const frameStroke = (frame === 'accent') ? accent : border;
+      const strokeW = (frame === 'thick' || frame === 'accent') ? 3 : (frame === 'thin' ? 1 : (frame === 'double' ? 2 : 1));
+
+      const defs = frame === 'gradient'
+        ? `<defs><linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>`
+        : '';
+      const secondStroke = frame === 'double' ? `<rect x="6" y="6" width="${outer-12}" height="${outer-12}" rx="${Math.max(0, rx-4)}" ry="${Math.max(0, rx-4)}" fill="none" stroke="${accent}" stroke-width="2"/>` : '';
+      const dashed = frame === 'dashed' ? '6,6' : 'none';
+      const strokeCol = frame === 'gradient' ? 'url(#grad1)' : frameStroke;
+
+      const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
+${defs}
+<rect x="0" y="0" width="${outer}" height="${outer}" fill="${surface}"/>
+<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-dasharray="${dashed}"/>
+${secondStroke}
+<g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
+</svg>`;
+      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+      downloadBlob(outBlob, 'qr-framed.svg');
+    } catch {
+      try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
+    }
+  }
   const resetAll = () => {
     setSize(220);
     setMargin(2);
@@ -350,9 +470,9 @@ export default function Designer({ value }: DesignerProps) {
                 <button
                   key={t}
                   onClick={() => setDotsType(t)}
-                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'ring-2 ring-[var(--accent)]' : ''}`}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'ring-2 ring-[var(--accent)]' : ''} tip`}
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                  title={t}
+                  data-tip={t}
                 >
                   <div className="grid grid-cols-5 grid-rows-5 gap-[2px] p-1.5 bg-[var(--surface)] rounded-md">
                     {Array.from({ length: 25 }).map((_, i) => {
@@ -446,9 +566,9 @@ export default function Designer({ value }: DesignerProps) {
                 <button
                   key={label}
                   onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); }}
-                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'ring-2 ring-[var(--accent)]' : ''} tip`}
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                  title={label}
+                  data-tip={label}
                 >
                   <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
                     <div style={{
@@ -522,9 +642,9 @@ export default function Designer({ value }: DesignerProps) {
                     <button
                       key={`${sq}-${dot}-${sc}-${dc}-${label}`}
                       onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
-                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''} tip`}
                       style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                      title={label}
+                      data-tip={label}
                     >
                       <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
                         <div style={{
@@ -605,13 +725,13 @@ export default function Designer({ value }: DesignerProps) {
         <div className="space-y-2">
           <div className="text-xs font-medium text-[var(--muted)]">Frames</div>
           <div className="flex gap-2.5 flex-wrap items-center">
-            {(["none","square","rounded","thin","thick","accent","shadow","outline","dashed","double","glow","gradient"] as const).map((f) => (
+              {(["none","square","rounded","thin","thick","accent","shadow","outline","dashed","double","glow","gradient"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFrame(f)}
                 className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''}`}
                 style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                title={f}
+                data-tip={f}
               >
                 <div
                   className="h-10 w-10"
@@ -677,8 +797,8 @@ export default function Designer({ value }: DesignerProps) {
           </div>
         </div>
         <div className="flex flex-wrap gap-3 items-center justify-center w-full">
-          <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
-          <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
+          <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("png")}>Download PNG</button>
+          <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("svg")}>Download SVG</button>
           <button
             className="btn btn-primary h-10 px-4 tip"
             data-tip="Save current configuration"
