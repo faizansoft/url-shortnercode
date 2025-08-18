@@ -82,8 +82,8 @@ export default function Designer({ value }: DesignerProps) {
   const [cornerDotType, setCornerDotType] = useState<"dot" | "square">("dot");
   const [cornerDotColor, setCornerDotColor] = useState("#0b1220");
 
-  // Background (default to solid white)
-  const [bgColor, setBgColor] = useState("#ffffff");
+  // Background (default to transparent)
+  const [bgColor, setBgColor] = useState("transparent");
   const [bgGradientOn, setBgGradientOn] = useState(false);
   const [bgGradA, setBgGradA] = useState("#ffffff");
   const [bgGradB, setBgGradB] = useState("#e2e8f0");
@@ -703,6 +703,26 @@ export default function Designer({ value }: DesignerProps) {
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Background</div>
             <div className="flex gap-2 flex-wrap items-center">
+              {/* Transparent option with checkerboard preview */}
+              <button
+                key="transparent"
+                className={`h-6 w-6 rounded border ${isTransparentBg ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                style={{
+                  backgroundColor: 'transparent',
+                  borderColor: 'var(--border)',
+                  backgroundImage: `
+                    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+                    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+                    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)
+                  `,
+                  backgroundSize: '6px 6px',
+                  backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px',
+                }}
+                onClick={() => setBgColor('transparent')}
+                aria-pressed={isTransparentBg}
+                aria-label="Background transparent"
+              />
               {['#ffffff','#f1f5f9','#e2e8f0','#cbd5e1','#94a3b8'].map((c) => (
                 <button
                   key={c}
@@ -962,7 +982,7 @@ export default function Designer({ value }: DesignerProps) {
               setBgGradA("#ffffff");
               setBgGradB("#e2e8f0");
               setBgGradType("linear");
-              setBgColor("#ffffff");
+              setBgColor("transparent");
               setLogoUrl("");
               setLogoSize(0.25);
               setHideBgDots(true);
