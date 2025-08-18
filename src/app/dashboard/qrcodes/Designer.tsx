@@ -65,6 +65,8 @@ export default function Designer({ value }: DesignerProps) {
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
+  const savedPresentRef = useRef<boolean>(false);
+  const savedSnapshotRef = useRef<any>(null);
 
   // (removed) frame/border feature
   const [perfMode, setPerfMode] = useState<boolean>(false);
@@ -126,6 +128,21 @@ export default function Designer({ value }: DesignerProps) {
     const inlined = await toDataUrl(src);
     setLogoUrl(inlined || src);
   }
+
+  function isDataUrl(u: string) { return typeof u === 'string' && u.startsWith('data:'); }
+
+  // If a non-data URL logo is present, try to inline it for reliable preview
+  const inliningLockRef = useRef<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const u = logoUrl;
+      if (!u || isDataUrl(u)) return;
+      if (inliningLockRef.current === u) return;
+      inliningLockRef.current = u;
+      const inlined = await toDataUrl(u);
+      if (inlined) setLogoUrl(inlined);
+    })();
+  }, [logoUrl]);
 
   // Effective preview background and style (solid only)
   const effectivePreviewBg = useMemo(() => bgColor, [bgColor]);
@@ -195,6 +212,70 @@ export default function Designer({ value }: DesignerProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load saved options for this short code on first mount (with localStorage fallback)
+  useEffect(() => {
+    (async () => {
+      try {
+        const u = new URL(value);
+        const short_code = (u.pathname || '').replace(/^\//, '');
+        if (!short_code) return;
+        let o: any = null;
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) {
+            const res = await fetch(`/api/qr?code=${encodeURIComponent(short_code)}`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.ok) {
+              const json = await res.json();
+              o = json?.options ?? null;
+            }
+          }
+        } catch {}
+        // Fallback to last local draft
+        if (!o) {
+          try {
+            const raw = window.localStorage.getItem('qrDesigner:last');
+            if (raw) o = JSON.parse(raw);
+          } catch {}
+        }
+        if (!o || typeof o !== 'object') return;
+        savedPresentRef.current = true;
+        savedSnapshotRef.current = o;
+        // Apply all saved values safely, suppressing intermediate updates
+        suppressUpdateRef.current = true;
+        try {
+          if (Number.isFinite(o.size)) setSize(Number(o.size));
+          if (Number.isFinite(o.margin)) setMargin(Math.max(0, Number(o.margin)));
+          if (o.ecLevel === 'L' || o.ecLevel === 'M' || o.ecLevel === 'Q' || o.ecLevel === 'H') setEcLevel(o.ecLevel);
+          if (typeof o.perfMode === 'boolean') setPerfMode(!!o.perfMode);
+
+          if (typeof o.dotsType === 'string') setDotsType(o.dotsType);
+          if (typeof o.dotsColor === 'string') setDotsColor(o.dotsColor);
+          if (typeof o.dotsGradientOn === 'boolean') setDotsGradientOn(o.dotsGradientOn);
+          if (typeof o.dotsGradA === 'string') setDotsGradA(o.dotsGradA);
+          if (typeof o.dotsGradB === 'string') setDotsGradB(o.dotsGradB);
+
+          if (typeof o.cornerSquareType === 'string') setCornerSquareType(o.cornerSquareType);
+          if (typeof o.cornerSquareColor === 'string') setCornerSquareColor(o.cornerSquareColor);
+          if (typeof o.cornerDotType === 'string') setCornerDotType(o.cornerDotType);
+          if (typeof o.cornerDotColor === 'string') setCornerDotColor(o.cornerDotColor);
+
+          if (typeof o.bgColor === 'string') setBgColor(o.bgColor);
+          if (typeof o.bgGradientOn === 'boolean') setBgGradientOn(o.bgGradientOn);
+          if (typeof o.bgGradA === 'string') setBgGradA(o.bgGradA);
+          if (typeof o.bgGradB === 'string') setBgGradB(o.bgGradB);
+          if (o.bgGradType === 'linear' || o.bgGradType === 'radial') setBgGradType(o.bgGradType);
+
+          if (typeof o.logoUrl === 'string') setLogoUrl(o.logoUrl);
+          if (Number.isFinite(o.logoSize)) setLogoSize(Math.max(0.1, Math.min(0.45, Number(o.logoSize))));
+          if (typeof o.hideBgDots === 'boolean') setHideBgDots(!!o.hideBgDots);
+        } finally {
+          requestAnimationFrame(() => { suppressUpdateRef.current = false; });
+        }
+      } catch {}
+    })();
+  }, [value]);
 
   // Update on options change, but allow temporary suppression to avoid flicker during batched resets
   useEffect(() => {
@@ -364,58 +445,80 @@ export default function Designer({ value }: DesignerProps) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs font-medium text-[var(--muted)]">Presets</div>
           <div className="flex flex-wrap gap-2">
-            {([
-              {
-                name: "Classic",
-                apply: () => {
-                  setDotsType("square");
-                  setDotsColor("#0b1220");
-                  setDotsGradientOn(false);
-                  setBgColor("#ffffff");
-                  setBgGradientOn(false);
-                  setCornerSquareType("square");
-                  setCornerSquareColor("#0b1220");
-                  setCornerDotType("dot");
-                  setCornerDotColor("#0b1220");
-                  setEcLevel("M");
-                },
-              },
-              {
-                name: "Brand Blue",
-                apply: () => {
-                  setDotsType("rounded");
-                  setDotsColor("#2563eb");
-                  setDotsGradientOn(false);
-                  setBgColor("#ffffff");
-                  setBgGradientOn(false);
-                  setCornerSquareType("dot");
-                  setCornerSquareColor("#2563eb");
-                  setCornerDotType("square");
-                  setCornerDotColor("#2563eb");
-                  setEcLevel("Q");
-                },
-              },
-              {
-                name: "Sunset Gradient",
-                apply: () => {
-                  setDotsType("rounded");
-                  setDotsGradientOn(true);
-                  setDotsGradA("#db2777");
-                  setDotsGradB("#ea580c");
-                  setDotsColor("#db2777");
-                  setBgGradientOn(true);
-                  setBgGradType("linear");
-                  setBgGradA("#ffffff");
-                  setBgGradB("#fde68a");
-                  setBgColor("#ffffff");
-                  setCornerSquareType("extra-rounded");
-                  setCornerSquareColor("#db2777");
-                  setCornerDotType("dot");
-                  setCornerDotColor("#ea580c");
-                  setEcLevel("H");
-                },
-              },
-            ] as const).map((p) => (
+            {(savedPresentRef.current
+              ? ([{
+                  name: "Saved",
+                  apply: () => {
+                    const o = savedSnapshotRef.current;
+                    if (!o) return;
+                    suppressUpdateRef.current = true;
+                    try {
+                      if (typeof o.dotsType === 'string') setDotsType(o.dotsType);
+                      if (typeof o.dotsColor === 'string') setDotsColor(o.dotsColor);
+                      if (typeof o.cornerSquareType === 'string') setCornerSquareType(o.cornerSquareType);
+                      if (typeof o.cornerSquareColor === 'string') setCornerSquareColor(o.cornerSquareColor);
+                      if (typeof o.cornerDotType === 'string') setCornerDotType(o.cornerDotType);
+                      if (typeof o.cornerDotColor === 'string') setCornerDotColor(o.cornerDotColor);
+                      if (typeof o.bgColor === 'string') setBgColor(o.bgColor);
+                      if (typeof o.logoUrl === 'string') setLogoUrl(o.logoUrl);
+                    } finally {
+                      requestAnimationFrame(() => { suppressUpdateRef.current = false; });
+                    }
+                  },
+                }] as const)
+              : ([
+                  {
+                    name: "Classic",
+                    apply: () => {
+                      setDotsType("square");
+                      setDotsColor("#0b1220");
+                      setDotsGradientOn(false);
+                      setBgColor("#ffffff");
+                      setBgGradientOn(false);
+                      setCornerSquareType("square");
+                      setCornerSquareColor("#0b1220");
+                      setCornerDotType("dot");
+                      setCornerDotColor("#0b1220");
+                      setEcLevel("M");
+                    },
+                  },
+                  {
+                    name: "Brand Blue",
+                    apply: () => {
+                      setDotsType("rounded");
+                      setDotsColor("#2563eb");
+                      setDotsGradientOn(false);
+                      setBgColor("#ffffff");
+                      setBgGradientOn(false);
+                      setCornerSquareType("dot");
+                      setCornerSquareColor("#2563eb");
+                      setCornerDotType("square");
+                      setCornerDotColor("#2563eb");
+                      setEcLevel("Q");
+                    },
+                  },
+                  {
+                    name: "Sunset Gradient",
+                    apply: () => {
+                      setDotsType("rounded");
+                      setDotsGradientOn(true);
+                      setDotsGradA("#db2777");
+                      setDotsGradB("#ea580c");
+                      setDotsColor("#db2777");
+                      setBgGradientOn(true);
+                      setBgGradType("linear");
+                      setBgGradA("#ffffff");
+                      setBgGradB("#fde68a");
+                      setBgColor("#ffffff");
+                      setCornerSquareType("extra-rounded");
+                      setCornerSquareColor("#db2777");
+                      setCornerDotType("dot");
+                      setCornerDotColor("#ea580c");
+                      setEcLevel("H");
+                    },
+                  },
+                ] as const)
+            ).map((p) => (
               <button key={p.name} className="btn btn-secondary h-8" onClick={p.apply}>{p.name}</button>
             ))}
           </div>
