@@ -125,21 +125,21 @@ export default function Designer({ value }: DesignerProps) {
       case "rounded":
         return { borderRadius: 16, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "thin":
-        return { borderRadius: 6, padding: 0, border: "1px solid var(--border)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 6, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "thick":
         return { borderRadius: 12, padding: 0, border: "2px solid color-mix(in oklab, var(--accent) 60%, var(--border))", overflow: "hidden" } as React.CSSProperties;
       case "square":
         return { borderRadius: 0, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "accent":
-        return { borderRadius: 10, padding: 0, border: "3px solid var(--accent)", background: "transparent", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 10, padding: 0, border: "3px solid var(--accent)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "shadow":
         return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "outline":
-        return { borderRadius: 8, padding: 0, outline: "2px solid var(--border)", outlineOffset: 0, overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 8, padding: 0, outline: "2px solid var(--border)", outlineOffset: 0, background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "dashed":
-        return { borderRadius: 8, padding: 0, border: "2px dashed var(--border)", background: "transparent", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 8, padding: 0, border: "2px dashed var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "double":
-        return { borderRadius: 10, padding: 0, border: "2px solid var(--border)", outline: "2px solid var(--accent)", outlineOffset: 2, background: "transparent", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 10, padding: 0, border: "2px solid var(--border)", outline: "2px solid var(--accent)", outlineOffset: 2, background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "glow":
         return { borderRadius: 12, padding: 0, border: "1px solid var(--border)", boxShadow: "0 0 0 4px color-mix(in oklab, var(--accent) 35%, transparent), 0 12px 28px rgba(0,0,0,0.18)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
       case "gradient":
@@ -829,8 +829,8 @@ ${secondStroke}
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div
-            className={`rounded-md ${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
-            style={frame === 'none' ? { background: 'var(--surface)', border: '1px solid var(--border)' } : { background: 'var(--surface)' }}
+            className={`${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
+            style={frame === 'none' ? { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 } : { background: 'var(--surface)', borderRadius: 'inherit' }}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
