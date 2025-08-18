@@ -62,7 +62,7 @@ export default function Designer({ value }: DesignerProps) {
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
 
-  // Border (visual wrapper)
+  // Frame (visual wrapper)
   const [frame, setFrame] = useState<"rounded" | "thin" | "square">("square");
   const [perfMode, setPerfMode] = useState<boolean>(false);
   
@@ -100,14 +100,14 @@ export default function Designer({ value }: DesignerProps) {
   const frameStyle = useMemo(() => {
     const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
     const effectiveBg = transparentBg ? '#ffffff' : bgColor;
-    // All borders use zero padding so the QR fits perfectly without extra spacing
+    // All frames use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
-      case "square":
-        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "rounded":
         return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "thin":
         return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
+      case "square":
+        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       // removed other styles
       default:
         return {} as React.CSSProperties;
@@ -210,14 +210,14 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function getQrBlobFromRendered(): Promise<Blob | null> {
-    // 1) Prefer the on-screen canvas (matches preview best)
     const root = containerRef.current;
     if (!root) return null;
+    // Prefer canvas if present
     const canvas = root.querySelector('canvas');
     if (canvas && 'toBlob' in canvas) {
       return await new Promise<Blob | null>((resolve) => (canvas as HTMLCanvasElement).toBlob((b) => resolve(b), 'image/png'));
     }
-    // 2) Fallback: rasterize the on-screen SVG
+    // Else try SVG -> rasterize to PNG blob
     const svgEl = root.querySelector('svg');
     if (svgEl) {
       const svgText = new XMLSerializer().serializeToString(svgEl);
@@ -235,16 +235,11 @@ export default function Designer({ value }: DesignerProps) {
         ctx2.drawImage(img, 0, 0, size, size);
         return await new Promise<Blob | null>((resolve) => canvas2.toBlob((b) => resolve(b), 'image/png'));
       } catch {
-        // continue to last fallback
+        return null;
       } finally {
         URL.revokeObjectURL(url);
       }
     }
-    // 3) Last fallback: let the library generate raw PNG
-    try {
-      const b = await qrRef.current?.getRawData('png');
-      if (b) return b;
-    } catch {}
     return null;
   }
 
@@ -283,15 +278,16 @@ export default function Designer({ value }: DesignerProps) {
 
   async function handleDownload(ext: 'png' | 'svg') {
     const pad = 0; // preview uses zero padding in frameStyle
-    const borderW = 1; // match frameStyle stroke
+    // stroke widths aligned to frameStyle
+    const borderW = 1;
     const outer = size + pad * 2;
 
     const surface = '#ffffff';
     const border = '#e5e7eb';
-    const isTransparent = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-    const effectiveBg = isTransparent ? surface : bgColor;
+    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const effectiveBg = transparentBg ? surface : bgColor;
 
-    // Ensure latest render before export
+    // Force latest options to render before exporting to avoid stale downloads
     try { qrRef.current?.update(options); } catch {}
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
@@ -299,64 +295,108 @@ export default function Designer({ value }: DesignerProps) {
       const qrBlob = await getQrBlobFromRendered();
       if (!qrBlob) { try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { return; } }
       const img = new window.Image();
-      img.crossOrigin = 'anonymous';
       img.src = URL.createObjectURL(qrBlob);
       await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+      // Preserve intrinsic QR margin exactly as rendered (no trimming)
+      const sx = 0, sy = 0, sw = img.width, sh = img.height;
+
+      const exportOuter = Math.max(2048, outer);
+      const scale = exportOuter / outer;
+      // Work at 2x for smoother rounded corners, then downscale once
+      const workScale = 2;
+      const workSize = exportOuter * workScale;
+      const workCanvas = document.createElement('canvas');
+      workCanvas.width = workSize; workCanvas.height = workSize;
+      const wctx = workCanvas.getContext('2d'); if (!wctx) return;
+      wctx.imageSmoothingEnabled = false; // keep QR crisp while upscaling
+
+      // Rounded background fill and clip so QR respects corner shape
+      // Corner radii aligned to frameStyle
       const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-      const canvas = document.createElement('canvas');
-      canvas.width = outer; canvas.height = outer;
-      const ctx = canvas.getContext('2d'); if (!ctx) { URL.revokeObjectURL(img.src); return; }
-      ctx.imageSmoothingEnabled = false;
-      // Draw background + border
-      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
-      ctx.fillStyle = effectiveBg as string; ctx.fill();
-      ctx.lineWidth = borderW; ctx.strokeStyle = border; ctx.stroke();
-      // Clip and draw inner QR centered
-      ctx.save();
-      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
-      ctx.clip();
-      const dx = Math.round((outer - img.width) / 2);
-      const dy = Math.round((outer - img.height) / 2);
-      ctx.drawImage(img, dx, dy);
-      ctx.restore();
-      await new Promise<void>((resolve) => canvas.toBlob((b) => { if (b) downloadBlob(b, 'qr.png'); resolve(); }, 'image/png'));
+      const rxScaled = rx * scale * workScale;
+      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+      wctx.fillStyle = effectiveBg; wctx.fill();
+      // Draw frame stroke BEFORE QR so QR covers any inward bleed
+      wctx.lineJoin = 'round' as CanvasLineJoin;
+      wctx.lineCap = 'round' as CanvasLineCap;
+      const strokeInsetRect = (lw: number) => {
+        const inset = lw / 2;
+        drawRoundedRect(
+          wctx as unknown as CanvasRenderingContext2D,
+          inset,
+          inset,
+          workSize - 2 * inset,
+          workSize - 2 * inset,
+          Math.max(0, rxScaled - inset)
+        );
+      };
+      if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
+        // Make final stroke exactly 1px regardless of export scale
+        const lw = 1 * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
+      }
+
+      // Now draw QR on top, clipped to rounded rect
+      wctx.save();
+      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+      wctx.clip();
+      // Preserve crisp QR modules when upscaling into the work canvas
+      wctx.imageSmoothingEnabled = false;
+      wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
+      wctx.restore();
+
+      // Downscale to final canvas with smoothing to get anti-aliased rounded edge
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = exportOuter; outCanvas.height = exportOuter;
+      const octx = outCanvas.getContext('2d'); if (!octx) return;
+      // Keep modules crisp on the final canvas as well
+      octx.imageSmoothingEnabled = false;
+      octx.imageSmoothingQuality = 'low';
+      octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
+
+      outCanvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
       URL.revokeObjectURL(img.src);
       return;
     }
 
-    // SVG export: wrap inner SVG with outer background/border and clipping
-    // Prefer DOM SVG to match preview; fall back to library raw if needed
-    let svgText: string | null = null;
-    const svgEl = containerRef.current?.querySelector('svg');
-    if (svgEl) {
-      svgText = new XMLSerializer().serializeToString(svgEl);
-    } else {
-      try {
-        const raw = await qrRef.current?.getRawData('svg');
-        if (raw) svgText = await raw.text();
-      } catch {}
-      if (!svgText) { try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { return; } }
-    }
-    const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-    const inner = cleaned
-      .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-      .replace(/<\/svg>\s*$/i, '')
-      .replace(/\n/g, '');
-    const rx2 = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-    const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}"/></clipPath>`;
-    const bgElem = `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}" fill="${effectiveBg}"/>`;
-    const borderElem = `<rect x="0.5" y="0.5" width="${outer-1}" height="${outer-1}" rx="${rx2}" ry="${rx2}" fill="none" stroke="${border}" stroke-width="${borderW}"/>`;
-    const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
+    // SVG path: wrap inner SVG with outer frame SVG
+    try {
+      const root = containerRef.current;
+      const svgNode = root?.querySelector('svg');
+      // Source inner SVG directly from DOM to ensure parity with preview
+      if (!svgNode) throw new Error('no-svg');
+      const svgText = new XMLSerializer().serializeToString(svgNode);
+      // Extract only the inner contents of the rendered SVG (exclude outer <svg> wrapper)
+      const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+      const inner = cleaned
+        .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+        .replace(/<\/svg>\s*$/i, '')
+        .replace(/\n/g, '');
+      const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
+
+      const frameStroke = border;
+      const strokeW = borderW;
+      const half = strokeW / 2;
+      const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
+      const secondStroke = '';
+      const strokeCol = frameStroke;
+
+      const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
-  <defs>${defsClip}</defs>
-  ${bgElem}
-  ${borderElem}
-  <g clip-path="url(#clipR)">
-    <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
-  </g>
+<defs>
+${defsClip}
+</defs>
+<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
+<rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>
+${secondStroke}
+<g clip-path="url(#clipR)">
+  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
+</g>
 </svg>`;
-    const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-    downloadBlob(outBlob, 'qr.svg');
+      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+      downloadBlob(outBlob, 'qr-framed.svg');
+    } catch {
+      try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
+    }
   }
   const resetAll = () => {
     batchUpdate(() => {
@@ -385,7 +425,7 @@ export default function Designer({ value }: DesignerProps) {
       setLogoUrl("");
       setLogoSize(0.25);
       setHideBgDots(true);
-      // Border
+      // Frame
       setFrame("square");
     });
   };
@@ -776,7 +816,7 @@ export default function Designer({ value }: DesignerProps) {
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div
-            className={'p-0 border-0'}
+            className={`p-0 border-0`}
             style={{ background: effectivePreviewBg, borderRadius: 'inherit' }}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
