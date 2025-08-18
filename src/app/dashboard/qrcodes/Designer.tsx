@@ -87,6 +87,7 @@ export default function Designer({ value }: DesignerProps) {
     update();
     mql?.addEventListener?.('change', update);
     return () => mql?.removeEventListener?.('change', update);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onUploadIcon = (file: File) => {
@@ -202,12 +203,7 @@ export default function Designer({ value }: DesignerProps) {
     });
   }
 
-  // Handlers
-  async function getThemeColor(varName: string, fallback: string) {
-    if (typeof window === 'undefined') return fallback;
-    const v = getComputedStyle(document.documentElement).getPropertyValue(varName);
-    return (v && v.trim()) || fallback;
-  }
+  // (removed unused getThemeColor)
 
   async function getQrBlobFromRendered(): Promise<Blob | null> {
     const root = containerRef.current;
@@ -345,7 +341,6 @@ export default function Designer({ value }: DesignerProps) {
     const W = canvas.width, H = canvas.height;
     if (W === 0 || H === 0) return false;
     // sample a 6x6 grid avoiding the outer 5% border to skip stroke
-    const samples = 36;
     let matches = 0;
     let checked = 0;
     for (let yi = 0; yi < 6; yi++) {
@@ -372,21 +367,6 @@ export default function Designer({ value }: DesignerProps) {
     ctx.arcTo(x, y + h, x, y, rr);
     ctx.arcTo(x, y, x + w, y, rr);
     ctx.closePath();
-  }
-
-  // Path2D version for even-odd ring construction
-  function addRoundedRect(path: Path2D, x: number, y: number, w: number, h: number, r: number) {
-    const rr = Math.max(0, r);
-    path.moveTo(x + rr, y);
-    // top-right corner
-    path.arcTo(x + w, y, x + w, y + h, rr);
-    // bottom-right
-    path.arcTo(x + w, y + h, x, y + h, rr);
-    // bottom-left
-    path.arcTo(x, y + h, x, y, rr);
-    // top-left
-    path.arcTo(x, y, x + w, y, rr);
-    path.closePath();
   }
 
   async function handleDownload(ext: 'png' | 'svg') {
@@ -460,7 +440,7 @@ export default function Designer({ value }: DesignerProps) {
       // Downscale to final canvas with smoothing to get anti-aliased rounded edge
       const outCanvas = document.createElement('canvas');
       outCanvas.width = exportOuter; outCanvas.height = exportOuter;
-      const octx = outCanvas.getContext('2d', { willReadFrequently: true } as any) as CanvasRenderingContext2D | null; if (!octx) return;
+      const octx = outCanvas.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings) as CanvasRenderingContext2D | null; if (!octx) return;
       const out2d: CanvasRenderingContext2D = octx;
       // Keep modules crisp on the final canvas as well
       out2d.imageSmoothingEnabled = false;
@@ -572,37 +552,7 @@ ${secondStroke}
       try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
     }
   }
-  const resetAll = () => {
-    batchUpdate(() => {
-      setSize(220);
-      setMargin(2);
-      setEcLevel("M");
-      setPerfMode(false);
-      // Dots
-      setDotsType("rounded");
-      setDotsColor("#0b1220");
-      setDotsGradientOn(false);
-      setDotsGradA("#0b1220");
-      setDotsGradB("#2563eb");
-      // Corners
-      setCornerSquareType("square");
-      setCornerSquareColor("#0b1220");
-      setCornerDotType("dot");
-      setCornerDotColor("#0b1220");
-      // Background
-      setBgColor("#ffffff00");
-      setBgGradientOn(false);
-      setBgGradA("#ffffff");
-      setBgGradB("#e2e8f0");
-      setBgGradType("linear");
-      // Logo
-      setLogoUrl("");
-      setLogoSize(0.25);
-      setHideBgDots(true);
-      // Frame
-      setFrame("square");
-    });
-  };
+  // (removed unused resetAll)
 
   const saveChanges = () => {
     if (typeof window === 'undefined') return;
