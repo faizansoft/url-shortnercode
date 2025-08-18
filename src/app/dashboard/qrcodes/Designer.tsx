@@ -314,13 +314,16 @@ export default function Designer({ value }: DesignerProps) {
       canvas.width = outer; canvas.height = outer;
       const ctx = canvas.getContext('2d'); if (!ctx) return;
 
-      // Rounded background fill
-      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0))));
+      // Rounded background fill and clip so QR respects corner shape
+      const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
       drawRoundedRect(ctx, 0, 0, outer, outer, rx);
       ctx.fillStyle = surface; ctx.fill();
-
-      // Draw trimmed QR to fill the inner area completely
+      ctx.save();
+      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
+      ctx.clip();
+      // Draw trimmed QR to fill the inner area completely, clipped to rounded rect
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outer, outer);
+      ctx.restore();
 
       // Draw frame stroke on top so it visually meets the QR
       drawRoundedRect(ctx, 0.5, 0.5, outer - 1, outer - 1, Math.max(0, rx - 0.5));
@@ -366,27 +369,33 @@ export default function Designer({ value }: DesignerProps) {
         .replace(/^[\s\S]*?<svg[^>]*>/i, '')
         .replace(/<\/svg>\s*$/i, '')
         .replace(/\n/g, '');
-      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0))));
+      const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
       const border = await getThemeColor('--border', '#e5e7eb');
       const accent = await getThemeColor('--accent', '#2563eb');
       const surface = await getThemeColor('--surface', '#ffffff');
       const frameStroke = (frame === 'accent') ? accent : border;
       const strokeW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
 
-      const defs = frame === 'gradient'
-        ? `<defs><linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>`
+      const defsGrad = frame === 'gradient'
+        ? `<linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>`
         : '';
+      const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
       const secondStroke = frame === 'double' ? `<rect x="6" y="6" width="${outer-12}" height="${outer-12}" rx="${Math.max(0, rx-4)}" ry="${Math.max(0, rx-4)}" fill="none" stroke="${accent}" stroke-width="2"/>` : '';
       const dashed = frame === 'dashed' ? '6,6' : 'none';
       const strokeCol = frame === 'gradient' ? 'url(#grad1)' : frameStroke;
 
       const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
-${defs}
+<defs>
+${defsGrad}
+${defsClip}
+</defs>
 <rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${surface}"/>
+<g clip-path="url(#clipR)">
+  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
+</g>
 <rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-dasharray="${dashed}"/>
 ${secondStroke}
-<g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
 </svg>`;
       const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
       downloadBlob(outBlob, 'qr-framed.svg');
