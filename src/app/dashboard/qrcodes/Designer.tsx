@@ -91,7 +91,6 @@ export default function Designer({ value }: DesignerProps) {
     update();
     mql?.addEventListener?.('change', update);
     return () => mql?.removeEventListener?.('change', update);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onUploadIcon = (file: File) => {
@@ -107,7 +106,7 @@ export default function Designer({ value }: DesignerProps) {
 
   // Effective preview background and style (solid only)
   const effectivePreviewBg = useMemo(() => bgColor, [bgColor]);
-  const previewInnerStyle = useMemo<React.CSSProperties>(() => ({ background: effectivePreviewBg, borderRadius: 12 }), [effectivePreviewBg]);
+  // (previewInnerStyle removed – unused)
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
@@ -180,22 +179,8 @@ export default function Designer({ value }: DesignerProps) {
     qrRef.current?.update(options);
   }, [options]);
 
-  // (removed) transparent preview adjustments
-
-  // (removed) export notice auto-dismiss
-
-  // Helper to batch many state changes and avoid intermediate preview updates
-  function batchUpdate(fn: () => void) {
-    suppressUpdateRef.current = true;
-    fn();
-    // Release on next frame; effect will apply the final consolidated options
-    requestAnimationFrame(() => {
-      suppressUpdateRef.current = false;
-    });
-  }
-
   // Build a fresh SVG of the QR only (no frame) without using the live preview DOM
-  async function buildCombinedSVG(_outer: number): Promise<string> {
+  async function buildCombinedSVG(): Promise<string> {
     // Render QR as SVG with current options and return the serialized SVG as-is
     const tempOpts: QRStyleOptions = { ...options, width: size, height: size, type: 'svg' };
     const tmp = new QRCodeStyling(tempOpts);
@@ -217,13 +202,42 @@ export default function Designer({ value }: DesignerProps) {
     return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"></svg>`;
   }
 
-  // (removed unused getThemeColor)
+  async function handleDownload(ext: 'png' | 'svg') {
+    const pad = 0;
+    const outer = size + pad * 2;
+    // Ensure latest options are applied before we read states (not the DOM)
+    try { qrRef.current?.update(options); } catch {}
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const baseName = safeFileNameFromUrl(value);
 
-  function downloadBlob(blob: Blob, name: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    if (ext === 'svg') {
+      const wrapped = await buildCombinedSVG();
+      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+      downloadBlob(outBlob, `${baseName}.svg`);
+      return;
+    }
+
+    // PNG export: rasterize our combined SVG (not the preview) to a canvas
+    const wrapped = await buildCombinedSVG();
+    const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    // High-resolution export: upscale significantly, but cap sensibly
+    const exportOuter = Math.min(4096, Math.max(1024, outer * 6));
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+    await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+    const canvas = document.createElement('canvas');
+    canvas.width = exportOuter; canvas.height = exportOuter;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { URL.revokeObjectURL(url); return; }
+    ctx.imageSmoothingEnabled = false; // keep QR edges crisp
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
+    const blob = await canvasToPngBlob(canvas);
+    if (blob) downloadBlob(blob, `${baseName}.png`);
     URL.revokeObjectURL(url);
+    return;
   }
 
   // Build a filesystem-safe filename from the full shortlink
@@ -261,58 +275,17 @@ export default function Designer({ value }: DesignerProps) {
     }
   }
 
-  // Helper: fetch an external URL and return a data URL for safe inlining
-  // (removed) urlToDataURL helper and data URL caching
+  // (removed unused drawRoundedRect)
 
-  // Helper: Blob -> data URL (removed) and blank-detection helpers (removed)
-
-  function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-    const rr = Math.max(0, r);
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
-    ctx.closePath();
-  }
-
-  async function handleDownload(ext: 'png' | 'svg') {
-    const pad = 0;
-    const outer = size + pad * 2;
-    // Ensure latest options are applied before we read states (not the DOM)
-    try { qrRef.current?.update(options); } catch {}
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const baseName = safeFileNameFromUrl(value);
-
-    if (ext === 'svg') {
-      const wrapped = await buildCombinedSVG(outer);
-      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-      downloadBlob(outBlob, `${baseName}.svg`);
-      return;
-    }
-
-    // PNG export: rasterize our combined SVG (not the preview) to a canvas
-    const wrapped = await buildCombinedSVG(outer);
-    const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-    // High-resolution export: upscale significantly, but cap sensibly
-    const exportOuter = Math.min(4096, Math.max(1024, outer * 6));
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.src = url;
-    await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-    const canvas = document.createElement('canvas');
-    canvas.width = exportOuter; canvas.height = exportOuter;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) { URL.revokeObjectURL(url); return; }
-    ctx.imageSmoothingEnabled = false; // keep QR edges crisp
-    ctx.imageSmoothingQuality = 'low';
-    ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
-    const blob = await canvasToPngBlob(canvas);
-    if (blob) downloadBlob(blob, `${baseName}.png`);
+  function downloadBlob(blob: Blob, name: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     URL.revokeObjectURL(url);
-    return;
   }
   // (removed unused resetAll)
 

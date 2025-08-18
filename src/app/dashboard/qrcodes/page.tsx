@@ -222,11 +222,40 @@ export default function QRCodesPage() {
   );
 }
 
+// Local helper types mirroring Designer
+type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
+type DotsOpts = NonNullable<QRStyleOptions["dotsOptions"]>;
+type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
+
+interface SavedOptions {
+  perfMode?: boolean;
+  dotsType?: DotsType;
+  dotsColor?: string;
+  dotsGradientOn?: boolean;
+  dotsGradA?: string;
+  dotsGradB?: string;
+  dotsGradRotation?: number;
+  cornerSquareType?: "dot" | "square" | "extra-rounded";
+  cornerSquareColor?: string;
+  cornerDotType?: "dot" | "square";
+  cornerDotColor?: string;
+  bgColor?: string;
+  bgGradientOn?: boolean;
+  bgGradA?: string;
+  bgGradB?: string;
+  bgGradType?: "linear" | "radial";
+  logoUrl?: string;
+  logoSize?: number;
+  hideBgDots?: boolean;
+  ecLevel?: 'L' | 'M' | 'Q' | 'H';
+  margin?: number;
+}
+
 // Build a styled SVG data URL using qr-code-styling and saved options
-async function generateStyledSvgDataUrl(data: string, saved: any): Promise<string | null> {
+async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Promise<string | null> {
   try {
     const perfMode = !!saved?.perfMode;
-    const dotsType = saved?.dotsType as QRStyleOptions['dotsOptions'] extends infer _T ? any : any;
+    const dotsType: DotsType | undefined = saved?.dotsType;
     const dotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
     const dotsGradientOn = !!saved?.dotsGradientOn;
     const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
@@ -254,9 +283,9 @@ async function generateStyledSvgDataUrl(data: string, saved: any): Promise<strin
     })();
     const margin = Number.isFinite(saved?.margin) ? Math.max(0, Number(saved.margin)) : 1;
 
-    const dots = dotsGradientOn
+    const dots: DotsOpts | { color: string; type: DotsType } = dotsGradientOn
       ? {
-          type: dotsType ?? 'rounded',
+          type: (dotsType ?? 'rounded'),
           color: dotsColor,
           gradient: {
             type: 'linear',
@@ -267,9 +296,9 @@ async function generateStyledSvgDataUrl(data: string, saved: any): Promise<strin
             ],
           },
         }
-      : { type: dotsType ?? 'rounded', color: dotsColor };
+      : { type: (dotsType ?? 'rounded'), color: dotsColor };
 
-    const bg = bgGradientOn
+    const bg: BgOpts | { color: string } = bgGradientOn
       ? {
           color: bgColor,
           gradient: {
@@ -290,10 +319,10 @@ async function generateStyledSvgDataUrl(data: string, saved: any): Promise<strin
       type: 'svg',
       margin,
       qrOptions: { errorCorrectionLevel: ecLevel },
-      dotsOptions: perfMode ? { color: dotsColor, type: 'square' } : (dots as any),
+      dotsOptions: perfMode ? { color: dotsColor, type: 'square' } : (dots as DotsOpts),
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
-      backgroundOptions: perfMode ? { color: bgColor } : (bg as any),
+      backgroundOptions: perfMode ? { color: bgColor } : (bg as BgOpts),
       image: logoUrl || undefined,
       imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots },
     };
