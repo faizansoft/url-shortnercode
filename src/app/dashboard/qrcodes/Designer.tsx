@@ -901,7 +901,7 @@ ${secondStroke}
         <div style={frameStyle}>
           <div
             className={`${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
-            style={frame === 'none' ? { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 } : { background: 'var(--surface)', borderRadius: 'inherit' }}
+            style={frame === 'none' ? { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8 } : { background: 'transparent', borderRadius: 'inherit' }}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
