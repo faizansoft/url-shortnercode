@@ -39,6 +39,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
   const baseCooldown = Number(process.env.NEXT_PUBLIC_EMAIL_COOLDOWN || 60) || 60;
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const disableCooldown = (process.env.NEXT_PUBLIC_DISABLE_EMAIL_COOLDOWN || '').toLowerCase() === 'true';
+  const disableSignup = (process.env.NEXT_PUBLIC_DISABLE_SIGNUP || '').toLowerCase() === 'true';
 
   // Auto-redirect if already authenticated (client safety net)
   useEffect(() => {
@@ -52,6 +53,14 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
     })();
     return () => { active = false; };
   }, []);
+
+  // Inform user immediately if signup is disabled when switching mode
+  useEffect(() => {
+    if (disableSignup && mode === 'signup') {
+      setVariant('info');
+      setMessage('Site is in building mode. Signup is temporarily disabled.');
+    }
+  }, [disableSignup, mode]);
 
   // Debounce email input to reduce rapid updates
   useEffect(() => {
@@ -130,6 +139,11 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
     setLoading(true);
     try {
       if (mode === "signup") {
+        if (disableSignup) {
+          setVariant('error');
+          setMessage('Site is in building mode. You can’t sign up right now.');
+          return;
+        }
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
         if (password !== confirm) throw new Error("Passwords do not match.");
         if (!disableCooldown && cooldownSec > 0) return; // guard during cooldown
