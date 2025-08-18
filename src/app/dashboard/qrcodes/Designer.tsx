@@ -9,6 +9,16 @@ type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
 type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
 type BgGradType = "linear" | "radial";
 
+// Recommend a safe logo size fraction [0.1..0.45] based on EC level
+function recommendLogoSize(ec: "L" | "M" | "Q" | "H"): number {
+  switch (ec) {
+    case "H": return 0.25; // highest tolerance
+    case "Q": return 0.22;
+    case "M": return 0.18;
+    default: return 0.16; // L
+  }
+}
+
 // Helper: robust transparent color detection (supports named, rgba/hsla with alpha 0, and hex with AA=00)
 function isBgTransparent(input: string | null | undefined): boolean {
   if (!input) return false;
@@ -94,6 +104,8 @@ export default function Designer({ value }: DesignerProps) {
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
+  const userAdjustedLogoSizeRef = useRef<boolean>(false);
+  const prevLogoUrlRef = useRef<string>("");
 
   // Frame (visual wrapper)
   const [frame, setFrame] = useState<"rounded" | "thin" | "square">("square");
@@ -133,6 +145,17 @@ export default function Designer({ value }: DesignerProps) {
     };
     reader.readAsDataURL(file);
   };
+
+  // Auto-pick a safe logo size when a logo is first set, unless user already adjusted size
+  useEffect(() => {
+    const prev = prevLogoUrlRef.current;
+    const hasNow = !!logoUrl;
+    if (!prev && hasNow && !userAdjustedLogoSizeRef.current) {
+      const rec = recommendLogoSize(ecLevel);
+      setLogoSize(rec);
+    }
+    prevLogoUrlRef.current = logoUrl;
+  }, [logoUrl, ecLevel]);
   const frameStyle = useMemo(() => {
     const transparentBg = isBgTransparent(bgColor);
     const effectiveBg = transparentBg ? 'transparent' : bgColor;
@@ -943,17 +966,30 @@ export default function Designer({ value }: DesignerProps) {
             <input className="w-full h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} placeholder="https://…/logo.png" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
             <div className="grid grid-cols-2 gap-2 items-center">
               <label className="text-xs">Size</label>
-              <input
-                type="range"
-                min={0.1}
-                max={0.45}
-                step={0.01}
-                value={logoSize}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  setLogoSize(Math.min(0.45, Math.max(0.1, isNaN(v) ? 0.25 : v)));
-                }}
-              />
+              <div className="flex flex-wrap gap-2 items-center">
+                {([0.15, 0.18, 0.2, 0.22, 0.25, 0.3, 0.35, 0.4] as const).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={!logoUrl}
+                    onClick={() => { setLogoSize(p); userAdjustedLogoSizeRef.current = true; }}
+                    className={`h-7 px-2 rounded border text-xs ${logoSize===p? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`}
+                    style={{ background: 'var(--surface)', borderColor: 'var(--border)', opacity: logoUrl ? 1 : 0.6 }}
+                    aria-pressed={logoSize===p}
+                    aria-label={`Logo size ${Math.round(p*100)}%`}
+                    title={!logoUrl ? 'Upload or pick a logo first' : ''}
+                  >{Math.round(p*100)}%</button>
+                ))}
+                {logoUrl && (
+                  <button
+                    type="button"
+                    className="h-7 px-2 rounded border text-xs"
+                    style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                    onClick={() => { setLogoSize(recommendLogoSize(ecLevel)); userAdjustedLogoSizeRef.current = true; }}
+                    title="Auto size based on error correction"
+                  >Auto</button>
+                )}
+              </div>
               <label className="text-xs">Hide bg dots</label>
               <input type="checkbox" checked={hideBgDots} onChange={(e) => setHideBgDots(e.target.checked)} />
             </div>
