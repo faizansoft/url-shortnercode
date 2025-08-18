@@ -63,7 +63,7 @@ export default function Designer({ value }: DesignerProps) {
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
 
   // Border (visual wrapper)
-  const [frame, setFrame] = useState<"rounded" | "thin" | "square" | "circle">("square");
+  const [frame, setFrame] = useState<"rounded" | "thin" | "square">("square");
   const [perfMode, setPerfMode] = useState<boolean>(false);
   
   // Corner custom presets (runtime only)
@@ -108,8 +108,6 @@ export default function Designer({ value }: DesignerProps) {
         return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "thin":
         return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "circle":
-        return { borderRadius: 9999, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       // removed other styles
       default:
         return {} as React.CSSProperties;
@@ -299,31 +297,18 @@ export default function Designer({ value }: DesignerProps) {
       img.crossOrigin = 'anonymous';
       img.src = URL.createObjectURL(qrBlob);
       await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-      const isCircle = frame === 'circle';
-      const rx = isCircle ? outer / 2 : frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
+      const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
       const canvas = document.createElement('canvas');
       canvas.width = outer; canvas.height = outer;
       const ctx = canvas.getContext('2d'); if (!ctx) { URL.revokeObjectURL(img.src); return; }
       ctx.imageSmoothingEnabled = false;
       // Draw background + border
-      if (isCircle) {
-        ctx.beginPath();
-        ctx.arc(outer/2, outer/2, outer/2 - 0, 0, Math.PI * 2);
-        ctx.closePath();
-      } else {
-        drawRoundedRect(ctx, 0, 0, outer, outer, rx);
-      }
+      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
       ctx.fillStyle = effectiveBg as string; ctx.fill();
       ctx.lineWidth = borderW; ctx.strokeStyle = border; ctx.stroke();
       // Clip and draw inner QR centered
       ctx.save();
-      if (isCircle) {
-        ctx.beginPath();
-        ctx.arc(outer/2, outer/2, outer/2 - 0.5, 0, Math.PI * 2);
-        ctx.closePath();
-      } else {
-        drawRoundedRect(ctx, 0, 0, outer, outer, rx);
-      }
+      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
       ctx.clip();
       const dx = Math.round((outer - img.width) / 2);
       const dy = Math.round((outer - img.height) / 2);
@@ -343,17 +328,10 @@ export default function Designer({ value }: DesignerProps) {
       .replace(/^[\s\S]*?<svg[^>]*>/i, '')
       .replace(/<\/svg>\s*$/i, '')
       .replace(/\n/g, '');
-    const isCircle = frame === 'circle';
-    const rx2 = isCircle ? outer / 2 : frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-    const defsClip = isCircle
-      ? `<clipPath id="clipR"><circle cx="${outer/2}" cy="${outer/2}" r="${outer/2}"/></clipPath>`
-      : `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}"/></clipPath>`;
-    const bgElem = isCircle
-      ? `<circle cx="${outer/2}" cy="${outer/2}" r="${outer/2}" fill="${effectiveBg}"/>`
-      : `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}" fill="${effectiveBg}"/>`;
-    const borderElem = isCircle
-      ? `<circle cx="${outer/2}" cy="${outer/2}" r="${outer/2 - 0.5}" fill="none" stroke="${border}" stroke-width="${borderW}"/>`
-      : `<rect x="0.5" y="0.5" width="${outer-1}" height="${outer-1}" rx="${rx2}" ry="${rx2}" fill="none" stroke="${border}" stroke-width="${borderW}"/>`;
+    const rx2 = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
+    const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}"/></clipPath>`;
+    const bgElem = `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}" fill="${effectiveBg}"/>`;
+    const borderElem = `<rect x="0.5" y="0.5" width="${outer-1}" height="${outer-1}" rx="${rx2}" ry="${rx2}" fill="none" stroke="${border}" stroke-width="${borderW}"/>`;
     const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
   <defs>${defsClip}</defs>
@@ -750,22 +728,10 @@ export default function Designer({ value }: DesignerProps) {
         <div className="space-y-2">
           <div className="text-xs font-medium text-[var(--muted)]">Borders</div>
           <div className="flex gap-2.5 flex-wrap items-center">
-              {(["square","rounded","thin","circle"] as const).map((f) => (
+              {(["square","rounded","thin"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => {
-                  if (f === 'circle') {
-                    // Switch QR to circular modules and finders (renderer-level), not just mask
-                    batchUpdate(() => {
-                      setFrame('circle');
-                      setDotsType('dots');
-                      setCornerSquareType('dot');
-                      setCornerDotType('dot');
-                    });
-                  } else {
-                    setFrame(f);
-                  }
-                }}
+                onClick={() => setFrame(f)}
                 className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''} tip`}
                 style={{ background: 'transparent', borderColor: 'var(--border)' }}
                 data-tip={f}
@@ -781,8 +747,6 @@ export default function Designer({ value }: DesignerProps) {
                         return { ...common, border: '1px solid var(--border)', borderRadius: 8 } as React.CSSProperties;
                       case 'thin':
                         return { ...common, border: '1px solid var(--border)', borderRadius: 4 } as React.CSSProperties;
-                      case 'circle':
-                        return { ...common, border: '1px solid var(--border)', borderRadius: 9999 } as React.CSSProperties;
                       // removed other styles
                       default:
                         return common;
