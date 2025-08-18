@@ -431,6 +431,9 @@ export default function Designer({ value }: DesignerProps) {
       // Now draw QR on top, clipped to rounded rect
       wctx.save();
       drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+      // Fill background to ensure opaque white when bgColor is transparent
+      wctx.fillStyle = effectiveBg;
+      wctx.fill();
       wctx.clip();
       // Preserve crisp QR modules when upscaling into the work canvas
       wctx.imageSmoothingEnabled = false;
