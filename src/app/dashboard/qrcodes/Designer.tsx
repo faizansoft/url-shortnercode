@@ -295,7 +295,7 @@ export default function Designer({ value }: DesignerProps) {
                   setBgGradientOn(false);
                   setCornerSquareType("square");
                   setCornerSquareColor("#0b1220");
-                  setCornerDotType("square");
+                  setCornerDotType("dot");
                   setCornerDotColor("#0b1220");
                   setEcLevel("M");
                 },
