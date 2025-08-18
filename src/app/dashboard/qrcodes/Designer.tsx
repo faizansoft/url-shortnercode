@@ -327,11 +327,14 @@ export default function Designer({ value }: DesignerProps) {
     const wrapped = `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">\n` +
       `<defs>\n${defsClip}\n</defs>\n` +
+      // Background first
       `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>\n` +
-      `<rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${border}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>\n` +
+      // QR content in the middle, clipped to rounded rect
       `<g clip-path="url(#clipR)">\n` +
       `  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${innerMarkup}</g>\n` +
       `</g>\n` +
+      // Draw border last so it sits on top of QR content
+      `<rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${border}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>\n` +
       `</svg>`;
     return wrapped;
   }
