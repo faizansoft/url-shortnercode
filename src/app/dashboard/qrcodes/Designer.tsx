@@ -70,11 +70,8 @@ export default function Designer({ value }: DesignerProps) {
     | "thick"
     | "square"
     | "accent"
-    | "shadow"
     | "outline"
-    | "dashed"
     | "double"
-    | "glow"
     | "gradient"
   >("none");
   const [perfMode, setPerfMode] = useState<boolean>(false);
@@ -125,26 +122,26 @@ export default function Designer({ value }: DesignerProps) {
         return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "accent":
         return { borderRadius: 10, padding: 0, border: "3px solid #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "shadow":
-        // Add a subtle border and allow overflow so the shadow is visible
-        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: effectiveBg, overflow: "visible" } as React.CSSProperties;
       case "outline":
         // Use a true border instead of CSS outline to avoid outline clipping/visibility issues
         return { borderRadius: 8, padding: 0, border: "2px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "dashed":
-        return { borderRadius: 8, padding: 0, border: "2px dashed #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "double":
-        return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", outline: "2px solid #2563eb", outlineOffset: 2, background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "glow":
-        // Allow overflow so the outer glow is visible
-        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 0 0 4px rgba(37,99,235,0.35), 0 12px 28px rgba(0,0,0,0.18)", background: effectiveBg, overflow: "visible" } as React.CSSProperties;
+        // Simulate inner ring using inset box-shadow to match SVG export's inner stroke
+        return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", boxShadow: "inset 0 0 0 2px #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "gradient":
-        // Keep gradient frame background; inner QR background still controlled by QR options
-        return { borderRadius: 12, padding: 2, background: "conic-gradient(from 0deg, #2563eb, #7c3aed, #22c55e, #2563eb)", overflow: "hidden" } as React.CSSProperties;
+        // Use a visible ring thickness so the gradient shows clearly
+        return { borderRadius: 12, padding: 4, background: "conic-gradient(from 0deg, #2563eb, #7c3aed, #22c55e, #2563eb)", overflow: "hidden" } as React.CSSProperties;
       default:
         return {} as React.CSSProperties;
     }
   }, [frame, bgColor]);
+
+  // Effective preview background used for the inner wrapper when a frame is applied
+  const effectivePreviewBg = useMemo(() => {
+    const v = (bgColor || '').toLowerCase();
+    const isTransparent = v === '#ffffff00' || v === 'transparent' || v.endsWith('00');
+    return isTransparent ? '#ffffff' : bgColor;
+  }, [bgColor]);
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
@@ -308,9 +305,7 @@ export default function Designer({ value }: DesignerProps) {
       frame === 'accent' ? 3 :
       frame === 'outline' ? 2 :
       frame === 'double' ? 2 :
-      frame === 'dashed' ? 2 :
       frame === 'thick' ? 2 :
-      frame === 'glow' ? 1 :
       frame === 'rounded' || frame === 'square' || frame === 'thin' ? 1 :
       frame === 'gradient' ? 2 :
       1
@@ -383,11 +378,8 @@ export default function Designer({ value }: DesignerProps) {
         frame === 'thick' ? 12 :
         frame === 'square' ? 0 :
         frame === 'accent' ? 10 :
-        frame === 'shadow' ? 12 :
         frame === 'outline' ? 8 :
-        frame === 'dashed' ? 8 :
         frame === 'double' ? 10 :
-        frame === 'glow' ? 12 :
         frame === 'gradient' ? 12 : 8
       );
       const rxScaled = rx * scale * workScale;
@@ -439,28 +431,12 @@ export default function Designer({ value }: DesignerProps) {
           wctx.fillStyle = accent;
           wctx.fill(path, 'evenodd');
         }
-      } else if (frame === 'dashed') {
-        const lw = 2 * scale * workScale; wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke(); wctx.setLineDash([]);
       } else if (frame === 'outline') {
         const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
       } else if (frame === 'thick') {
         const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = accent; strokeInsetRect(lw); wctx.stroke();
       } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
         const lw = 1 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
-      } else if (frame === 'glow') {
-        const lw = 1 * scale * workScale; wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke(); wctx.shadowBlur = 0;
-      } else if (frame === 'shadow') {
-        // Draw the shadow by stroking with the effective background color so only the shadow remains visible
-        const lw = 2 * scale * workScale;
-        wctx.save();
-        wctx.shadowColor = 'rgba(0,0,0,0.18)';
-        wctx.shadowBlur = 18 * scale * workScale;
-        wctx.shadowOffsetY = 8 * scale * workScale;
-        wctx.lineWidth = lw;
-        wctx.strokeStyle = effectiveBg; // stroke blends into background, leaving the drop shadow visible
-        strokeInsetRect(lw);
-        wctx.stroke();
-        wctx.restore();
       } else if (frame === 'gradient') {
         const g = wctx.createLinearGradient(0, 0, workSize, workSize);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
@@ -531,11 +507,8 @@ export default function Designer({ value }: DesignerProps) {
         frame === 'thick' ? 12 :
         frame === 'square' ? 0 :
         frame === 'accent' ? 10 :
-        frame === 'shadow' ? 12 :
         frame === 'outline' ? 8 :
-        frame === 'dashed' ? 8 :
         frame === 'double' ? 10 :
-        frame === 'glow' ? 12 :
         frame === 'gradient' ? 12 : 8
       );
       const border = '#e5e7eb';
@@ -549,34 +522,18 @@ export default function Designer({ value }: DesignerProps) {
       const defsGrad = frame === 'gradient'
         ? `<linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>`
         : '';
-      const defsShadow = frame === 'shadow'
-        ? `<filter id="fShadow" x="-20%" y="-20%" width="140%" height="160%">
-             <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="rgba(0,0,0,0.18)"/>
-           </filter>`
-        : '';
-      const defsGlow = frame === 'glow'
-        ? `<filter id="fGlow" x="-40%" y="-40%" width="180%" height="180%">
-             <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur"/>
-             <feFlood flood-color="${accent}" flood-opacity="0.35"/>
-             <feComposite in2="blur" operator="in"/>
-             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-           </filter>`
-        : '';
       const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
       const secondStroke = frame === 'double' ? `<rect x="4" y="4" width="${outer-8}" height="${outer-8}" rx="${Math.max(0, rx-2)}" ry="${Math.max(0, rx-2)}" fill="none" stroke="${accent}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : '';
-      const dashed = frame === 'dashed' ? '6,6' : 'none';
       const strokeCol = frame === 'gradient' ? 'url(#grad1)' : frameStroke;
 
       const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
 <defs>
 ${defsGrad}
-${defsShadow}
-${defsGlow}
 ${defsClip}
 </defs>
 <rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
-<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="${dashed}" ${frame==='shadow' ? 'filter="url(#fShadow)"' : ''} ${frame==='glow' ? 'filter="url(#fGlow)"' : ''}/>
+<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>
 ${secondStroke}
 <g clip-path="url(#clipR)">
   <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
@@ -970,9 +927,9 @@ ${secondStroke}
           </div>
         </div>
         <div className="space-y-2">
-          <div className="text-xs font-medium text-[var(--muted)]">Frames</div>
+          <div className="text-xs font-medium text-[var(--muted)]">Borders</div>
           <div className="flex gap-2.5 flex-wrap items-center">
-              {(["none","square","rounded","thin","thick","accent","shadow","outline","dashed","double","glow","gradient"] as const).map((f) => (
+              {(["none","square","rounded","thin","thick","accent","outline","double","gradient"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFrame(f)}
@@ -997,16 +954,10 @@ ${secondStroke}
                         return { ...common, border: '3px solid color-mix(in oklab, var(--accent) 60%, var(--border))', borderRadius: 8 } as React.CSSProperties;
                       case 'accent':
                         return { ...common, border: '3px solid var(--accent)', borderRadius: 8 } as React.CSSProperties;
-                      case 'shadow':
-                        return { ...common, borderRadius: 8, boxShadow: '0 8px 16px rgba(0,0,0,0.18)' } as React.CSSProperties;
                       case 'outline':
                         return { ...common, borderRadius: 6, outline: '2px solid var(--border)' } as React.CSSProperties;
-                      case 'dashed':
-                        return { ...common, borderRadius: 8, border: '2px dashed var(--border)' } as React.CSSProperties;
                       case 'double':
                         return { ...common, borderRadius: 8, border: '2px solid var(--border)', outline: '2px solid var(--accent)', outlineOffset: 2 } as React.CSSProperties;
-                      case 'glow':
-                        return { ...common, borderRadius: 8, border: '1px solid var(--border)', boxShadow: '0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent)' } as React.CSSProperties;
                       case 'gradient':
                         return { ...common, borderRadius: 8, padding: 2, background: 'conic-gradient(from 0deg, var(--accent), #7c3aed, #22c55e, var(--accent))' } as React.CSSProperties;
                       default:
@@ -1038,7 +989,9 @@ ${secondStroke}
         <div style={frameStyle}>
           <div
             className={`${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
-            style={frame === 'none' ? { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8 } : { background: 'transparent', borderRadius: 'inherit' }}
+            style={frame === 'none'
+              ? { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8 }
+              : { background: effectivePreviewBg, borderRadius: 'inherit' }}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
