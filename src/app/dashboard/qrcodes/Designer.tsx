@@ -226,8 +226,38 @@ export default function Designer({ value }: DesignerProps) {
     return (v && v.trim()) || fallback;
   }
 
-  async function getQrBlobPng(): Promise<Blob | null> {
-    try { return await qrRef.current?.getRawData?.("png") as Blob; } catch { return null; }
+  async function getQrBlobFromRendered(): Promise<Blob | null> {
+    const root = containerRef.current;
+    if (!root) return null;
+    // Prefer canvas if present
+    const canvas = root.querySelector('canvas');
+    if (canvas && 'toBlob' in canvas) {
+      return await new Promise<Blob | null>((resolve) => (canvas as HTMLCanvasElement).toBlob((b) => resolve(b), 'image/png'));
+    }
+    // Else try SVG -> rasterize to PNG blob
+    const svgEl = root.querySelector('svg');
+    if (svgEl) {
+      const svgText = new XMLSerializer().serializeToString(svgEl);
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      try {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+        const canvas2 = document.createElement('canvas');
+        canvas2.width = size; canvas2.height = size;
+        const ctx2 = canvas2.getContext('2d');
+        if (!ctx2) return null;
+        ctx2.drawImage(img, 0, 0, size, size);
+        return await new Promise<Blob | null>((resolve) => canvas2.toBlob((b) => resolve(b), 'image/png'));
+      } catch {
+        return null;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+    return null;
   }
 
   function downloadBlob(blob: Blob, name: string) {
@@ -258,7 +288,7 @@ export default function Designer({ value }: DesignerProps) {
     const accent = await getThemeColor('--accent', '#2563eb');
 
     if (ext === 'png') {
-      const qrBlob = await getQrBlobPng();
+      const qrBlob = await getQrBlobFromRendered();
       if (!qrBlob) { try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { return; } }
       const img = new window.Image();
       img.src = URL.createObjectURL(qrBlob);
@@ -309,9 +339,17 @@ export default function Designer({ value }: DesignerProps) {
 
     // SVG path: wrap inner SVG with outer frame SVG
     try {
-      const raw = await (qrRef.current?.getRawData?.('svg') as Promise<Blob>);
-      const svgText = await raw.text();
-      const inner = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '').replace(/\n/g, '');
+      // Source inner SVG directly from DOM to ensure parity with preview
+      const root = containerRef.current;
+      const svgNode = root?.querySelector('svg');
+      if (!svgNode) throw new Error('no-svg');
+      const svgText = new XMLSerializer().serializeToString(svgNode);
+      // Extract only the inner contents of the rendered SVG (exclude outer <svg> wrapper)
+      const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+      const inner = cleaned
+        .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+        .replace(/<\/svg>\s*$/i, '')
+        .replace(/\n/g, '');
       const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 12 : (frame === 'outline' ? 8 : (frame === 'thin' ? 4 : (frame === 'thick' ? 10 : (frame === 'double' ? 8 : 0))));
       const border = await getThemeColor('--border', '#e5e7eb');
       const accent = await getThemeColor('--accent', '#2563eb');
@@ -729,7 +767,7 @@ ${secondStroke}
               <button
                 key={f}
                 onClick={() => setFrame(f)}
-                className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''}`}
+                className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''} tip`}
                 style={{ background: 'transparent', borderColor: 'var(--border)' }}
                 data-tip={f}
               >
