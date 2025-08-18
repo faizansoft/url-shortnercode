@@ -9,46 +9,7 @@ type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
 type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
 type BgGradType = "linear" | "radial";
 
-// Recommend a safe logo size fraction [0.1..0.45] based on EC level
-function recommendLogoSize(ec: "L" | "M" | "Q" | "H"): number {
-  switch (ec) {
-    case "H": return 0.25; // highest tolerance
-    case "Q": return 0.22;
-    case "M": return 0.18;
-    default: return 0.16; // L
-  }
-}
-
-// Helper: robust transparent color detection (supports named, rgba/hsla with alpha 0, and hex with AA=00)
-function isBgTransparent(input: string | null | undefined): boolean {
-  if (!input) return false;
-  const v = String(input).trim().toLowerCase();
-  if (!v) return false;
-  if (v === 'transparent') return true;
-  // rgba/hsla
-  if (/rgba\s*\(/.test(v)) {
-    const m = v.match(/rgba\s*\(\s*[^,]+\s*,\s*[^,]+\s*,\s*[^,]+\s*,\s*([0-9.]+)\s*\)/);
-    if (m) return parseFloat(m[1]) === 0;
-  }
-  if (/hsla\s*\(/.test(v)) {
-    const m = v.match(/hsla\s*\(\s*[^,]+\s*,\s*[^,]+\s*,\s*[^,]+\s*,\s*([0-9.]+)\s*\)/);
-    if (m) return parseFloat(m[1]) === 0;
-  }
-  // Hex with alpha (#RGBA or #RRGGBBAA)
-  if (/^#([0-9a-f]{4}|[0-9a-f]{8})$/.test(v)) {
-    if (v.length === 5) { // #RGBA
-      const a = v[4];
-      return a === '0';
-    }
-    if (v.length === 9) { // #RRGGBBAA
-      const aa = v.slice(7, 9);
-      return aa === '00';
-    }
-  }
-  // Common fallback heuristic: ends with 00
-  if (v.endsWith('00')) return true;
-  return false;
-}
+// (removed) logo auto-sizing and transparent background helpers
 
 export type DesignerProps = {
   value: string;
@@ -91,8 +52,8 @@ export default function Designer({ value }: DesignerProps) {
   const [cornerDotType, setCornerDotType] = useState<"dot" | "square">("dot");
   const [cornerDotColor, setCornerDotColor] = useState("#0b1220");
 
-  // Background (default to transparent)
-  const [bgColor, setBgColor] = useState("transparent");
+  // Background (default to solid white)
+  const [bgColor, setBgColor] = useState("#ffffff");
   const [bgGradientOn, setBgGradientOn] = useState(false);
   const [bgGradA, setBgGradA] = useState("#ffffff");
   const [bgGradB, setBgGradB] = useState("#e2e8f0");
@@ -103,8 +64,6 @@ export default function Designer({ value }: DesignerProps) {
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
-  const userAdjustedLogoSizeRef = useRef<boolean>(false);
-  const prevLogoUrlRef = useRef<string>("");
 
   // (removed) frame/border feature
   const [perfMode, setPerfMode] = useState<boolean>(false);
@@ -143,50 +102,17 @@ export default function Designer({ value }: DesignerProps) {
     reader.readAsDataURL(file);
   };
 
-  // Auto-pick a safe logo size when a logo is first set, unless user already adjusted size
-  useEffect(() => {
-    const prev = prevLogoUrlRef.current;
-    const hasNow = !!logoUrl;
-    if (!prev && hasNow && !userAdjustedLogoSizeRef.current) {
-      const rec = recommendLogoSize(ecLevel);
-      setLogoSize(rec);
-    }
-    prevLogoUrlRef.current = logoUrl;
-  }, [logoUrl, ecLevel]);
-  // (removed) frameStyle memo
+  // (removed) auto logo size logic
 
-  // Effective preview background
+  // Effective preview background and style (solid only)
   const effectivePreviewBg = useMemo(() => bgColor, [bgColor]);
-
-  // Whether the selected background is transparent
-  const isTransparentBg = useMemo(() => {
-    return isBgTransparent(bgColor);
-  }, [bgColor]);
-
-  // Preview inner style: when transparent, show a checkerboard so users can see transparency
-  const previewInnerStyle = useMemo<React.CSSProperties>(() => {
-    if (!isTransparentBg) return { background: effectivePreviewBg, borderRadius: 'inherit' };
-    const size = 10;
-    return {
-      borderRadius: 'inherit',
-      backgroundColor: 'transparent',
-      backgroundImage: `
-        linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
-        linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
-        linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)
-      `,
-      backgroundSize: `${size}px ${size}px`,
-      backgroundPosition: `0 0, 0 ${size/2}px, ${size/2}px -${size/2}px, -${size/2}px 0px`,
-    } as React.CSSProperties;
-  }, [isTransparentBg, effectivePreviewBg]);
+  const previewInnerStyle = useMemo<React.CSSProperties>(() => ({ background: effectivePreviewBg, borderRadius: 12 }), [effectivePreviewBg]);
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
     // Gradients fully disabled per requirements
     const useDotsGradient = false;
     const useBgGradient = false;
-    const isTransparentBg = isBgTransparent(bgColor);
     const dots: DotsOpts = useDotsGradient
       ? {
           gradient: {
@@ -200,9 +126,7 @@ export default function Designer({ value }: DesignerProps) {
           type: dotsType,
         }
       : { color: dotsColor, type: dotsType };
-    const bg: BgOpts = isTransparentBg
-      ? { color: 'transparent' }
-      : useBgGradient
+    const bg: BgOpts = useBgGradient
       ? {
           gradient: {
             type: bgGradType,
@@ -219,13 +143,13 @@ export default function Designer({ value }: DesignerProps) {
       width: size,
       height: size,
       data: value,
-      margin: isTransparentBg ? 0 : margin,
+      margin: margin,
       type: 'svg',
       qrOptions: { errorCorrectionLevel: ecLevel },
       dotsOptions: perfMode ? { color: dotsColor, type: "square" } : dots,
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
-      backgroundOptions: isTransparentBg ? { color: 'transparent' } : (perfMode ? { color: bgColor } : bg),
+      backgroundOptions: perfMode ? { color: bgColor } : bg,
       image: logoUrl || undefined,
       imageOptions: {
         imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
@@ -255,35 +179,7 @@ export default function Designer({ value }: DesignerProps) {
     qrRef.current?.update(options);
   }, [options]);
 
-  // Ensure preview SVG has no white background when transparent is selected
-  useEffect(() => {
-    if (!isTransparentBg) return;
-    const root = containerRef.current;
-    if (!root) return;
-    const apply = () => {
-      const svg = root.querySelector('svg');
-      if (!svg) return;
-      // Force SVG element to be transparent
-      (svg as SVGSVGElement).style.background = 'transparent';
-      // Try to find a background rect covering the full canvas and remove its fill
-      const rects = Array.from(svg.querySelectorAll('rect')) as SVGRectElement[];
-      for (const r of rects) {
-        const fill = (r.getAttribute('fill') || '').toLowerCase();
-        const looksWhite = fill === '#fff' || fill === '#ffffff' || fill === 'white' || /rgb\s*\(\s*255\s*,\s*255\s*,\s*255\s*\)/.test(fill);
-        if (looksWhite) r.setAttribute('fill', 'none');
-        // Also handle full-canvas rects regardless of fill value
-        const x = r.getAttribute('x') || '0';
-        const y = r.getAttribute('y') || '0';
-        const w = r.getAttribute('width');
-        const h = r.getAttribute('height');
-        if (x === '0' && y === '0' && w && h) r.setAttribute('fill', 'none');
-      }
-    };
-    apply();
-    const mo = new MutationObserver(() => apply());
-    mo.observe(root, { childList: true, subtree: true });
-    return () => mo.disconnect();
-  }, [isTransparentBg]);
+  // (removed) transparent preview adjustments
 
   // (removed) export notice auto-dismiss
 
@@ -414,8 +310,8 @@ export default function Designer({ value }: DesignerProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-      <div className="rounded-xl glass border border-[var(--border)] p-4 space-y-4 sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-y-auto">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
+      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -487,7 +383,7 @@ export default function Designer({ value }: DesignerProps) {
         </div>
 
         {/* Select styles */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Patterns</div>
             <div className="flex flex-wrap gap-2.5 items-center">
@@ -564,26 +460,6 @@ export default function Designer({ value }: DesignerProps) {
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Background</div>
             <div className="flex gap-2 flex-wrap items-center">
-              {/* Transparent option with checkerboard preview */}
-              <button
-                key="transparent"
-                className={`h-6 w-6 rounded border ${isTransparentBg ? 'ring-2 ring-[var(--accent)]' : ''}`}
-                style={{
-                  backgroundColor: 'transparent',
-                  borderColor: 'var(--border)',
-                  backgroundImage: `
-                    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
-                    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
-                    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
-                    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)
-                  `,
-                  backgroundSize: '6px 6px',
-                  backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px',
-                }}
-                onClick={() => setBgColor('transparent')}
-                aria-pressed={isTransparentBg}
-                aria-label="Background transparent"
-              />
               {['#ffffff','#f1f5f9','#e2e8f0','#cbd5e1','#94a3b8'].map((c) => (
                 <button
                   key={c}
@@ -758,20 +634,10 @@ export default function Designer({ value }: DesignerProps) {
                   value={logoSize}
                   onChange={(e) => {
                     const v = parseFloat(e.target.value);
-                    userAdjustedLogoSizeRef.current = true;
                     setLogoSize(Math.min(0.45, Math.max(0.1, isNaN(v) ? logoSize : v)));
                   }}
                 />
                 <span className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>{Math.round(logoSize*100)}%</span>
-                {logoUrl && (
-                  <button
-                    type="button"
-                    className="h-7 px-2 rounded border text-xs"
-                    style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-                    onClick={() => { setLogoSize(recommendLogoSize(ecLevel)); userAdjustedLogoSizeRef.current = true; }}
-                    title="Auto size based on error correction"
-                  >Auto</button>
-                )}
               </div>
               <label className="text-xs">Hide bg dots</label>
               <input type="checkbox" checked={hideBgDots} onChange={(e) => setHideBgDots(e.target.checked)} />
@@ -795,9 +661,9 @@ export default function Designer({ value }: DesignerProps) {
         </div>
         {/* (removed) Borders section */}
       </div>
-      <div className={`${isTransparentBg ? '' : 'glass'} rounded-xl border border-[var(--border)] p-4 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-hidden`} style={{ background: isTransparentBg ? 'transparent' : undefined }}>
+      <div className={`glass rounded-xl border border-[var(--border)] p-5 flex flex-col gap-5 items-center lg:sticky lg:top-4 lg:self-start`}>
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
-        <div className={`p-0 border-0`} style={previewInnerStyle}>
+        <div className={`p-3 sm:p-4 md:p-5 rounded-xl border border-[var(--border)] bg-white`}>
           <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
         </div>
         {/* (removed) export notice UI */}
@@ -823,7 +689,7 @@ export default function Designer({ value }: DesignerProps) {
               setBgGradA("#ffffff");
               setBgGradB("#e2e8f0");
               setBgGradType("linear");
-              setBgColor("transparent");
+              setBgColor("#ffffff");
               setLogoUrl("");
               setLogoSize(0.25);
               setHideBgDots(true);
