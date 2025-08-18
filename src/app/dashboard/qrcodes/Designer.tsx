@@ -288,6 +288,10 @@ export default function Designer({ value }: DesignerProps) {
     const accent = await getThemeColor('--accent', '#2563eb');
 
     if (ext === 'png') {
+      // If no frame, export raw QR exactly as rendered to avoid any trimming/clipping
+      if (frame === 'none') {
+        try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { /* noop */ }
+      }
       const qrBlob = await getQrBlobFromRendered();
       if (!qrBlob) { try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { return; } }
       const img = new window.Image();
@@ -358,6 +362,10 @@ export default function Designer({ value }: DesignerProps) {
 
     // SVG path: wrap inner SVG with outer frame SVG
     try {
+      // If no frame, export raw SVG exactly as rendered
+      if (frame === 'none') {
+        try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { /* fallthrough to raw serialize */ }
+      }
       // Source inner SVG directly from DOM to ensure parity with preview
       const root = containerRef.current;
       const svgNode = root?.querySelector('svg');
