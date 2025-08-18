@@ -310,8 +310,8 @@ export default function Designer({ value }: DesignerProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
-      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-2rem)] overflow-y-auto">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
+      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto">
         {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -391,11 +391,11 @@ export default function Designer({ value }: DesignerProps) {
                 <button
                   key={t}
                   onClick={() => setDotsType(t)}
-                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'ring-2 ring-[var(--accent)]' : ''} tip`}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${dotsType===t? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''} tip`}
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
                   data-tip={t}
                 >
-                  <div className="grid grid-cols-5 grid-rows-5 gap-[2px] p-1.5 bg-[var(--surface)] rounded-md">
+                  <div className="grid grid-cols-5 grid-rows-5 gap-[2px] p-2 bg-[var(--surface)] rounded-md">
                     {Array.from({ length: 25 }).map((_, i) => {
                       const row = Math.floor(i / 5);
                       const col = i % 5;
@@ -439,7 +439,7 @@ export default function Designer({ value }: DesignerProps) {
             <div className="text-xs font-medium text-[var(--muted)]">Error correction</div>
             <div className="flex flex-wrap gap-2.5">
               {(["L","M","Q","H"] as const).map((lvl) => (
-                <button key={lvl} className={`h-10 px-4 rounded border text-xs transition ${ecLevel===lvl? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setEcLevel(lvl)}>
+                <button key={lvl} className={`h-10 px-4 rounded border text-xs transition ${ecLevel===lvl? 'outline outline-2 outline-[var(--accent)] outline-offset-2 bg-[var(--panel)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setEcLevel(lvl)}>
                   {lvl}
                 </button>
               ))}
@@ -463,7 +463,7 @@ export default function Designer({ value }: DesignerProps) {
               {['#ffffff','#f1f5f9','#e2e8f0','#cbd5e1','#94a3b8'].map((c) => (
                 <button
                   key={c}
-                  className={`h-6 w-6 rounded border ${bgColor===c ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                  className={`h-6 w-6 rounded border ${bgColor===c ? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`}
                   style={{ background: c, borderColor: 'var(--border)' }}
                   onClick={() => setBgColor(c)}
                   aria-pressed={bgColor===c}
@@ -491,7 +491,7 @@ export default function Designer({ value }: DesignerProps) {
                 <button
                   key={label}
                   onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); }}
-                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'ring-2 ring-[var(--accent)]' : ''} tip`}
+                  className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot ? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''} tip`}
                   style={{ background: 'transparent', borderColor: 'var(--border)' }}
                   data-tip={label}
                 >
@@ -567,7 +567,7 @@ export default function Designer({ value }: DesignerProps) {
                     <button
                       key={`${sq}-${dot}-${sc}-${dc}-${label}`}
                       onClick={() => { setCornerSquareType(sq); setCornerDotType(dot); setCornerSquareColor(sc); setCornerDotColor(dc); }}
-                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'ring-2 ring-[var(--accent)]' : ''} tip`}
+                      className={`h-14 w-14 rounded-md border grid place-items-center ${cornerSquareType===sq && cornerDotType===dot && cornerSquareColor===sc && cornerDotColor===dc ? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''} tip`}
                       style={{ background: 'transparent', borderColor: 'var(--border)' }}
                       data-tip={label}
                     >
@@ -606,7 +606,14 @@ export default function Designer({ value }: DesignerProps) {
               <div className="flex gap-2 flex-wrap items-center">
                 <div className="w-full text-xs text-[var(--muted)]">Outer corner color</div>
                 {palette.map((c) => (
-                  <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerSquareColor(c)} />
+                  <button
+                    key={c}
+                    className={`h-6 w-6 rounded border ${cornerSquareColor===c ? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`}
+                    style={{ background: c, borderColor: 'var(--border)' }}
+                    onClick={() => setCornerSquareColor(c)}
+                    aria-pressed={cornerSquareColor===c}
+                    aria-label={`Outer corner color ${c}`}
+                  />
                 ))}
               </div>
             </div>
@@ -614,7 +621,14 @@ export default function Designer({ value }: DesignerProps) {
               <div className="flex gap-2 flex-wrap items-center">
                 <div className="w-full text-xs text-[var(--muted)]">Inner corner color</div>
                 {palette.map((c) => (
-                  <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setCornerDotColor(c)} />
+                  <button
+                    key={c}
+                    className={`h-6 w-6 rounded border ${cornerDotColor===c ? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`}
+                    style={{ background: c, borderColor: 'var(--border)' }}
+                    onClick={() => setCornerDotColor(c)}
+                    aria-pressed={cornerDotColor===c}
+                    aria-label={`Inner corner color ${c}`}
+                  />
                 ))}
               </div>
             </div>
@@ -646,7 +660,7 @@ export default function Designer({ value }: DesignerProps) {
               <div className="text-xs font-medium text-[var(--muted)] mb-1">Pick an icon</div>
               <div className="flex flex-wrap gap-2">
                 {builtinIcons.map(icon => (
-                  <button key={icon.name} className={`h-9 px-2 rounded border flex items-center gap-2 ${logoUrl===icon.src? 'ring-1 ring-[var(--accent)]' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setLogoUrl(icon.src)}>
+                  <button key={icon.name} className={`h-9 px-2 rounded border flex items-center gap-2 ${logoUrl===icon.src? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setLogoUrl(icon.src)}>
                     <Image src={icon.src} alt={icon.name} width={16} height={16} />
                     <span className="text-xs">{icon.name}</span>
                   </button>
@@ -661,9 +675,9 @@ export default function Designer({ value }: DesignerProps) {
         </div>
         {/* (removed) Borders section */}
       </div>
-      <div className={`glass rounded-xl border border-[var(--border)] p-5 flex flex-col gap-5 items-center lg:sticky lg:top-4 lg:self-start`}>
+      <div className={`glass rounded-xl border border-[var(--border)] p-5 flex flex-col gap-5 items-center lg:sticky lg:top-4 lg:self-start lg:h-[calc(100dvh-2rem)] lg:overflow-hidden`}>
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
-        <div className={`p-3 sm:p-4 md:p-5 rounded-xl border border-[var(--border)] bg-white`}>
+        <div className={`p-3 sm:p-4 md:p-5 rounded-xl border border-[var(--border)] bg-white w-full flex-1 grid place-items-center`}>
           <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
         </div>
         {/* (removed) export notice UI */}
