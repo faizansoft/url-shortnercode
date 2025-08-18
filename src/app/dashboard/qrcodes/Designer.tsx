@@ -49,8 +49,8 @@ export default function Designer({ value }: DesignerProps) {
   const [cornerDotType, setCornerDotType] = useState<"dot" | "square">("dot");
   const [cornerDotColor, setCornerDotColor] = useState("#0b1220");
 
-  // Background
-  const [bgColor, setBgColor] = useState("#ffffff00");
+  // Background (default to solid white)
+  const [bgColor, setBgColor] = useState("#ffffff");
   const [bgGradientOn, setBgGradientOn] = useState(false);
   const [bgGradA, setBgGradA] = useState("#ffffff");
   const [bgGradB, setBgGradB] = useState("#e2e8f0");
@@ -597,7 +597,7 @@ ${secondStroke}
                   setDotsType("square");
                   setDotsColor("#0b1220");
                   setDotsGradientOn(false);
-                  setBgColor("#ffffff00");
+                  setBgColor("#ffffff");
                   setBgGradientOn(false);
                   setCornerSquareType("square");
                   setCornerSquareColor("#0b1220");
@@ -612,7 +612,7 @@ ${secondStroke}
                   setDotsType("rounded");
                   setDotsColor("#2563eb");
                   setDotsGradientOn(false);
-                  setBgColor("#ffffff00");
+                  setBgColor("#ffffff");
                   setBgGradientOn(false);
                   setCornerSquareType("dot");
                   setCornerSquareColor("#2563eb");
@@ -722,14 +722,25 @@ ${secondStroke}
                 <button key={c} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setDotsColor(c)} />
               ))}
             </div>
-            <button className="btn btn-secondary h-8" onClick={() => setDotsColor("#0b1220")}>Reset colors</button>
+            <button
+              className="btn btn-secondary h-8"
+              onClick={() => { setDotsColor("#0b1220"); setBgColor("#ffffff"); }}
+            >
+              Reset colors
+            </button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Background</div>
             <div className="flex gap-2 flex-wrap items-center">
-              <button className="h-6 px-2 rounded border text-xs" style={{ background: 'transparent', borderColor: 'var(--border)' }} onClick={() => setBgColor('#ffffff00')}>None</button>
               {['#ffffff','#f1f5f9','#e2e8f0','#cbd5e1','#94a3b8'].map((c) => (
-                <button key={c} className="h-6 w-6 rounded border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setBgColor(c)} />
+                <button
+                  key={c}
+                  className={`h-6 w-6 rounded border ${bgColor===c ? 'ring-2 ring-[var(--accent)]' : ''}`}
+                  style={{ background: c, borderColor: 'var(--border)' }}
+                  onClick={() => setBgColor(c)}
+                  aria-pressed={bgColor===c}
+                  aria-label={`Background ${c}`}
+                />
               ))}
             </div>
           </div>
