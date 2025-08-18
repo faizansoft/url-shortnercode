@@ -314,45 +314,49 @@ export default function Designer({ value }: DesignerProps) {
       if (minX > maxX || minY > maxY) { minX = 0; minY = 0; maxX = tw - 1; maxY = th - 1; }
       const sx = Math.max(0, minX), sy = Math.max(0, minY), sw = Math.max(1, maxX - minX + 1), sh = Math.max(1, maxY - minY + 1);
 
+      const exportOuter = Math.max(2048, outer);
+      const scale = exportOuter / outer;
       const canvas = document.createElement('canvas');
-      canvas.width = outer; canvas.height = outer;
+      canvas.width = exportOuter; canvas.height = exportOuter;
       const ctx = canvas.getContext('2d'); if (!ctx) return;
+      ctx.imageSmoothingEnabled = false;
 
       // Rounded background fill and clip so QR respects corner shape
       const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
-      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
+      const rxScaled = rx * scale;
+      drawRoundedRect(ctx, 0, 0, exportOuter, exportOuter, rxScaled);
       ctx.fillStyle = surface; ctx.fill();
       ctx.save();
-      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
+      drawRoundedRect(ctx, 0, 0, exportOuter, exportOuter, rxScaled);
       ctx.clip();
       // Draw trimmed QR to fill the inner area completely, clipped to rounded rect
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outer, outer);
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, exportOuter, exportOuter);
       ctx.restore();
 
       // Draw frame stroke on top so it visually meets the QR
-      drawRoundedRect(ctx, 0.5, 0.5, outer - 1, outer - 1, Math.max(0, rx - 0.5));
+      drawRoundedRect(ctx, 0.5 * scale, 0.5 * scale, exportOuter - 1 * scale, exportOuter - 1 * scale, Math.max(0, rxScaled - 0.5 * scale));
       if (frame === 'accent') {
-        ctx.lineWidth = 5; ctx.strokeStyle = accent; ctx.stroke();
+        ctx.lineWidth = 5 * scale; ctx.strokeStyle = accent; ctx.stroke();
       } else if (frame === 'double') {
-        ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke();
-        drawRoundedRect(ctx, 5.5, 5.5, outer - 11, outer - 11, Math.max(0, rx - 5.5));
-        ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.stroke();
+        ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke();
+        drawRoundedRect(ctx, 5.5 * scale, 5.5 * scale, exportOuter - 11 * scale, exportOuter - 11 * scale, Math.max(0, rxScaled - 5.5 * scale));
+        ctx.strokeStyle = accent; ctx.lineWidth = 3 * scale; ctx.stroke();
       } else if (frame === 'dashed') {
-        ctx.setLineDash([8, 8]); ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
+        ctx.setLineDash([8 * scale, 8 * scale]); ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
       } else if (frame === 'outline') {
-        ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke();
+        ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke();
       } else if (frame === 'thick') {
-        ctx.lineWidth = 6; ctx.strokeStyle = border; ctx.stroke();
+        ctx.lineWidth = 6 * scale; ctx.strokeStyle = border; ctx.stroke();
       } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-        ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke();
+        ctx.lineWidth = 2 * scale; ctx.strokeStyle = border; ctx.stroke();
       } else if (frame === 'glow') {
-        ctx.shadowColor = accent; ctx.shadowBlur = 22; ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke(); ctx.shadowBlur = 0;
+        ctx.shadowColor = accent; ctx.shadowBlur = 22 * scale; ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke(); ctx.shadowBlur = 0;
       } else if (frame === 'shadow') {
-        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 18 * scale; ctx.shadowOffsetY = 8 * scale; ctx.lineWidth = 2 * scale; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
       } else if (frame === 'gradient') {
-        const g = ctx.createLinearGradient(0, 0, outer, outer);
+        const g = ctx.createLinearGradient(0, 0, exportOuter, exportOuter);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
-        ctx.lineWidth = 4; ctx.strokeStyle = g; ctx.stroke();
+        ctx.lineWidth = 4 * scale; ctx.strokeStyle = g; ctx.stroke();
       }
 
       canvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
