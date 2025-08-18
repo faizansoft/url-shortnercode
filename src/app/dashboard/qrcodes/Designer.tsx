@@ -425,6 +425,8 @@ export default function Designer({ value }: DesignerProps) {
       wctx.save();
       drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
       wctx.clip();
+      // Preserve crisp QR modules when upscaling into the work canvas
+      wctx.imageSmoothingEnabled = false;
       wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
       wctx.restore();
 
@@ -432,8 +434,9 @@ export default function Designer({ value }: DesignerProps) {
       const outCanvas = document.createElement('canvas');
       outCanvas.width = exportOuter; outCanvas.height = exportOuter;
       const octx = outCanvas.getContext('2d'); if (!octx) return;
-      octx.imageSmoothingEnabled = true;
-      octx.imageSmoothingQuality = 'high';
+      // Keep modules crisp on the final canvas as well
+      octx.imageSmoothingEnabled = false;
+      octx.imageSmoothingQuality = 'low';
       octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
 
       outCanvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
