@@ -292,10 +292,32 @@ export default function Designer({ value }: DesignerProps) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     if (ext === 'png') {
-      // If no frame, export exactly what is rendered (no trim/clip)
+      // If no frame, export exactly what is rendered. If background is transparent, composite on theme surface.
       if (frame === 'none') {
         const qrBlobRaw = await getQrBlobFromRendered();
-        if (qrBlobRaw) { downloadBlob(qrBlobRaw, 'qr.png'); return; }
+        if (qrBlobRaw) {
+          const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+          if (!transparentBg) { downloadBlob(qrBlobRaw, 'qr.png'); return; }
+          // Composite onto solid surface background to avoid trimmed-looking transparent PNGs
+          const img2 = new window.Image();
+          img2.src = URL.createObjectURL(qrBlobRaw);
+          await new Promise((res, rej) => { img2.onload = () => res(null); img2.onerror = rej; });
+          const w = Math.max(2048, img2.width);
+          const h = Math.max(2048, img2.height);
+          const scale = Math.min(w / img2.width, h / img2.height);
+          const cw = Math.round(img2.width * scale);
+          const ch = Math.round(img2.height * scale);
+          const canvas2 = document.createElement('canvas');
+          canvas2.width = cw; canvas2.height = ch;
+          const c2 = canvas2.getContext('2d');
+          if (!c2) { downloadBlob(qrBlobRaw, 'qr.png'); return; }
+          c2.imageSmoothingEnabled = false;
+          c2.fillStyle = surface; c2.fillRect(0, 0, cw, ch);
+          c2.drawImage(img2, 0, 0, cw, ch);
+          await new Promise<void>((resolve) => canvas2.toBlob((b) => { if (b) downloadBlob(b, 'qr.png'); resolve(); }, 'image/png'));
+          URL.revokeObjectURL(img2.src);
+          return;
+        }
         try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { /* noop */ }
       }
       const qrBlob = await getQrBlobFromRendered();
@@ -378,7 +400,18 @@ export default function Designer({ value }: DesignerProps) {
       if (frame === 'none') {
         if (svgNode) {
           const svgTextFull = new XMLSerializer().serializeToString(svgNode);
-          const outBlob = new Blob([svgTextFull], { type: 'image/svg+xml;charset=utf-8' });
+          const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+          if (!transparentBg) {
+            const outBlob = new Blob([svgTextFull], { type: 'image/svg+xml;charset=utf-8' });
+            downloadBlob(outBlob, 'qr.svg');
+            return;
+          }
+          // Inject solid surface background rect behind content when transparent
+          const withBg = svgTextFull.replace(
+            /<svg([^>]*)>/i,
+            (m, attrs) => `<svg${attrs}><rect x="0" y="0" width="100%" height="100%" fill="${surface}"/>`
+          );
+          const outBlob = new Blob([withBg], { type: 'image/svg+xml;charset=utf-8' });
           downloadBlob(outBlob, 'qr.svg');
           return;
         }
