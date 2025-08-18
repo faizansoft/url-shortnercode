@@ -9,6 +9,37 @@ type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
 type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
 type BgGradType = "linear" | "radial";
 
+// Helper: robust transparent color detection (supports named, rgba/hsla with alpha 0, and hex with AA=00)
+function isBgTransparent(input: string | null | undefined): boolean {
+  if (!input) return false;
+  const v = String(input).trim().toLowerCase();
+  if (!v) return false;
+  if (v === 'transparent') return true;
+  // rgba/hsla
+  if (/rgba\s*\(/.test(v)) {
+    const m = v.match(/rgba\s*\(\s*[^,]+\s*,\s*[^,]+\s*,\s*[^,]+\s*,\s*([0-9.]+)\s*\)/);
+    if (m) return parseFloat(m[1]) === 0;
+  }
+  if (/hsla\s*\(/.test(v)) {
+    const m = v.match(/hsla\s*\(\s*[^,]+\s*,\s*[^,]+\s*,\s*[^,]+\s*,\s*([0-9.]+)\s*\)/);
+    if (m) return parseFloat(m[1]) === 0;
+  }
+  // Hex with alpha (#RGBA or #RRGGBBAA)
+  if (/^#([0-9a-f]{4}|[0-9a-f]{8})$/.test(v)) {
+    if (v.length === 5) { // #RGBA
+      const a = v[4];
+      return a === '0';
+    }
+    if (v.length === 9) { // #RRGGBBAA
+      const aa = v.slice(7, 9);
+      return aa === '00';
+    }
+  }
+  // Common fallback heuristic: ends with 00
+  if (v.endsWith('00')) return true;
+  return false;
+}
+
 export type DesignerProps = {
   value: string;
 };
@@ -103,7 +134,7 @@ export default function Designer({ value }: DesignerProps) {
     reader.readAsDataURL(file);
   };
   const frameStyle = useMemo(() => {
-    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const transparentBg = isBgTransparent(bgColor);
     const effectiveBg = transparentBg ? 'transparent' : bgColor;
     // All frames use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
@@ -126,16 +157,33 @@ export default function Designer({ value }: DesignerProps) {
 
   // Whether the selected background is transparent
   const isTransparentBg = useMemo(() => {
-    const v = (bgColor || '').toLowerCase();
-    return v === '#ffffff00' || v === 'transparent' || v.endsWith('00');
+    return isBgTransparent(bgColor);
   }, [bgColor]);
+
+  // Preview inner style: when transparent, show a checkerboard so users can see transparency
+  const previewInnerStyle = useMemo<React.CSSProperties>(() => {
+    if (!isTransparentBg) return { background: effectivePreviewBg, borderRadius: 'inherit' };
+    const size = 10;
+    return {
+      borderRadius: 'inherit',
+      backgroundColor: 'transparent',
+      backgroundImage: `
+        linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+        linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+        linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)
+      `,
+      backgroundSize: `${size}px ${size}px`,
+      backgroundPosition: `0 0, 0 ${size/2}px, ${size/2}px -${size/2}px, -${size/2}px 0px`,
+    } as React.CSSProperties;
+  }, [isTransparentBg, effectivePreviewBg]);
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
     // Gradients fully disabled per requirements
     const useDotsGradient = false;
     const useBgGradient = false;
-    const isTransparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const isTransparentBg = isBgTransparent(bgColor);
     const dots: DotsOpts = useDotsGradient
       ? {
           gradient: {
@@ -848,7 +896,7 @@ export default function Designer({ value }: DesignerProps) {
         <div style={frameStyle}>
           <div
             className={`p-0 border-0`}
-            style={{ background: effectivePreviewBg, borderRadius: 'inherit' }}
+            style={previewInnerStyle}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
