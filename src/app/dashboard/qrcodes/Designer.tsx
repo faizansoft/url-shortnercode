@@ -62,18 +62,8 @@ export default function Designer({ value }: DesignerProps) {
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
 
-  // Frame (visual wrapper)
-  const [frame, setFrame] = useState<
-    | "none"
-    | "rounded"
-    | "thin"
-    | "thick"
-    | "square"
-    | "accent"
-    | "outline"
-    | "double"
-    | "gradient"
-  >("none");
+  // Border (visual wrapper)
+  const [frame, setFrame] = useState<"rounded" | "thin" | "square" | "circle">("square");
   const [perfMode, setPerfMode] = useState<boolean>(false);
   
   // Corner custom presets (runtime only)
@@ -110,27 +100,17 @@ export default function Designer({ value }: DesignerProps) {
   const frameStyle = useMemo(() => {
     const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
     const effectiveBg = transparentBg ? '#ffffff' : bgColor;
-    // All frames use zero padding so the QR fits perfectly without extra spacing
+    // All borders use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
+      case "square":
+        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "rounded":
         return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "thin":
         return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "thick":
-        return { borderRadius: 12, padding: 0, border: "2px solid #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "square":
-        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "accent":
-        return { borderRadius: 10, padding: 0, border: "3px solid #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "outline":
-        // Use a true border instead of CSS outline to avoid outline clipping/visibility issues
-        return { borderRadius: 8, padding: 0, border: "2px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "double":
-        // Simulate inner ring using inset box-shadow to match SVG export's inner stroke
-        return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", boxShadow: "inset 0 0 0 2px #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "gradient":
-        // Use a visible ring thickness so the gradient shows clearly
-        return { borderRadius: 12, padding: 4, background: "conic-gradient(from 0deg, #2563eb, #7c3aed, #22c55e, #2563eb)", overflow: "hidden" } as React.CSSProperties;
+      case "circle":
+        return { borderRadius: 9999, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
+      // removed other styles
       default:
         return {} as React.CSSProperties;
     }
@@ -300,250 +280,91 @@ export default function Designer({ value }: DesignerProps) {
 
   async function handleDownload(ext: 'png' | 'svg') {
     const pad = 0; // preview uses zero padding in frameStyle
-    // stroke widths aligned to frameStyle
-    const borderW = (
-      frame === 'accent' ? 3 :
-      frame === 'outline' ? 2 :
-      frame === 'double' ? 2 :
-      frame === 'thick' ? 2 :
-      frame === 'rounded' || frame === 'square' || frame === 'thin' ? 1 :
-      frame === 'gradient' ? 2 :
-      1
-    );
+    const borderW = 1; // match frameStyle stroke
     const outer = size + pad * 2;
 
     const surface = '#ffffff';
     const border = '#e5e7eb';
-    const accent = '#2563eb';
-    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-    const effectiveBg = transparentBg ? surface : bgColor;
+    const isTransparent = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const effectiveBg = isTransparent ? surface : bgColor;
 
-    // Force latest options to render before exporting to avoid stale downloads
+    // Ensure latest render before export
     try { qrRef.current?.update(options); } catch {}
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     if (ext === 'png') {
-      // If no frame, export exactly what is rendered. If background is transparent, composite on theme surface.
-      if (frame === 'none') {
-        const qrBlobRaw = await getQrBlobFromRendered();
-        if (qrBlobRaw) {
-          const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-          if (!transparentBg) { downloadBlob(qrBlobRaw, 'qr.png'); return; }
-          // Composite onto solid surface background to avoid trimmed-looking transparent PNGs
-          const img2 = new window.Image();
-          img2.src = URL.createObjectURL(qrBlobRaw);
-          await new Promise((res, rej) => { img2.onload = () => res(null); img2.onerror = rej; });
-          const w = Math.max(2048, img2.width);
-          const h = Math.max(2048, img2.height);
-          const scale = Math.min(w / img2.width, h / img2.height);
-          const cw = Math.round(img2.width * scale);
-          const ch = Math.round(img2.height * scale);
-          const canvas2 = document.createElement('canvas');
-          canvas2.width = cw; canvas2.height = ch;
-          const c2 = canvas2.getContext('2d');
-          if (!c2) { downloadBlob(qrBlobRaw, 'qr.png'); return; }
-          c2.imageSmoothingEnabled = false;
-          c2.fillStyle = surface; c2.fillRect(0, 0, cw, ch);
-          c2.drawImage(img2, 0, 0, cw, ch);
-          await new Promise<void>((resolve) => canvas2.toBlob((b) => { if (b) downloadBlob(b, 'qr.png'); resolve(); }, 'image/png'));
-          URL.revokeObjectURL(img2.src);
-          return;
-        }
-        try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { /* noop */ }
-      }
       const qrBlob = await getQrBlobFromRendered();
       if (!qrBlob) { try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { return; } }
       const img = new window.Image();
+      img.crossOrigin = 'anonymous';
       img.src = URL.createObjectURL(qrBlob);
       await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-      // Preserve intrinsic QR margin exactly as rendered (no trimming)
-      const sx = 0, sy = 0, sw = img.width, sh = img.height;
-
-      const exportOuter = Math.max(2048, outer);
-      const scale = exportOuter / outer;
-      // Work at 2x for smoother rounded corners, then downscale once
-      const workScale = 2;
-      const workSize = exportOuter * workScale;
-      const workCanvas = document.createElement('canvas');
-      workCanvas.width = workSize; workCanvas.height = workSize;
-      const wctx = workCanvas.getContext('2d'); if (!wctx) return;
-      wctx.imageSmoothingEnabled = false; // keep QR crisp while upscaling
-
-      // Rounded background fill and clip so QR respects corner shape
-      // Corner radii aligned to frameStyle
-      const rx = (
-        frame === 'none' ? 8 :
-        frame === 'rounded' ? 16 :
-        frame === 'thin' ? 6 :
-        frame === 'thick' ? 12 :
-        frame === 'square' ? 0 :
-        frame === 'accent' ? 10 :
-        frame === 'outline' ? 8 :
-        frame === 'double' ? 10 :
-        frame === 'gradient' ? 12 : 8
-      );
-      const rxScaled = rx * scale * workScale;
-      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-      wctx.fillStyle = effectiveBg; wctx.fill();
-      // Draw frame stroke BEFORE QR so QR covers any inward bleed
-      wctx.lineJoin = 'round' as CanvasLineJoin;
-      wctx.lineCap = 'round' as CanvasLineCap;
-      const strokeInsetRect = (lw: number) => {
-        const inset = lw / 2;
-        drawRoundedRect(
-          wctx as unknown as CanvasRenderingContext2D,
-          inset,
-          inset,
-          workSize - 2 * inset,
-          workSize - 2 * inset,
-          Math.max(0, rxScaled - inset)
-        );
-      };
-      if (frame === 'accent') {
-        const lw = 3 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = accent; strokeInsetRect(lw); wctx.stroke();
-      } else if (frame === 'double') {
-        // Draw as two precise rounded rings using even-odd fill to avoid stroke overlap artifacts
-        const t1 = 2 * scale * workScale; // outer ring thickness (border)
-        const inset2 = 4 * scale * workScale; // inner ring inset
-        const t2 = 2 * scale * workScale; // second ring thickness (accent)
-
-        // Outer ring
-        {
-          const path = new Path2D();
-          // outer rect at canvas bounds
-          addRoundedRect(path, 0, 0, workSize, workSize, rxScaled);
-          // inner rect (cutout)
-          addRoundedRect(path, t1, t1, workSize - 2 * t1, workSize - 2 * t1, Math.max(0, rxScaled - t1));
-          wctx.fillStyle = border;
-          // even-odd fill to produce ring
-          wctx.fill(path, 'evenodd');
-        }
-        // Second ring
-        {
-          const x = inset2;
-          const y = inset2;
-          const w = workSize - 2 * inset2;
-          const h = w;
-          const rOuter = Math.max(0, rxScaled - inset2);
-          const path = new Path2D();
-          addRoundedRect(path, x, y, w, h, rOuter);
-          addRoundedRect(path, x + t2, y + t2, w - 2 * t2, h - 2 * t2, Math.max(0, rOuter - t2));
-          wctx.fillStyle = accent;
-          wctx.fill(path, 'evenodd');
-        }
-      } else if (frame === 'outline') {
-        const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
-      } else if (frame === 'thick') {
-        const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = accent; strokeInsetRect(lw); wctx.stroke();
-      } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-        const lw = 1 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
-      } else if (frame === 'gradient') {
-        const g = wctx.createLinearGradient(0, 0, workSize, workSize);
-        g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
-        const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = g; strokeInsetRect(lw); wctx.stroke();
+      const isCircle = frame === 'circle';
+      const rx = isCircle ? outer / 2 : frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
+      const canvas = document.createElement('canvas');
+      canvas.width = outer; canvas.height = outer;
+      const ctx = canvas.getContext('2d'); if (!ctx) { URL.revokeObjectURL(img.src); return; }
+      ctx.imageSmoothingEnabled = false;
+      // Draw background + border
+      if (isCircle) {
+        ctx.beginPath();
+        ctx.arc(outer/2, outer/2, outer/2 - 0, 0, Math.PI * 2);
+        ctx.closePath();
+      } else {
+        drawRoundedRect(ctx, 0, 0, outer, outer, rx);
       }
-
-      // Now draw QR on top, clipped to rounded rect
-      wctx.save();
-      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-      wctx.clip();
-      // Preserve crisp QR modules when upscaling into the work canvas
-      wctx.imageSmoothingEnabled = false;
-      wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
-      wctx.restore();
-
-      // Downscale to final canvas with smoothing to get anti-aliased rounded edge
-      const outCanvas = document.createElement('canvas');
-      outCanvas.width = exportOuter; outCanvas.height = exportOuter;
-      const octx = outCanvas.getContext('2d'); if (!octx) return;
-      // Keep modules crisp on the final canvas as well
-      octx.imageSmoothingEnabled = false;
-      octx.imageSmoothingQuality = 'low';
-      octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
-
-      outCanvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
+      ctx.fillStyle = effectiveBg as string; ctx.fill();
+      ctx.lineWidth = borderW; ctx.strokeStyle = border; ctx.stroke();
+      // Clip and draw inner QR centered
+      ctx.save();
+      if (isCircle) {
+        ctx.beginPath();
+        ctx.arc(outer/2, outer/2, outer/2 - 0.5, 0, Math.PI * 2);
+        ctx.closePath();
+      } else {
+        drawRoundedRect(ctx, 0, 0, outer, outer, rx);
+      }
+      ctx.clip();
+      const dx = Math.round((outer - img.width) / 2);
+      const dy = Math.round((outer - img.height) / 2);
+      ctx.drawImage(img, dx, dy);
+      ctx.restore();
+      await new Promise<void>((resolve) => canvas.toBlob((b) => { if (b) downloadBlob(b, 'qr.png'); resolve(); }, 'image/png'));
       URL.revokeObjectURL(img.src);
       return;
     }
 
-    // SVG path: wrap inner SVG with outer frame SVG
-    try {
-      const root = containerRef.current;
-      const svgNode = root?.querySelector('svg');
-      // If no frame, export raw SVG exactly as rendered (serialize current node)
-      if (frame === 'none') {
-        if (svgNode) {
-          const svgTextFull = new XMLSerializer().serializeToString(svgNode);
-          const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-          if (!transparentBg) {
-            const outBlob = new Blob([svgTextFull], { type: 'image/svg+xml;charset=utf-8' });
-            downloadBlob(outBlob, 'qr.svg');
-            return;
-          }
-          // Inject solid surface background rect behind content when transparent
-          const withBg = svgTextFull.replace(
-            /<svg([^>]*)>/i,
-            (m, attrs) => `<svg${attrs}><rect x="0" y="0" width="100%" height="100%" fill="${surface}"/>`
-          );
-          const outBlob = new Blob([withBg], { type: 'image/svg+xml;charset=utf-8' });
-          downloadBlob(outBlob, 'qr.svg');
-          return;
-        }
-        try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { /* fallthrough */ }
-      }
-      // Source inner SVG directly from DOM to ensure parity with preview
-      if (!svgNode) throw new Error('no-svg');
-      const svgText = new XMLSerializer().serializeToString(svgNode);
-      // Extract only the inner contents of the rendered SVG (exclude outer <svg> wrapper)
-      const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-      const inner = cleaned
-        .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-        .replace(/<\/svg>\s*$/i, '')
-        .replace(/\n/g, '');
-      const rx = (
-        frame === 'none' ? 8 :
-        frame === 'rounded' ? 16 :
-        frame === 'thin' ? 6 :
-        frame === 'thick' ? 12 :
-        frame === 'square' ? 0 :
-        frame === 'accent' ? 10 :
-        frame === 'outline' ? 8 :
-        frame === 'double' ? 10 :
-        frame === 'gradient' ? 12 : 8
-      );
-      const border = '#e5e7eb';
-      const accent = '#2563eb';
-      const surface = '#ffffff';
-      const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-      const effectiveBg = transparentBg ? surface : bgColor;
-      const frameStroke = (frame === 'thick' || frame === 'accent') ? accent : border;
-      const strokeW = borderW;
-
-      const defsGrad = frame === 'gradient'
-        ? `<linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>`
-        : '';
-      const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
-      const secondStroke = frame === 'double' ? `<rect x="4" y="4" width="${outer-8}" height="${outer-8}" rx="${Math.max(0, rx-2)}" ry="${Math.max(0, rx-2)}" fill="none" stroke="${accent}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : '';
-      const strokeCol = frame === 'gradient' ? 'url(#grad1)' : frameStroke;
-
-      const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
+    // SVG export: wrap inner SVG with outer background/border and clipping
+    const svgEl = containerRef.current?.querySelector('svg');
+    if (!svgEl) { try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { return; } }
+    const svgText = new XMLSerializer().serializeToString(svgEl);
+    const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+    const inner = cleaned
+      .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+      .replace(/<\/svg>\s*$/i, '')
+      .replace(/\n/g, '');
+    const isCircle = frame === 'circle';
+    const rx2 = isCircle ? outer / 2 : frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
+    const defsClip = isCircle
+      ? `<clipPath id="clipR"><circle cx="${outer/2}" cy="${outer/2}" r="${outer/2}"/></clipPath>`
+      : `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}"/></clipPath>`;
+    const bgElem = isCircle
+      ? `<circle cx="${outer/2}" cy="${outer/2}" r="${outer/2}" fill="${effectiveBg}"/>`
+      : `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx2}" ry="${rx2}" fill="${effectiveBg}"/>`;
+    const borderElem = isCircle
+      ? `<circle cx="${outer/2}" cy="${outer/2}" r="${outer/2 - 0.5}" fill="none" stroke="${border}" stroke-width="${borderW}"/>`
+      : `<rect x="0.5" y="0.5" width="${outer-1}" height="${outer-1}" rx="${rx2}" ry="${rx2}" fill="none" stroke="${border}" stroke-width="${borderW}"/>`;
+    const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
-<defs>
-${defsGrad}
-${defsClip}
-</defs>
-<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
-<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>
-${secondStroke}
-<g clip-path="url(#clipR)">
-  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
-</g>
+  <defs>${defsClip}</defs>
+  ${bgElem}
+  ${borderElem}
+  <g clip-path="url(#clipR)">
+    <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
+  </g>
 </svg>`;
-      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-      downloadBlob(outBlob, 'qr-framed.svg');
-    } catch {
-      try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
-    }
+    const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+    downloadBlob(outBlob, 'qr.svg');
   }
   const resetAll = () => {
     batchUpdate(() => {
@@ -572,8 +393,8 @@ ${secondStroke}
       setLogoUrl("");
       setLogoSize(0.25);
       setHideBgDots(true);
-      // Frame
-      setFrame("none");
+      // Border
+      setFrame("square");
     });
   };
 
@@ -929,7 +750,7 @@ ${secondStroke}
         <div className="space-y-2">
           <div className="text-xs font-medium text-[var(--muted)]">Borders</div>
           <div className="flex gap-2.5 flex-wrap items-center">
-              {(["none","square","rounded","thin","thick","accent","outline","double","gradient"] as const).map((f) => (
+              {(["square","rounded","thin","circle"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFrame(f)}
@@ -942,24 +763,15 @@ ${secondStroke}
                   style={(() => {
                     const common: React.CSSProperties = { background: 'var(--surface)' };
                     switch (f) {
-                      case 'none':
-                        return { ...common, border: '1px solid var(--border)', padding: 2 } as React.CSSProperties;
                       case 'square':
                         return { ...common, border: '1px solid var(--border)' } as React.CSSProperties;
                       case 'rounded':
                         return { ...common, border: '1px solid var(--border)', borderRadius: 8 } as React.CSSProperties;
                       case 'thin':
                         return { ...common, border: '1px solid var(--border)', borderRadius: 4 } as React.CSSProperties;
-                      case 'thick':
-                        return { ...common, border: '3px solid color-mix(in oklab, var(--accent) 60%, var(--border))', borderRadius: 8 } as React.CSSProperties;
-                      case 'accent':
-                        return { ...common, border: '3px solid var(--accent)', borderRadius: 8 } as React.CSSProperties;
-                      case 'outline':
-                        return { ...common, borderRadius: 6, outline: '2px solid var(--border)' } as React.CSSProperties;
-                      case 'double':
-                        return { ...common, borderRadius: 8, border: '2px solid var(--border)', outline: '2px solid var(--accent)', outlineOffset: 2 } as React.CSSProperties;
-                      case 'gradient':
-                        return { ...common, borderRadius: 8, padding: 2, background: 'conic-gradient(from 0deg, var(--accent), #7c3aed, #22c55e, var(--accent))' } as React.CSSProperties;
+                      case 'circle':
+                        return { ...common, border: '1px solid var(--border)', borderRadius: 9999 } as React.CSSProperties;
+                      // removed other styles
                       default:
                         return common;
                     }
@@ -967,20 +779,6 @@ ${secondStroke}
                 />
               </button>
             ))}
-            <button
-              onClick={() => setFrame('none')}
-              className="h-14 w-14 rounded-md border grid place-items-center tip"
-              style={{ background: 'transparent', borderColor: 'var(--border)' }}
-              data-tip="Reset frame (None)"
-              aria-label="Reset frame (None)"
-            >
-              <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-                {/* NONE sign: a ring with a slash */}
-                <div style={{ position:'relative', width: 22, height: 22, borderRadius: 999, border: '2px solid var(--border)' }}>
-                  <div style={{ position:'absolute', left: -2, right: -2, top: '50%', height: 2, background: 'var(--border)', transform: 'rotate(-45deg)' }} />
-                </div>
-              </div>
-            </button>
           </div>
         </div>
       </div>
@@ -988,10 +786,8 @@ ${secondStroke}
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div
-            className={`${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
-            style={frame === 'none'
-              ? { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 8 }
-              : { background: effectivePreviewBg, borderRadius: 'inherit' }}
+            className={'p-0 border-0'}
+            style={{ background: effectivePreviewBg, borderRadius: 'inherit' }}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
@@ -1022,7 +818,7 @@ ${secondStroke}
               setLogoUrl("");
               setLogoSize(0.25);
               setHideBgDots(true);
-              setFrame("none");
+              setFrame("square");
               setEcLevel("M");
               setSize(220);
               setMargin(2);
