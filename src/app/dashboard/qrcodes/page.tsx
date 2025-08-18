@@ -138,7 +138,7 @@ export default function QRCodesPage() {
                       <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
                       <path d="M19 18H5v3h14v-3Z"/>
                     </svg>
-                    <span className="leading-none">Download PNG</span>
+                    <span className="leading-none">PNG</span>
                   </a>
                 ) : null}
                 <Link
@@ -149,7 +149,7 @@ export default function QRCodesPage() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm3.92 1.33H5.5v-1.41l8.56-8.56 1.41 1.41-8.55 8.56ZM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/>
                   </svg>
-                  <span className="leading-none">Custom QR</span>
+                  <span className="leading-none">QR</span>
                 </Link>
               </div>
             </div>
