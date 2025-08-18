@@ -300,6 +300,16 @@ export default function Designer({ value }: DesignerProps) {
     });
   }
 
+  // Helper: Blob -> data URL
+  async function blobToDataURL(blob: Blob): Promise<string> {
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+  }
+
   function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
     const rr = Math.max(0, r);
     ctx.beginPath();
@@ -409,27 +419,37 @@ export default function Designer({ value }: DesignerProps) {
       return;
     }
 
-    // SVG path: wrap inner SVG with outer frame SVG
+    // SVG path: wrap inner SVG or canvas snapshot with outer frame SVG
     try {
       const root = containerRef.current;
       const svgNode = root?.querySelector('svg');
-      // Source inner SVG directly from DOM to ensure parity with preview
-      if (!svgNode) throw new Error('no-svg');
-      const svgText = new XMLSerializer().serializeToString(svgNode);
-      // Extract only the inner contents of the rendered SVG (exclude outer <svg> wrapper)
-      const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-      const inner = cleaned
-        .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-        .replace(/<\/svg>\s*$/i, '')
-        .replace(/\n/g, '');
       const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-
       const frameStroke = border;
       const strokeW = borderW;
       const half = strokeW / 2;
       const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
       const secondStroke = '';
       const strokeCol = frameStroke;
+
+      let innerMarkup = '';
+      if (svgNode) {
+        // Use inner SVG content directly for true vector export
+        const svgText = new XMLSerializer().serializeToString(svgNode);
+        const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+        innerMarkup = cleaned
+          .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+          .replace(/<\/svg>\s*$/i, '')
+          .replace(/\n/g, '');
+      } else {
+        // No inner SVG (likely because logo forces canvas). Snapshot preview to PNG data URL and embed as image.
+        const qrBlob = await getQrBlobFromRendered();
+        if (!qrBlob) throw new Error('no-snapshot');
+        const dataUrl = await blobToDataURL(qrBlob);
+        // position the image centered with original size inside the frame
+        const tx = (outer - size) / 2;
+        const ty = (outer - size) / 2;
+        innerMarkup = `<image x="${tx}" y="${ty}" width="${size}" height="${size}" href="${dataUrl}" />`;
+      }
 
       const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
@@ -440,7 +460,7 @@ ${defsClip}
 <rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>
 ${secondStroke}
 <g clip-path="url(#clipR)">
-  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
+  ${svgNode ? `<g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${innerMarkup}</g>` : innerMarkup}
 </g>
 </svg>`;
       const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
