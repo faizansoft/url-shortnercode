@@ -575,8 +575,8 @@ ${secondStroke}
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-      <div className="rounded-xl glass p-4 space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+      <div className="rounded-xl glass p-4 space-y-4 sticky top-4 self-start h-[calc(100vh-2rem)] overflow-y-auto">
         {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -698,7 +698,6 @@ ${secondStroke}
                   </div>
                 </button>
               ))}
-              <button className="btn btn-secondary h-9" onClick={() => setDotsType('rounded')}>Reset</button>
             </div>
           </div>
           <div className="space-y-2">
@@ -722,12 +721,6 @@ ${secondStroke}
                 <button key={c} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setDotsColor(c)} />
               ))}
             </div>
-            <button
-              className="btn btn-secondary h-8"
-              onClick={() => { setDotsColor("#0b1220"); setBgColor("#ffffff"); }}
-            >
-              Reset colors
-            </button>
           </div>
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Background</div>
@@ -950,7 +943,7 @@ ${secondStroke}
           </div>
         </div>
       </div>
-      <div className="rounded-xl glass p-5 flex flex-col gap-5 items-center">
+      <div className="rounded-xl glass p-5 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100vh-2rem)]">
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div
@@ -960,43 +953,46 @@ ${secondStroke}
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 items-center justify-center w-full">
+        <div className="mt-auto pt-4 flex flex-wrap gap-3 items-center justify-center w-full">
           <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("png")}>Download PNG</button>
           <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("svg")}>Download SVG</button>
+          <button
+            className="btn btn-outline h-10 px-4 flex items-center gap-2"
+            onClick={() => {
+              // Reset to default values
+              setSize(220);
+              setMargin(2);
+              setEcLevel("M");
+              setPerfMode(false);
+              setDotsType("rounded");
+              setDotsColor("#0b1220");
+              setDotsGradientOn(false);
+              setCornerSquareType("square");
+              setCornerSquareColor("#0b1220");
+              setCornerDotType("dot");
+              setCornerDotColor("#0b1220");
+              setBgGradientOn(false);
+              setBgGradA("#ffffff");
+              setBgGradB("#e2e8f0");
+              setBgGradType("linear");
+              setBgColor("#ffffff");
+              setLogoUrl("");
+              setLogoSize(0.25);
+              setHideBgDots(true);
+              setFrame("square");
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/>
+            </svg>
+            <span>Reset to Default</span>
+          </button>
           <button
             className="btn btn-primary h-10 px-4 tip"
             data-tip="Save current configuration"
             onClick={saveChanges}
           >
             Save changes
-          </button>
-          <button
-            className="h-14 w-14 rounded-md border grid place-items-center tip"
-            style={{ background: 'transparent', borderColor: 'var(--border)' }}
-            data-tip="Reset to default"
-            aria-label="Reset to default"
-            onClick={() => {
-              setDotsType("rounded");
-              setDotsColor(prefersDark ? "#ffffff" : "#0b1220");
-              setCornerSquareType("square");
-              setCornerSquareColor(prefersDark ? "#ffffff" : "#0b1220");
-              setCornerDotType("dot");
-              setCornerDotColor(prefersDark ? "#ffffff" : "#0b1220");
-              setBgColor("#ffffff00");
-              setLogoUrl("");
-              setLogoSize(0.25);
-              setHideBgDots(true);
-              setFrame("square");
-              setEcLevel("M");
-              setSize(220);
-              setMargin(2);
-            }}
-          >
-            <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 6V3L8 7l4 4V8c2.757 0 5 2.243 5 5a5 5 0 0 1-8.535 3.535l-1.414 1.414A7 7 0 1 0 12 6z"/>
-              </svg>
-            </div>
           </button>
         </div>
       </div>
