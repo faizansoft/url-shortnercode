@@ -57,6 +57,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
   // Inform user immediately if signup is disabled when switching mode
   useEffect(() => {
     if (disableSignup && mode === 'signup') {
+      setMode('login');
       setVariant('info');
       setMessage('Site is in building mode. Signup is temporarily disabled.');
     }
@@ -268,10 +269,12 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
                   onClick={() => { setMode("login"); setMessage(""); }}
                   className={`btn h-8 ${mode === "login" ? "btn-primary" : "btn-secondary"}`}
                 >Login</button>
-                <button
-                  onClick={() => { setMode("signup"); setMessage(""); }}
-                  className={`btn h-8 ${mode === "signup" ? "btn-primary" : "btn-secondary"}`}
-                >Sign up</button>
+                {!disableSignup && (
+                  <button
+                    onClick={() => { setMode("signup"); setMessage(""); }}
+                    className={`btn h-8 ${mode === "signup" ? "btn-primary" : "btn-secondary"}`}
+                  >Sign up</button>
+                )}
               </div>
               <form onSubmit={handleEmailAuth} className="space-y-3">
                 <div>
