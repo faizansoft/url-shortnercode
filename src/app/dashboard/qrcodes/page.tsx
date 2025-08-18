@@ -19,7 +19,7 @@ export default function QRCodesPage() {
   const [items, setItems] = useState<QRItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [prefersDark, setPrefersDark] = useState<boolean>(false);
+  // Fixed look: no theme-based color changes
   // All customizer state removed in favor of dedicated page
 
   const origin = useMemo(() => {
@@ -27,14 +27,7 @@ export default function QRCodesPage() {
     return "";
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    const update = () => setPrefersDark(!!mql?.matches);
-    update();
-    mql?.addEventListener?.('change', update);
-    return () => mql?.removeEventListener?.('change', update);
-  }, []);
+  // No theme handling; QR colors remain fixed
 
   // (no modal preloading required)
 
@@ -63,7 +56,7 @@ export default function QRCodesPage() {
               const dataUrl = await QRCode.toDataURL(it.short_url, {
                 errorCorrectionLevel: "M",
                 margin: 1,
-                color: { dark: prefersDark ? "#ffffff" : "#0b1220", light: "#ffffff00" },
+                color: { dark: "#0b1220", light: "#ffffff" },
                 width: 200,
               });
               return { ...it, qr_data_url: dataUrl };
@@ -80,7 +73,7 @@ export default function QRCodesPage() {
         setLoading(false);
       }
     })();
-  }, [origin, prefersDark]);
+  }, [origin]);
 
   // Download SVG for a QR item
   async function handleDownloadSvg(shortUrl: string, code: string) {
@@ -89,7 +82,7 @@ export default function QRCodesPage() {
         type: 'svg',
         errorCorrectionLevel: 'M',
         margin: 0,
-        color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#00000000' },
+        color: { dark: '#0b1220', light: '#ffffff' },
       };
       const svg = await QRCode.toString(shortUrl, options);
       const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
@@ -113,7 +106,7 @@ export default function QRCodesPage() {
       const dataUrl = await QRCode.toDataURL(shortUrl, {
         errorCorrectionLevel: 'M',
         margin: 0,
-        color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#ffffff00' },
+        color: { dark: '#0b1220', light: '#ffffff' },
         width: 2048, // high-res output
       });
       const a = document.createElement('a');

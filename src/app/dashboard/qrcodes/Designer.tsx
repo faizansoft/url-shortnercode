@@ -32,7 +32,7 @@ export default function Designer({ value }: DesignerProps) {
   const [size, setSize] = useState(220);
   const [margin, setMargin] = useState(2);
   const [ecLevel, setEcLevel] = useState<"L" | "M" | "Q" | "H">("M");
-  const [prefersDark, setPrefersDark] = useState<boolean>(false);
+  const [prefersDark, setPrefersDark] = useState<boolean>(false); // retained but no longer affects colors
 
   // Dots/pattern
   const [dotsType, setDotsType] = useState<DotsType>("rounded");
@@ -91,7 +91,7 @@ export default function Designer({ value }: DesignerProps) {
     ] as const
   ), []);
 
-  // Detect system dark mode and align default contrast
+  // Theme detection no longer changes QR colors; look is fixed regardless of OS theme
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
@@ -100,16 +100,6 @@ export default function Designer({ value }: DesignerProps) {
     mql?.addEventListener?.('change', update);
     return () => mql?.removeEventListener?.('change', update);
   }, []);
-
-  // If user hasn't customized away from default dark code color, flip to white on dark
-  useEffect(() => {
-    if (prefersDark && dotsColor === "#0b1220") {
-      setDotsColor("#ffffff");
-      setCornerSquareColor("#ffffff");
-      setCornerDotColor("#ffffff");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefersDark]);
 
   const onUploadIcon = (file: File) => {
     const reader = new FileReader();
@@ -123,27 +113,27 @@ export default function Designer({ value }: DesignerProps) {
     // All frames use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
       case "rounded":
-        return { borderRadius: 16, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "thin":
-        return { borderRadius: 6, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "thick":
-        return { borderRadius: 12, padding: 0, border: "2px solid color-mix(in oklab, var(--accent) 60%, var(--border))", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, border: "2px solid #2563eb", overflow: "hidden" } as React.CSSProperties;
       case "square":
-        return { borderRadius: 0, padding: 0, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "accent":
-        return { borderRadius: 10, padding: 0, border: "3px solid var(--accent)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 10, padding: 0, border: "3px solid #2563eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "shadow":
-        return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "outline":
-        return { borderRadius: 8, padding: 0, outline: "2px solid var(--border)", outlineOffset: 0, background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 8, padding: 0, outline: "2px solid #e5e7eb", outlineOffset: 0, background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "dashed":
-        return { borderRadius: 8, padding: 0, border: "2px dashed var(--border)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 8, padding: 0, border: "2px dashed #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "double":
-        return { borderRadius: 10, padding: 0, border: "2px solid var(--border)", outline: "2px solid var(--accent)", outlineOffset: 2, background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", outline: "2px solid #2563eb", outlineOffset: 2, background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "glow":
-        return { borderRadius: 12, padding: 0, border: "1px solid var(--border)", boxShadow: "0 0 0 4px color-mix(in oklab, var(--accent) 35%, transparent), 0 12px 28px rgba(0,0,0,0.18)", background: "var(--surface)", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 0 0 4px rgba(37,99,235,0.35), 0 12px 28px rgba(0,0,0,0.18)", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
       case "gradient":
-        return { borderRadius: 12, padding: 2, background: "conic-gradient(from 0deg, var(--accent), #7c3aed, #22c55e, var(--accent))", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 2, background: "conic-gradient(from 0deg, #2563eb, #7c3aed, #22c55e, #2563eb)", overflow: "hidden" } as React.CSSProperties;
       default:
         return {} as React.CSSProperties;
     }
@@ -283,9 +273,9 @@ export default function Designer({ value }: DesignerProps) {
     const borderW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
     const outer = size + pad * 2;
 
-    const surface = await getThemeColor('--surface', '#ffffff');
-    const border = await getThemeColor('--border', '#e5e7eb');
-    const accent = await getThemeColor('--accent', '#2563eb');
+    const surface = '#ffffff';
+    const border = '#e5e7eb';
+    const accent = '#2563eb';
 
     // Force latest options to render before exporting to avoid stale downloads
     try { qrRef.current?.update(options); } catch {}
@@ -427,9 +417,9 @@ export default function Designer({ value }: DesignerProps) {
         .replace(/<\/svg>\s*$/i, '')
         .replace(/\n/g, '');
       const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
-      const border = await getThemeColor('--border', '#e5e7eb');
-      const accent = await getThemeColor('--accent', '#2563eb');
-      const surface = await getThemeColor('--surface', '#ffffff');
+      const border = '#e5e7eb';
+      const accent = '#2563eb';
+      const surface = '#ffffff';
       const frameStroke = (frame === 'accent') ? accent : border;
       const strokeW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
 
