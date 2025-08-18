@@ -109,7 +109,6 @@ export default function Designer({ value }: DesignerProps) {
         return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "square":
         return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      // removed other styles
       default:
         return {} as React.CSSProperties;
     }
@@ -284,6 +283,26 @@ export default function Designer({ value }: DesignerProps) {
           }
         } catch {}
       }
+    }
+
+    // Final safety: if we still couldn't build innerMarkup (due to CORS or timing),
+    // render a fresh SVG QR without logo so exports are never blank.
+    if (!innerMarkup) {
+      try {
+        const tmp2 = new QRCodeStyling({ ...options, type: 'svg', image: undefined });
+        const host = document.createElement('div');
+        tmp2.append(host);
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        const svg2 = host.querySelector('svg');
+        if (svg2) {
+          let svgText2 = new XMLSerializer().serializeToString(svg2);
+          svgText2 = svgText2.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+          innerMarkup = svgText2
+            .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+            .replace(/<\/svg>\s*$/i, '')
+            .replace(/\n/g, '');
+        }
+      } catch {}
     }
 
     const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
