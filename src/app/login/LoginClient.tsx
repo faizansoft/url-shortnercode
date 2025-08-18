@@ -12,6 +12,7 @@ type Props = {
 export default function LoginClient({ defaultMode = "login" }: Props) {
   const [mode, setMode] = useState<Mode>(defaultMode);
   const [email, setEmail] = useState("");
+  const [emailInput, setEmailInput] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,8 +21,11 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [cooldownSec, setCooldownSec] = useState(0);
   const [resendCooldownSec, setResendCooldownSec] = useState(0);
+  const [backoffStep, setBackoffStep] = useState(0);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const baseCooldown = Number(process.env.NEXT_PUBLIC_EMAIL_COOLDOWN || 60) || 60;
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
   // Auto-redirect if already authenticated (client safety net)
   useEffect(() => {
@@ -36,6 +40,12 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
     return () => { active = false; };
   }, []);
 
+  // Debounce email input to reduce rapid updates
+  useEffect(() => {
+    const t = setTimeout(() => setEmail(emailInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [emailInput]);
+
   // Countdown timers for rate-limit cooldowns
   useEffect(() => {
     if (cooldownSec <= 0) return;
@@ -49,6 +59,46 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
     return () => clearInterval(t);
   }, [resendCooldownSec]);
 
+  // Helper: start exponential backoff cooldown
+  const startCooldown = () => {
+    const next = Math.min(baseCooldown * Math.pow(2, backoffStep), 300);
+    setCooldownSec(next);
+    setBackoffStep((s) => Math.min(s + 1, 3));
+  };
+
+  // Helper: reset backoff on success
+  const resetBackoff = () => {
+    setBackoffStep(0);
+  };
+
+  // Helper: load reCAPTCHA v3 and get token (optional)
+  async function getRecaptchaToken(action: string): Promise<string | undefined> {
+    if (!recaptchaSiteKey) return undefined;
+    // Load script once
+    const id = 'recaptcha-v3';
+    if (!document.getElementById(id)) {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement('script');
+        s.id = id;
+        s.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(recaptchaSiteKey)}`;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load reCAPTCHA'));
+        document.head.appendChild(s);
+      });
+    }
+    // Execute
+    // @ts-ignore
+    if (typeof window.grecaptcha?.ready === 'function') {
+      // @ts-ignore
+      return await new Promise<string>((resolve) => window.grecaptcha.ready(() => {
+        // @ts-ignore
+        window.grecaptcha.execute(recaptchaSiteKey, { action }).then((token: string) => resolve(token));
+      }));
+    }
+    return undefined;
+  }
+
   async function handleEmailAuth(e: FormEvent) {
     e.preventDefault();
     setMessage("");
@@ -59,17 +109,19 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
         if (password !== confirm) throw new Error("Passwords do not match.");
         if (cooldownSec > 0) return; // guard during cooldown
+        const captchaToken = await getRecaptchaToken('signup').catch(() => undefined);
         const { error } = await supabaseClient.auth.signUp({
           email,
           password,
           // Use email confirmation link flow with redirect to our callback page
-          options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+          options: { emailRedirectTo: `${siteUrl}/auth/callback`, captchaToken },
         });
         if (error) throw error;
         // Always require email confirmation UX
         setVariant("success");
         setMessage("");
         setConfirmationSent(true);
+        resetBackoff();
       } else {
         if (cooldownSec > 0) return; // guard during cooldown
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -77,6 +129,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
         setVariant("success");
         setMessage("Logged in. Redirecting…");
         setTimeout(() => window.location.assign("/dashboard"), 500);
+        resetBackoff();
       }
     } catch (err: unknown) {
       setVariant("error");
@@ -87,7 +140,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
           setMessage("This email is already associated with an account. Try signing in or use a different email.");
         } else if (msg.includes("rate limit") || msg.includes("too many") || (err as any)?.status === 429) {
           setMessage("We’re sending too many emails right now. Please wait a bit and try again.");
-          setCooldownSec(60);
+          startCooldown();
         } else {
           setMessage(err.message);
         }
@@ -96,7 +149,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
         const text = err instanceof Error ? err.message : "Authentication failed.";
         if (status === 429 || text.toLowerCase().includes("rate limit") || text.toLowerCase().includes("too many")) {
           setMessage("Too many attempts. Please wait a minute and try again.");
-          setCooldownSec(60);
+          startCooldown();
         } else {
           setMessage(text);
         }
@@ -119,13 +172,13 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       if (error) throw error;
       setVariant("success");
       setMessage("We’ve re-sent the verification email. Please check your inbox or spam folder.");
-      setResendCooldownSec(60);
+      setResendCooldownSec(baseCooldown);
     } catch (err: unknown) {
       setVariant("error");
       const text = err instanceof Error ? err.message : "Failed to resend email.";
       if ((err as any)?.status === 429 || text.toLowerCase().includes("rate limit") || text.toLowerCase().includes("too many")) {
         setMessage("Email rate limit exceeded. Please wait a minute before trying again.");
-        setResendCooldownSec(60);
+        setResendCooldownSec(baseCooldown);
       } else {
         setMessage(text);
       }
@@ -188,8 +241,8 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
                   <input
                     type="email"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
                     placeholder="you@example.com"
                     className="w-full h-10 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
