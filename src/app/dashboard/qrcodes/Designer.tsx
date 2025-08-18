@@ -388,7 +388,7 @@ export default function Designer({ value }: DesignerProps) {
           addRoundedRect(path, 0.5 * scale * workScale + t1, 0.5 * scale * workScale + t1, workSize - 1 * scale * workScale - 2 * t1, workSize - 1 * scale * workScale - 2 * t1, Math.max(0, rxScaled - 0.5 * scale * workScale - t1));
           wctx.fillStyle = border;
           // even-odd fill to produce ring
-          (wctx as any).fill(path, 'evenodd');
+          wctx.fill(path, 'evenodd');
         }
         // Second ring
         {
@@ -401,7 +401,7 @@ export default function Designer({ value }: DesignerProps) {
           addRoundedRect(path, x, y, w, h, rOuter);
           addRoundedRect(path, x + t2, y + t2, w - 2 * t2, h - 2 * t2, Math.max(0, rOuter - t2));
           wctx.fillStyle = accent;
-          (wctx as any).fill(path, 'evenodd');
+          wctx.fill(path, 'evenodd');
         }
       } else if (frame === 'dashed') {
         wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.setLineDash([]);
@@ -433,7 +433,7 @@ export default function Designer({ value }: DesignerProps) {
       outCanvas.width = exportOuter; outCanvas.height = exportOuter;
       const octx = outCanvas.getContext('2d'); if (!octx) return;
       octx.imageSmoothingEnabled = true;
-      octx.imageSmoothingQuality = 'high' as any;
+      octx.imageSmoothingQuality = 'high';
       octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
 
       outCanvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
