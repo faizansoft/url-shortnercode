@@ -651,9 +651,9 @@ export default function Designer({ value }: DesignerProps) {
             ))}
             <button
               onClick={() => setFrame('none')}
-              className="h-14 w-14 rounded-md border grid place-items-center"
+              className="h-14 w-14 rounded-md border grid place-items-center tip"
               style={{ background: 'transparent', borderColor: 'var(--border)' }}
-              title="Reset frame (None)"
+              data-tip="Reset frame (None)"
               aria-label="Reset frame (None)"
             >
               <div className="h-10 w-10 grid place-items-center" style={{ background: 'var(--surface)', borderRadius: 6 }}>
@@ -680,16 +680,16 @@ export default function Designer({ value }: DesignerProps) {
           <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "png", name: "qr" })}>Download PNG</button>
           <button className="btn btn-secondary h-10 px-4" onClick={() => qrRef.current?.download({ extension: "svg", name: "qr" })}>Download SVG</button>
           <button
-            className="btn btn-primary h-10 px-4"
-            title="Save current configuration"
+            className="btn btn-primary h-10 px-4 tip"
+            data-tip="Save current configuration"
             onClick={saveChanges}
           >
             Save changes
           </button>
           <button
-            className="h-14 w-14 rounded-md border grid place-items-center"
+            className="h-14 w-14 rounded-md border grid place-items-center tip"
             style={{ background: 'transparent', borderColor: 'var(--border)' }}
-            title="Reset to default"
+            data-tip="Reset to default"
             aria-label="Reset to default"
             onClick={() => {
               setDotsType("rounded");

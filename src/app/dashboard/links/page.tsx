@@ -155,22 +155,22 @@ export default function LinksIndexPage() {
                       /{l.short_code}
                     </a>
                   </td>
-                  <td className="p-3 max-w-[420px] truncate" title={l.target_url}>{l.target_url}</td>
+                  <td className="p-3 max-w-[420px] truncate tip" data-tip={l.target_url}>{l.target_url}</td>
                   <td className="p-3">{new Date(l.created_at).toLocaleString()}</td>
                   <td className="p-3">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        className="btn btn-secondary h-9 inline-flex items-center gap-1"
+                        className="btn btn-secondary h-9 inline-flex items-center gap-1 tip"
                         onClick={() => { setQrFor(`${origin}/${l.short_code}`); setShowQR(true); }}
-                        title="Share QR"
+                        data-tip="Share QR"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm6-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h-2v2h2v-2zm2 0v2h2v-2h-2zm-4 4h-2v2h2v-2zm4 0h-2v2h2v-2zm2 0v2h2v-2h-2z"/></svg>
                         Share QR
                       </button>
                       <button
-                        className="btn btn-secondary h-9 inline-flex items-center gap-1"
+                        className="btn btn-secondary h-9 inline-flex items-center gap-1 tip"
                         onClick={() => { setShareFor(`${origin}/${l.short_code}`); setShowShareLink(true); }}
-                        title="Share Link"
+                        data-tip="Share Link"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M3.9 12a4 4 0 0 1 4-4H11v2H7.9a2 2 0 1 0 0 4H11v2H7.9a4 4 0 0 1-4-4Zm9.1-2h3.1a4 4 0 1 1 0 8H13v-2h3.1a2 2 0 1 0 0-4H13V10Zm-4 2h6v2H9v-2Z"/></svg>
                         Share Link
@@ -202,17 +202,17 @@ export default function LinksIndexPage() {
               </div>
               <div className="flex flex-wrap justify-center gap-2 w-full">
                 <button
-                  className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2"
+                  className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
                   onClick={async () => { try { await navigator.clipboard.writeText(shareFor); setCopied(shareFor); setTimeout(()=>setCopied(null),1500);} catch {} }}
-                  title="Copy link"
+                  data-tip="Copy link"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 7a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V7Zm-3 3h1v8a3 3 0 0 0 3 3h8v1H9a4 4 0 0 1-4-4v-8Z"/></svg>
                   {copied === shareFor ? 'Copied' : 'Copy'}
                 </button>
                 <button
-                  className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2"
+                  className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
                   onClick={handleShareLink}
-                  title="Share link"
+                  data-tip="Share link"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18 8a3 3 0 1 0-2.815-4H15a3 3 0 0 0 0 6 2.99 2.99 0 0 0 2.815-2H18ZM6 14a3 3 0 1 0 2.815 4H9a3 3 0 0 0 0-6 2.99 2.99 0 0 0-2.815 2H6Zm9.5-5.5-7 4m7 1.5-7 4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Share
@@ -265,9 +265,9 @@ export default function LinksIndexPage() {
                         Download PNG
                       </a>
                       <button
-                        className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2"
+                        className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
                         onClick={handleShareQR}
-                        title="Share QR image + link"
+                        data-tip="Share QR image + link"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18 8a3 3 0 1 0-2.815-4H15a3 3 0 0 0 0 6 2.99 2.99 0 0 0 2.815-2H18ZM6 14a3 3 0 1 0 2.815 4H9a3 3 0 0 0 0-6 2.99 2.99 0 0 0-2.815 2H6Zm9.5-5.5-7 4m7 1.5-7 4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         Share QR

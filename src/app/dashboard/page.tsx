@@ -106,24 +106,24 @@ export default function DashboardHome() {
                   <td className="p-3 text-right">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        className="btn btn-secondary h-9 inline-flex items-center gap-1 transition hover:opacity-90"
+                        className="btn btn-secondary h-9 inline-flex items-center gap-1 transition hover:opacity-90 tip"
                         onClick={() => {
                           setQrFor(`${origin}/${r.short_code}`);
                           setShowQR(true);
                         }}
-                        title="Show QR"
+                        data-tip="Show QR"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm6-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h-2v2h2v-2zm2 0v2h2v-2h-2zm-4 4h-2v2h2v-2zm4 0h-2v2h2v-2zm2 0v2h2v-2h-2z"/></svg>
                         QR
                       </button>
                       <Link href={`/dashboard/links/${r.short_code}`} className="btn btn-ghost h-9">View</Link>
                       <button
-                        className="btn btn-secondary h-9 transition hover:opacity-90"
+                        className="btn btn-secondary h-9 transition hover:opacity-90 tip"
                         onClick={async () => {
                           const url = `${origin}/${r.short_code}`;
                           try { await navigator.clipboard.writeText(url); setCopied(r.short_code); setTimeout(() => setCopied(null), 1500); } catch {}
                         }}
-                        title="Copy link"
+                        data-tip="Copy link"
                       >{copied === r.short_code ? "Copied" : "Copy"}</button>
                     </div>
                   </td>
