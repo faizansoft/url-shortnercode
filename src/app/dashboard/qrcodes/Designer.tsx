@@ -966,20 +966,21 @@ export default function Designer({ value }: DesignerProps) {
             <input className="w-full h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} placeholder="https://…/logo.png" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
             <div className="grid grid-cols-2 gap-2 items-center">
               <label className="text-xs">Size</label>
-              <div className="flex flex-wrap gap-2 items-center">
-                {([0.15, 0.18, 0.2, 0.22, 0.25, 0.3, 0.35, 0.4] as const).map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    disabled={!logoUrl}
-                    onClick={() => { setLogoSize(p); userAdjustedLogoSizeRef.current = true; }}
-                    className={`h-7 px-2 rounded border text-xs ${logoSize===p? 'ring-1 ring-[var(--accent)] bg-[var(--panel)]' : ''}`}
-                    style={{ background: 'var(--surface)', borderColor: 'var(--border)', opacity: logoUrl ? 1 : 0.6 }}
-                    aria-pressed={logoSize===p}
-                    aria-label={`Logo size ${Math.round(p*100)}%`}
-                    title={!logoUrl ? 'Upload or pick a logo first' : ''}
-                  >{Math.round(p*100)}%</button>
-                ))}
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0.1}
+                  max={0.45}
+                  step={0.01}
+                  disabled={!logoUrl}
+                  value={logoSize}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    userAdjustedLogoSizeRef.current = true;
+                    setLogoSize(Math.min(0.45, Math.max(0.1, isNaN(v) ? logoSize : v)));
+                  }}
+                />
+                <span className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>{Math.round(logoSize*100)}%</span>
                 {logoUrl && (
                   <button
                     type="button"
