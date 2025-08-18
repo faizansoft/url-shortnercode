@@ -352,14 +352,9 @@ export default function Designer({ value }: DesignerProps) {
       const rxScaled = rx * scale * workScale;
       drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
       wctx.fillStyle = effectiveBg; wctx.fill();
-      wctx.save();
-      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-      wctx.clip();
-      // Draw trimmed QR to fill the inner area completely, clipped to rounded rect
-      wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
-      wctx.restore();
-
-      // Draw frame stroke on top so it visually meets the QR
+      // Draw frame stroke BEFORE QR so QR covers any inward bleed
+      wctx.lineJoin = 'round' as CanvasLineJoin;
+      wctx.lineCap = 'round' as CanvasLineCap;
       drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0.5 * scale * workScale, 0.5 * scale * workScale, workSize - 1 * scale * workScale, workSize - 1 * scale * workScale, Math.max(0, rxScaled - 0.5 * scale * workScale));
       if (frame === 'accent') {
         wctx.lineWidth = 5 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
@@ -384,6 +379,13 @@ export default function Designer({ value }: DesignerProps) {
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
         wctx.lineWidth = 4 * scale * workScale; wctx.strokeStyle = g; wctx.stroke();
       }
+
+      // Now draw QR on top, clipped to rounded rect
+      wctx.save();
+      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+      wctx.clip();
+      wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
+      wctx.restore();
 
       // Downscale to final canvas with smoothing to get anti-aliased rounded edge
       const outCanvas = document.createElement('canvas');
@@ -471,10 +473,10 @@ ${defsGlow}
 ${defsClip}
 </defs>
 <rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
+<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="${dashed}" ${frame==='shadow' ? 'filter="url(#fShadow)"' : ''} ${frame==='glow' ? 'filter="url(#fGlow)"' : ''}/>
 <g clip-path="url(#clipR)">
   <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
 </g>
-<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-dasharray="${dashed}" ${frame==='shadow' ? 'filter="url(#fShadow)"' : ''} ${frame==='glow' ? 'filter="url(#fGlow)"' : ''}/>
 ${secondStroke}
 </svg>`;
       const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
