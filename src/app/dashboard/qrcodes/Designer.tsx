@@ -212,10 +212,12 @@ export default function Designer({ value }: DesignerProps) {
   async function getQrBlobFromRendered(): Promise<Blob | null> {
     const root = containerRef.current;
     if (!root) return null;
-    // 1) Try canvas first: safe for uploaded logos (data URLs)
+    // If logo is an external URL, avoid canvas (likely tainted) and prefer SVG path
+    const isExternalLogo = !!logoUrl && /^https?:\/\//i.test(logoUrl);
+    // 1) Try canvas first only when logo is not external (safe for uploaded/data URLs)
     const canvases = Array.from(root.querySelectorAll('canvas')) as HTMLCanvasElement[];
     const canvas = canvases.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
-    if (canvas && canvas.width > 0 && canvas.height > 0 && 'toBlob' in canvas) {
+    if (!isExternalLogo && canvas && canvas.width > 0 && canvas.height > 0 && 'toBlob' in canvas) {
       try {
         // Draw onto a fresh canvas to avoid rare blank toBlob results
         const off = document.createElement('canvas');
@@ -458,11 +460,12 @@ export default function Designer({ value }: DesignerProps) {
       // Downscale to final canvas with smoothing to get anti-aliased rounded edge
       const outCanvas = document.createElement('canvas');
       outCanvas.width = exportOuter; outCanvas.height = exportOuter;
-      const octx = outCanvas.getContext('2d'); if (!octx) return;
+      const octx = outCanvas.getContext('2d', { willReadFrequently: true } as any) as CanvasRenderingContext2D | null; if (!octx) return;
+      const out2d: CanvasRenderingContext2D = octx;
       // Keep modules crisp on the final canvas as well
-      octx.imageSmoothingEnabled = false;
-      octx.imageSmoothingQuality = 'low';
-      octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
+      out2d.imageSmoothingEnabled = false;
+      out2d.imageSmoothingQuality = 'low';
+      out2d.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
 
       // Blank-detection: if final canvas is mostly background color, retry once
       const bgHex = effectiveBg || '#ffffff';
@@ -497,13 +500,19 @@ export default function Designer({ value }: DesignerProps) {
             wctx2.drawImage(rimg, sx, sy, sw, sh, 0, 0, workSize, workSize);
             wctx2.restore();
 
-            octx.clearRect(0, 0, exportOuter, exportOuter);
-            octx.imageSmoothingEnabled = false;
-            octx.imageSmoothingQuality = 'low';
-            octx.drawImage(workCanvas2, 0, 0, exportOuter, exportOuter);
+            out2d.clearRect(0, 0, exportOuter, exportOuter);
+            out2d.imageSmoothingEnabled = false;
+            out2d.imageSmoothingQuality = 'low';
+            out2d.drawImage(workCanvas2, 0, 0, exportOuter, exportOuter);
             canvasIsBlank = isCanvasMostlyColor(outCanvas, bgHex);
           }
           URL.revokeObjectURL(rimg.src);
+        }
+        // If still blank after retry, fall back to library downloader as last resort
+        if (canvasIsBlank) {
+          try { qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch {}
+          URL.revokeObjectURL(img.src);
+          return;
         }
       }
 
