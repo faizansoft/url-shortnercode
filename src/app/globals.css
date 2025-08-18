@@ -49,8 +49,11 @@
     border-color: color-mix(in oklab, var(--border) 40%, var(--accent) 60%);
   }
 
-  /* Keep primary readable; just keep its existing motion and ensure text stays white */
-  .btn-primary:hover { color: #fff; }
+  /* Keep primary readable; tone down hover glow in dark mode */
+  .btn-primary:hover {
+    color: #fff;
+    box-shadow: 0 10px 18px rgba(96,165,250,.20), inset 0 -1px 0 rgba(255,255,255,.20);
+  }
 
   /* Nav items hover should also adopt accent text color */
   .nav-item:hover { color: var(--accent); }
@@ -147,7 +150,15 @@ a:hover {
   background-image: linear-gradient(90deg, color-mix(in oklab, var(--accent) 92%, #fff 0%), color-mix(in oklab, var(--accent-2) 92%, #fff 0%));
   box-shadow: 0 10px 18px rgba(37,99,235,.18), inset 0 -1px 0 rgba(255,255,255,.25);
 }
-.btn-primary:hover { filter: brightness(1.03); transform: translateY(-.5px); }
+.btn-primary:hover {
+  filter: brightness(1.03);
+  transform: translateY(-.5px);
+  /* Light theme glow */
+  box-shadow:
+    0 12px 22px rgba(37,99,235,.22),
+    0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent),
+    inset 0 -1px 0 rgba(255,255,255,.30);
+}
 .btn-primary:active { filter: brightness(.98); transform: translateY(0); }
 
 /* Utility: opt-out of hover motion for primary buttons where we need consistent behavior */
