@@ -829,7 +829,7 @@ ${secondStroke}
         <div style={frameStyle}>
           <div
             className={`rounded-md ${frame === 'none' ? 'p-3' : 'p-0'} ${frame !== 'none' ? 'border-0' : ''}`}
-            style={frame === 'none' ? { background: 'var(--surface)', border: '1px solid var(--border)' } : { background: 'transparent' }}
+            style={frame === 'none' ? { background: 'var(--surface)', border: '1px solid var(--border)' } : { background: 'var(--surface)' }}
           >
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
