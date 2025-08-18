@@ -217,7 +217,15 @@ export default function Designer({ value }: DesignerProps) {
     const canvas = canvases.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
     if (canvas && canvas.width > 0 && canvas.height > 0 && 'toBlob' in canvas) {
       try {
-        const blob = await canvasToPngBlob(canvas as HTMLCanvasElement);
+        // Draw onto a fresh canvas to avoid rare blank toBlob results
+        const off = document.createElement('canvas');
+        off.width = canvas.width;
+        off.height = canvas.height;
+        const octx = off.getContext('2d');
+        if (!octx) throw new Error('no-ctx');
+        octx.imageSmoothingEnabled = false;
+        octx.drawImage(canvas as HTMLCanvasElement, 0, 0);
+        const blob = await canvasToPngBlob(off as HTMLCanvasElement);
         if (blob) return blob;
       } catch {
         // fall through to SVG rasterization
