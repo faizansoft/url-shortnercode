@@ -1,43 +1,56 @@
 "use client";
 
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import NavItem from "./NavItem";
 import AuthGuard from "./AuthGuard";
 import UserMenu from "./UserMenu";
 
-export default function DashboardLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
-  // Search state synced with `q` query param
+function DashboardSearchBox() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const [queryInput, setQueryInput] = useState<string>(searchParams.get("q") || "");
 
-  // Keep local input in sync when the URL changes elsewhere
+  // Sync input when URL changes externally
   useEffect(() => {
     const currentQ = searchParams.get("q") || "";
     setQueryInput(currentQ);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
-  // Debounce URL updates for better UX
+  // Debounced update of the URL query param
   useEffect(() => {
     const t = setTimeout(() => {
       const usp = new URLSearchParams(Array.from(searchParams.entries()));
-      if (queryInput) {
-        usp.set("q", queryInput);
-      } else {
-        usp.delete("q");
-      }
-      router.replace(`${pathname}?${usp.toString()}`);
+      if (queryInput) usp.set("q", queryInput);
+      else usp.delete("q");
+      const qs = usp.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryInput]);
 
+  return (
+    <input
+      type="search"
+      placeholder="Search links…"
+      value={queryInput}
+      onChange={(e) => setQueryInput(e.target.value)}
+      className="w-full h-9 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+      }}
+    />
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-screen grid grid-cols-[240px_1fr]">
       <aside className="border-r border-[var(--border)] text-sm p-4 flex flex-col gap-3 bg-[var(--background)] relative overflow-hidden">
@@ -130,17 +143,9 @@ export default function DashboardLayout({
         >
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-3">
             <div className="flex-1">
-              <input
-                type="search"
-                placeholder="Search links…"
-                value={queryInput}
-                onChange={(e) => setQueryInput(e.target.value)}
-                className="w-full h-9 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
-                style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                }}
-              />
+              <Suspense fallback={<div className="h-9" /> }>
+                <DashboardSearchBox />
+              </Suspense>
             </div>
             {/* Removed header Create button as requested */}
             <button

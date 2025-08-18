@@ -1,15 +1,25 @@
 "use client";
 
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Designer from "../Designer";
 
 export default function CustomizeQRPage() {
-  const search = useSearchParams();
-  const url = search.get("url") || "";
-
   return (
     <div className="space-y-4">
+      <Suspense fallback={<div className="p-4 text-sm text-[var(--muted)]">Loading…</div>}>
+        <CustomizeQRInner />
+      </Suspense>
+    </div>
+  );
+}
+
+function CustomizeQRInner() {
+  const search = useSearchParams();
+  const url = search.get("url") || "";
+  return (
+    <>
       <div className="flex items-center justify-between">
         <div>
           <div className="text-lg font-semibold">Customize design</div>
@@ -22,6 +32,6 @@ export default function CustomizeQRPage() {
 
       {/* Full-featured designer with patterns, corners, colors, icons */}
       <Designer value={url} />
-    </div>
+    </>
   );
 }
