@@ -3,6 +3,18 @@
 import { FormEvent, useEffect, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
+// Minimal types to support optional reCAPTCHA v3 usage
+type Grecaptcha = {
+  ready(cb: () => void): void;
+  execute(siteKey: string, opts: { action: string }): Promise<string>;
+};
+
+declare global {
+  interface Window {
+    grecaptcha?: Grecaptcha;
+  }
+}
+
 type Mode = "login" | "signup";
 
 type Props = {
@@ -88,15 +100,25 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       });
     }
     // Execute
-    // @ts-ignore
     if (typeof window.grecaptcha?.ready === 'function') {
-      // @ts-ignore
-      return await new Promise<string>((resolve) => window.grecaptcha.ready(() => {
-        // @ts-ignore
-        window.grecaptcha.execute(recaptchaSiteKey, { action }).then((token: string) => resolve(token));
+      return await new Promise<string>((resolve) => window.grecaptcha!.ready(() => {
+        window.grecaptcha!.execute(recaptchaSiteKey, { action }).then((token: string) => resolve(token));
       }));
     }
     return undefined;
+  }
+
+  // Helpers to avoid explicit any
+  function getStatus(err: unknown): number | undefined {
+    if (typeof err === 'object' && err !== null && 'status' in err) {
+      const s = (err as { status?: unknown }).status;
+      return typeof s === 'number' ? s : undefined;
+    }
+    return undefined;
+  }
+
+  function getErrorMessage(err: unknown, fallback = 'Operation failed.'): string {
+    return err instanceof Error ? err.message : fallback;
   }
 
   async function handleEmailAuth(e: FormEvent) {
@@ -133,20 +155,20 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       }
     } catch (err: unknown) {
       setVariant("error");
-      if (mode === "signup" && err instanceof Error) {
-        const msg = err.message.toLowerCase();
+      if (mode === "signup") {
+        const msg = getErrorMessage(err).toLowerCase();
         // Handle common Supabase duplicate email errors
         if (msg.includes("already registered") || msg.includes("user already exists") || msg.includes("already associated")) {
           setMessage("This email is already associated with an account. Try signing in or use a different email.");
-        } else if (msg.includes("rate limit") || msg.includes("too many") || (err as any)?.status === 429) {
+        } else if (msg.includes("rate limit") || msg.includes("too many") || getStatus(err) === 429) {
           setMessage("We’re sending too many emails right now. Please wait a bit and try again.");
           startCooldown();
         } else {
-          setMessage(err.message);
+          setMessage(getErrorMessage(err));
         }
       } else {
-        const status = (err as any)?.status;
-        const text = err instanceof Error ? err.message : "Authentication failed.";
+        const status = getStatus(err);
+        const text = getErrorMessage(err, "Authentication failed.");
         if (status === 429 || text.toLowerCase().includes("rate limit") || text.toLowerCase().includes("too many")) {
           setMessage("Too many attempts. Please wait a minute and try again.");
           startCooldown();
@@ -175,8 +197,8 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       setResendCooldownSec(baseCooldown);
     } catch (err: unknown) {
       setVariant("error");
-      const text = err instanceof Error ? err.message : "Failed to resend email.";
-      if ((err as any)?.status === 429 || text.toLowerCase().includes("rate limit") || text.toLowerCase().includes("too many")) {
+      const text = getErrorMessage(err, "Failed to resend email.");
+      if (getStatus(err) === 429 || text.toLowerCase().includes("rate limit") || text.toLowerCase().includes("too many")) {
         setMessage("Email rate limit exceeded. Please wait a minute before trying again.");
         setResendCooldownSec(baseCooldown);
       } else {
