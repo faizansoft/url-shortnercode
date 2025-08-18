@@ -14,6 +14,30 @@
   --selection-text: #0b1220; /* selection text */
 }
 
+/* Themed scrollbars */
+.scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: color-mix(in oklab, var(--accent) 55%, var(--foreground)) transparent;
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scrollbar::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--surface) 96%, #fff 4%);
+  border: 1px solid color-mix(in oklab, var(--border) 80%, var(--accent) 20%);
+  border-radius: 10px;
+}
+.scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--accent) 35%, var(--foreground) 10%);
+  border-radius: 10px;
+  border: 2px solid color-mix(in oklab, var(--surface) 96%, #fff 4%);
+}
+.scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--accent) 55%, var(--foreground) 5%);
+}
+
 /* Removed @theme inline to silence CSS validator warning.
    We keep using the CSS variables directly in components. */
 

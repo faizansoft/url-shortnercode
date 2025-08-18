@@ -52,8 +52,8 @@ export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="min-h-screen grid grid-cols-[240px_1fr]">
-      <aside className="glass text-sm p-4 flex flex-col gap-3 relative overflow-hidden rounded-none border-r border-[var(--border)]">
+    <div className="min-h-[100dvh] grid grid-cols-[240px_1fr]">
+      <aside className="glass text-sm p-4 flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-auto scrollbar">
         <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
           <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%)'}} />
           <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 60%)'}} />
@@ -134,7 +134,7 @@ export default function DashboardLayout({
         </nav>
         {/* Removed footer branding */}
       </aside>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-[100dvh] min-h-screen">
         <header
           className="sticky top-0 z-10 glass rounded-none border-b border-[var(--border)]"
         >
@@ -165,7 +165,7 @@ export default function DashboardLayout({
             <UserMenu />
           </div>
         </header>
-        <main className="p-6">
+        <main className="p-6 flex-1 min-h-0 overflow-auto scrollbar">
           <AuthGuard>
             <div className="mx-auto max-w-6xl w-full space-y-4">{children}</div>
           </AuthGuard>
