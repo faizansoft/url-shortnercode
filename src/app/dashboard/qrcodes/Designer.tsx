@@ -212,7 +212,18 @@ export default function Designer({ value }: DesignerProps) {
   async function getQrBlobFromRendered(): Promise<Blob | null> {
     const root = containerRef.current;
     if (!root) return null;
-    // Prefer inner SVG snapshot to avoid canvas tainting with custom logos
+    // 1) Try canvas first: safe for uploaded logos (data URLs)
+    const canvases = Array.from(root.querySelectorAll('canvas')) as HTMLCanvasElement[];
+    const canvas = canvases.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
+    if (canvas && canvas.width > 0 && canvas.height > 0 && 'toBlob' in canvas) {
+      try {
+        const blob = await canvasToPngBlob(canvas as HTMLCanvasElement);
+        if (blob) return blob;
+      } catch {
+        // fall through to SVG rasterization
+      }
+    }
+    // 2) Fallback: rasterize from inner SVG (with external logos inlined) to avoid CORS taint
     const svgEl = root.querySelector('svg');
     if (svgEl) {
       let svgText = new XMLSerializer().serializeToString(svgEl);
@@ -251,11 +262,7 @@ export default function Designer({ value }: DesignerProps) {
         URL.revokeObjectURL(url);
       }
     }
-    // Fallback: use canvas if SVG is not present
-    const canvas = root.querySelector('canvas');
-    if (canvas && 'toBlob' in canvas) {
-      return await new Promise<Blob | null>((resolve) => (canvas as HTMLCanvasElement).toBlob((b) => resolve(b), 'image/png'));
-    }
+    // 3) If neither worked, give up
     return null;
   }
 
@@ -264,6 +271,21 @@ export default function Designer({ value }: DesignerProps) {
     const a = document.createElement('a');
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  // Robust canvas->PNG Blob with fallback via dataURL
+  async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+    // Try native toBlob first
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+    if (blob) return blob;
+    // Fallback: dataURL -> Blob
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      const res = await fetch(dataUrl);
+      return await res.blob();
+    } catch {
+      return null;
+    }
   }
 
   // Helper: fetch an external URL and return a data URL for safe inlining
@@ -381,7 +403,8 @@ export default function Designer({ value }: DesignerProps) {
       octx.imageSmoothingQuality = 'low';
       octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
 
-      outCanvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
+      const finalBlob = await canvasToPngBlob(outCanvas);
+      if (finalBlob) downloadBlob(finalBlob, 'qr-framed.png');
       URL.revokeObjectURL(img.src);
       return;
     }
