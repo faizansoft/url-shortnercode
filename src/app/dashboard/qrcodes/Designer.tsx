@@ -382,7 +382,7 @@ export default function Designer({ value }: DesignerProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-      <div className="rounded-xl glass p-4 space-y-4 sticky top-4 self-start h-[calc(100vh-2rem)] overflow-y-auto">
+      <div className="rounded-xl glass border border-[var(--border)] p-4 space-y-4 sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -749,7 +749,7 @@ export default function Designer({ value }: DesignerProps) {
           </div>
         </div>
       </div>
-      <div className="rounded-xl glass p-5 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100vh-2rem)]">
+      <div className="rounded-xl glass border border-[var(--border)] p-4 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-hidden">
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div style={frameStyle}>
           <div
@@ -759,7 +759,7 @@ export default function Designer({ value }: DesignerProps) {
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
         </div>
-        <div className="mt-auto pt-4 flex flex-wrap gap-3 items-center justify-center w-full">
+        <div className="pt-2 flex flex-wrap gap-3 items-center justify-center w-full">
           <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("png")}>Download PNG</button>
           <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("svg")}>Download SVG</button>
           <button
