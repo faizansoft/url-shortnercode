@@ -279,7 +279,7 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function handleDownload(ext: 'png' | 'svg') {
-    const pad = 20; // outer padding inside frame
+    const pad = 8; // outer padding inside frame (tighter)
     const borderW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
     const outer = size + pad * 2;
 

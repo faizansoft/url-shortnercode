@@ -88,7 +88,7 @@ export default function QRCodesPage() {
       const options: QRCodeToStringOptions = {
         type: 'svg',
         errorCorrectionLevel: 'M',
-        margin: 1,
+        margin: 0,
         color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#00000000' },
       };
       const svg = await QRCode.toString(shortUrl, options);
@@ -112,7 +112,7 @@ export default function QRCodesPage() {
     try {
       const dataUrl = await QRCode.toDataURL(shortUrl, {
         errorCorrectionLevel: 'M',
-        margin: 2,
+        margin: 0,
         color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#ffffff00' },
         width: 2048, // high-res output
       });
