@@ -74,14 +74,14 @@ export default function QRCodesPage() {
     })();
   }, [origin]);
 
-  // Download SVG for a QR item
+  // Download SVG for a QR item (transparent background, tight bounds)
   async function handleDownloadSvg(shortUrl: string, code: string) {
     try {
       const options: QRCodeToStringOptions = {
         type: 'svg',
         errorCorrectionLevel: 'M',
         margin: 0,
-        color: { dark: '#0b1220', light: '#ffffff' },
+        color: { dark: '#0b1220', light: 'transparent' },
       };
       const svg = await QRCode.toString(shortUrl, options);
       const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
@@ -99,13 +99,13 @@ export default function QRCodesPage() {
     }
   }
 
-  // Download high-resolution PNG for a QR item
+  // Download high-resolution PNG for a QR item (transparent background)
   async function handleDownloadPng(shortUrl: string, code: string) {
     try {
       const dataUrl = await QRCode.toDataURL(shortUrl, {
         errorCorrectionLevel: 'M',
         margin: 0,
-        color: { dark: '#0b1220', light: '#ffffff' },
+        color: { dark: '#0b1220', light: 'transparent' },
         width: 2048, // high-res output
       });
       const a = document.createElement('a');
