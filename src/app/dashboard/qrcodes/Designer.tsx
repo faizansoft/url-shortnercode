@@ -7,6 +7,48 @@ import { supabaseClient } from "@/lib/supabaseClient";
 // Explicit local helper types to satisfy TS
 type DotsOpts = NonNullable<QRStyleOptions["dotsOptions"]>;
 type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
+
+// Saved options persisted in backend/local storage
+type CornerSquareType = "dot" | "square" | "extra-rounded";
+type CornerDotType = "dot" | "square";
+interface SavedOptions {
+  size?: number;
+  margin?: number;
+  ecLevel?: "L" | "M" | "Q" | "H";
+  perfMode?: boolean;
+  dotsType?: DotsType;
+  dotsColor?: string;
+  dotsGradientOn?: boolean;
+  dotsGradA?: string;
+  dotsGradB?: string;
+  dotsGradRotation?: number;
+  cornerSquareType?: CornerSquareType;
+  cornerSquareColor?: string;
+  cornerDotType?: CornerDotType;
+  cornerDotColor?: string;
+  bgColor?: string;
+  bgGradientOn?: boolean;
+  bgGradA?: string;
+  bgGradB?: string;
+  bgGradType?: BgGradType;
+  logoUrl?: string;
+  logoSize?: number;
+  hideBgDots?: boolean;
+  value?: string;
+  ts?: number;
+}
+
+function isSavedOptions(x: unknown): x is SavedOptions {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, unknown>;
+  // Check a few representative fields for shape without being overly strict
+  const okNum = (k: string) => o[k] === undefined || typeof o[k] === 'number';
+  const okStr = (k: string) => o[k] === undefined || typeof o[k] === 'string';
+  const okBool = (k: string) => o[k] === undefined || typeof o[k] === 'boolean';
+  if (!okNum('size') || !okNum('margin') || !okStr('dotsColor') || !okStr('bgColor')) return false;
+  if (!okStr('logoUrl') || !okNum('logoSize')) return false;
+  return true;
+}
 type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
 type BgGradType = "linear" | "radial";
 
@@ -66,7 +108,7 @@ export default function Designer({ value }: DesignerProps) {
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
   const savedPresentRef = useRef<boolean>(false);
-  const savedSnapshotRef = useRef<any>(null);
+  const savedSnapshotRef = useRef<SavedOptions | null>(null);
 
   // (removed) frame/border feature
   const [perfMode, setPerfMode] = useState<boolean>(false);
@@ -144,8 +186,6 @@ export default function Designer({ value }: DesignerProps) {
     })();
   }, [logoUrl]);
 
-  // Effective preview background and style (solid only)
-  const effectivePreviewBg = useMemo(() => bgColor, [bgColor]);
   // (previewInnerStyle removed – unused)
 
   // Build options for qr-code-styling
@@ -220,7 +260,7 @@ export default function Designer({ value }: DesignerProps) {
         const u = new URL(value);
         const short_code = (u.pathname || '').replace(/^\//, '');
         if (!short_code) return;
-        let o: any = null;
+        let o: unknown = null;
         try {
           const { data } = await supabaseClient.auth.getSession();
           const token = data.session?.access_token;
@@ -239,7 +279,7 @@ export default function Designer({ value }: DesignerProps) {
             if (raw) o = JSON.parse(raw);
           } catch {}
         }
-        if (!o || typeof o !== 'object') return;
+        if (!isSavedOptions(o)) return;
         savedPresentRef.current = true;
         savedSnapshotRef.current = o;
         // Apply all saved values safely, suppressing intermediate updates
