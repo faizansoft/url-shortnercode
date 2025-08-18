@@ -279,8 +279,8 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function handleDownload(ext: 'png' | 'svg') {
-    const pad = 16; // outer padding inside frame
-    const borderW = (frame === 'thick' || frame === 'accent') ? 3 : (frame === 'thin' ? 1 : (frame === 'double' ? 2 : 1));
+    const pad = 20; // outer padding inside frame
+    const borderW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
     const outer = size + pad * 2;
 
     const surface = await getThemeColor('--surface', '#ffffff');
@@ -297,35 +297,36 @@ export default function Designer({ value }: DesignerProps) {
       canvas.width = outer; canvas.height = outer;
       const ctx = canvas.getContext('2d'); if (!ctx) return;
 
-      // Background fill
-      ctx.fillStyle = surface; ctx.fillRect(0, 0, outer, outer);
+      // Rounded background fill (keeps canvas corners transparent outside path)
+      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0))));
+      drawRoundedRect(ctx, 0, 0, outer, outer, rx);
+      ctx.fillStyle = surface; ctx.fill();
 
       // Frame stroke/fill
-      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 12 : (frame === 'outline' ? 8 : (frame === 'thin' ? 4 : (frame === 'thick' ? 10 : (frame === 'double' ? 8 : 0))));
-      drawRoundedRect(ctx, 2, 2, outer - 4, outer - 4, rx);
+      drawRoundedRect(ctx, 2, 2, outer - 4, outer - 4, Math.max(0, rx - 2));
       if (frame === 'accent') {
-        ctx.lineWidth = 3; ctx.strokeStyle = accent; ctx.stroke();
+        ctx.lineWidth = 5; ctx.strokeStyle = accent; ctx.stroke();
       } else if (frame === 'double') {
-        ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke();
-        drawRoundedRect(ctx, 6, 6, outer - 12, outer - 12, Math.max(0, rx - 4));
-        ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.stroke();
-      } else if (frame === 'dashed') {
-        ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
-      } else if (frame === 'outline') {
-        ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke();
-      } else if (frame === 'thick') {
         ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke();
+        drawRoundedRect(ctx, 6, 6, outer - 12, outer - 12, Math.max(0, rx - 6));
+        ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.stroke();
+      } else if (frame === 'dashed') {
+        ctx.setLineDash([8, 8]); ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
+      } else if (frame === 'outline') {
+        ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke();
+      } else if (frame === 'thick') {
+        ctx.lineWidth = 6; ctx.strokeStyle = border; ctx.stroke();
       } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-        ctx.lineWidth = 1; ctx.strokeStyle = border; ctx.stroke();
+        ctx.lineWidth = 2; ctx.strokeStyle = border; ctx.stroke();
       } else if (frame === 'glow') {
-        ctx.shadowColor = accent; ctx.shadowBlur = 18; ctx.lineWidth = 1; ctx.strokeStyle = border; ctx.stroke(); ctx.shadowBlur = 0;
+        ctx.shadowColor = accent; ctx.shadowBlur = 22; ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke(); ctx.shadowBlur = 0;
       } else if (frame === 'shadow') {
-        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 8; ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
       } else if (frame === 'gradient') {
         // Simple gradient stroke approximation
         const g = ctx.createLinearGradient(0, 0, outer, outer);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
-        ctx.lineWidth = 2; ctx.strokeStyle = g; ctx.stroke();
+        ctx.lineWidth = 4; ctx.strokeStyle = g; ctx.stroke();
       }
 
       // Draw QR centered
@@ -350,12 +351,12 @@ export default function Designer({ value }: DesignerProps) {
         .replace(/^[\s\S]*?<svg[^>]*>/i, '')
         .replace(/<\/svg>\s*$/i, '')
         .replace(/\n/g, '');
-      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 12 : (frame === 'outline' ? 8 : (frame === 'thin' ? 4 : (frame === 'thick' ? 10 : (frame === 'double' ? 8 : 0))));
+      const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0))));
       const border = await getThemeColor('--border', '#e5e7eb');
       const accent = await getThemeColor('--accent', '#2563eb');
       const surface = await getThemeColor('--surface', '#ffffff');
       const frameStroke = (frame === 'accent') ? accent : border;
-      const strokeW = (frame === 'thick' || frame === 'accent') ? 3 : (frame === 'thin' ? 1 : (frame === 'double' ? 2 : 1));
+      const strokeW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
 
       const defs = frame === 'gradient'
         ? `<defs><linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>`
@@ -367,7 +368,7 @@ export default function Designer({ value }: DesignerProps) {
       const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
 ${defs}
-<rect x="0" y="0" width="${outer}" height="${outer}" fill="${surface}"/>
+<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${surface}"/>
 <rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-dasharray="${dashed}"/>
 ${secondStroke}
 <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
