@@ -224,8 +224,16 @@ export default function Designer({ value }: DesignerProps) {
     const tmp = new QRCodeStyling(tempOpts);
     const tmpDiv = document.createElement('div');
     tmp.append(tmpDiv);
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    const svgNode = tmpDiv.querySelector('svg');
+    // Wait until qr-code-styling renders something
+    let svgNode: SVGSVGElement | null = null;
+    let canvasNode: HTMLCanvasElement | null = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      svgNode = tmpDiv.querySelector('svg');
+      canvasNode = tmpDiv.querySelector('canvas');
+      if (svgNode || canvasNode) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
 
     let innerMarkup = '';
     if (svgNode) {
@@ -243,7 +251,9 @@ export default function Designer({ value }: DesignerProps) {
           try {
             const dataUrl = await urlToDataURL(u);
             svgText = svgText.split(u).join(dataUrl);
-          } catch {}
+          } catch {
+            // If we cannot inline an external logo, keep going; the browser may refuse external refs on rasterization
+          }
         }
       } catch {}
       const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
@@ -251,6 +261,29 @@ export default function Designer({ value }: DesignerProps) {
         .replace(/^[\s\S]*?<svg[^>]*>/i, '')
         .replace(/<\/svg>\s*$/i, '')
         .replace(/\n/g, '');
+    } else if (canvasNode) {
+      // Fallback: embed the canvas render as an <image> to avoid losing logos
+      try {
+        const dataUrl = canvasNode.toDataURL('image/png');
+        innerMarkup = `<image width="${size}" height="${size}" x="0" y="0" href="${dataUrl}"/>`;
+      } catch {
+        // Last resort: render without logo to avoid a blank export
+        try {
+          const tmp2 = new QRCodeStyling({ ...options, type: 'svg', image: undefined });
+          const host = document.createElement('div');
+          tmp2.append(host);
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+          const svg2 = host.querySelector('svg');
+          if (svg2) {
+            let svgText2 = new XMLSerializer().serializeToString(svg2);
+            svgText2 = svgText2.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+            innerMarkup = svgText2
+              .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+              .replace(/<\/svg>\s*$/i, '')
+              .replace(/\n/g, '');
+          }
+        } catch {}
+      }
     }
 
     const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
