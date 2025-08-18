@@ -203,6 +203,69 @@ export default function Designer({ value }: DesignerProps) {
     });
   }
 
+  // Build a fresh combined SVG (QR + frame) without using the live preview DOM
+  async function buildCombinedSVG(outer: number): Promise<string> {
+    // Prepare a temporary SVG QR render using current options
+    const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
+    const strokeW = 1;
+    const half = strokeW / 2;
+    const surface = '#ffffff';
+    const border = '#e5e7eb';
+    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const effectiveBg = transparentBg ? surface : bgColor;
+
+    // Ensure we render QR as SVG regardless of preview type
+    const tempOpts: QRStyleOptions = {
+      ...options,
+      width: size,
+      height: size,
+      type: 'svg',
+    };
+    const tmp = new QRCodeStyling(tempOpts);
+    const tmpDiv = document.createElement('div');
+    tmp.append(tmpDiv);
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const svgNode = tmpDiv.querySelector('svg');
+
+    let innerMarkup = '';
+    if (svgNode) {
+      // Serialize inner QR SVG and inline any external images
+      let svgText = new XMLSerializer().serializeToString(svgNode);
+      try {
+        const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
+        const urls: string[] = [];
+        let m: RegExpExecArray | null;
+        while ((m = hrefRegex.exec(svgText)) !== null) {
+          const u = m[1];
+          if (/^https?:\/\//i.test(u)) urls.push(u);
+        }
+        for (const u of Array.from(new Set(urls))) {
+          try {
+            const dataUrl = await urlToDataURL(u);
+            svgText = svgText.split(u).join(dataUrl);
+          } catch {}
+        }
+      } catch {}
+      const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+      innerMarkup = cleaned
+        .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+        .replace(/<\/svg>\s*$/i, '')
+        .replace(/\n/g, '');
+    }
+
+    const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
+    const wrapped = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">\n` +
+      `<defs>\n${defsClip}\n</defs>\n` +
+      `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>\n` +
+      `<rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${border}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>\n` +
+      `<g clip-path="url(#clipR)">\n` +
+      `  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${innerMarkup}</g>\n` +
+      `</g>\n` +
+      `</svg>`;
+    return wrapped;
+  }
+
   // (removed unused getThemeColor)
 
   async function getQrBlobFromRendered(): Promise<Blob | null> {
@@ -427,189 +490,48 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function handleDownload(ext: 'png' | 'svg') {
-    const pad = 0; // preview uses zero padding in frameStyle
-    // stroke widths aligned to frameStyle
-    const borderW = 1;
+    const pad = 0;
     const outer = size + pad * 2;
-
-    const surface = '#ffffff';
-    const border = '#e5e7eb';
-    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-    const effectiveBg = transparentBg ? surface : bgColor;
-
-    // Force latest options to render before exporting to avoid stale downloads
+    // Ensure latest options are applied before we read states (not the DOM)
     try { qrRef.current?.update(options); } catch {}
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-    if (ext === 'png') {
-      const qrBlob = await getQrBlobFromRendered();
-      if (!qrBlob) { try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { return; } }
-      const img = new window.Image();
-      img.src = URL.createObjectURL(qrBlob);
-      await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-      // Preserve intrinsic QR margin exactly as rendered (no trimming)
-      const sx = 0, sy = 0, sw = img.width, sh = img.height;
-
-      const exportOuter = Math.max(2048, outer);
-      const scale = exportOuter / outer;
-      // Work at 2x for smoother rounded corners, then downscale once
-      const workScale = 2;
-      const workSize = exportOuter * workScale;
-      const workCanvas = document.createElement('canvas');
-      workCanvas.width = workSize; workCanvas.height = workSize;
-      const wctx = workCanvas.getContext('2d'); if (!wctx) return;
-      wctx.imageSmoothingEnabled = false; // keep QR crisp while upscaling
-
-      // Rounded background fill and clip so QR respects corner shape
-      // Corner radii aligned to frameStyle
-      const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-      const rxScaled = rx * scale * workScale;
-      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-      wctx.fillStyle = effectiveBg; wctx.fill();
-      // Draw frame stroke BEFORE QR so QR covers any inward bleed
-      wctx.lineJoin = 'round' as CanvasLineJoin;
-      wctx.lineCap = 'round' as CanvasLineCap;
-      const strokeInsetRect = (lw: number) => {
-        const inset = lw / 2;
-        drawRoundedRect(
-          wctx as unknown as CanvasRenderingContext2D,
-          inset,
-          inset,
-          workSize - 2 * inset,
-          workSize - 2 * inset,
-          Math.max(0, rxScaled - inset)
-        );
-      };
-      if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-        // Make final stroke exactly 1px regardless of export scale
-        const lw = 1 * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
+    if (ext === 'svg') {
+      try {
+        const wrapped = await buildCombinedSVG(outer);
+        const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+        downloadBlob(outBlob, 'qr-framed.svg');
+        return;
+      } catch {
+        try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
+        return;
       }
-
-      // Now draw QR on top, clipped to rounded rect
-      wctx.save();
-      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-      // Fill background to ensure opaque white when bgColor is transparent
-      wctx.fillStyle = effectiveBg;
-      wctx.fill();
-      wctx.clip();
-      // Preserve crisp QR modules when upscaling into the work canvas
-      wctx.imageSmoothingEnabled = false;
-      wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
-      wctx.restore();
-
-      // Downscale to final canvas with smoothing to get anti-aliased rounded edge
-      const outCanvas = document.createElement('canvas');
-      outCanvas.width = exportOuter; outCanvas.height = exportOuter;
-      const octx = outCanvas.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings) as CanvasRenderingContext2D | null; if (!octx) return;
-      const out2d: CanvasRenderingContext2D = octx;
-      // Downscale with smoothing to preserve logo quality; modules remain crisp due to high-res source
-      out2d.imageSmoothingEnabled = true;
-      out2d.imageSmoothingQuality = 'high';
-      out2d.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
-
-      // Blank-detection: if final canvas is mostly background color, retry once
-      const bgHex = effectiveBg || '#ffffff';
-      let canvasIsBlank = isCanvasMostlyColor(outCanvas, bgHex);
-      if (canvasIsBlank) {
-        try { qrRef.current?.update(options); } catch {}
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-        // re-snapshot and recompose once
-        const retryBlob = await getQrBlobFromRendered();
-        if (retryBlob) {
-          const rimg = new window.Image();
-          rimg.src = URL.createObjectURL(retryBlob);
-          await new Promise((res, rej) => { rimg.onload = () => res(null); rimg.onerror = rej; });
-          // redraw QR path only
-          const workCanvas2 = document.createElement('canvas');
-          workCanvas2.width = workSize; workCanvas2.height = workSize;
-          const wctx2 = workCanvas2.getContext('2d'); if (wctx2) {
-            wctx2.imageSmoothingEnabled = false;
-            drawRoundedRect(wctx2 as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-            wctx2.fillStyle = effectiveBg; wctx2.fill();
-            // stroke again
-            wctx2.lineJoin = 'round' as CanvasLineJoin;
-            wctx2.lineCap = 'round' as CanvasLineCap;
-            if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-              const lw = 1 * workScale; wctx2.lineWidth = lw; wctx2.strokeStyle = border; strokeInsetRect(lw); wctx2.stroke();
-            }
-            // clip + draw
-            wctx2.save();
-            drawRoundedRect(wctx2 as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
-            wctx2.clip();
-            wctx2.imageSmoothingEnabled = false;
-            wctx2.drawImage(rimg, sx, sy, sw, sh, 0, 0, workSize, workSize);
-            wctx2.restore();
-
-            out2d.clearRect(0, 0, exportOuter, exportOuter);
-            out2d.imageSmoothingEnabled = true;
-            out2d.imageSmoothingQuality = 'high';
-            out2d.drawImage(workCanvas2, 0, 0, exportOuter, exportOuter);
-            canvasIsBlank = isCanvasMostlyColor(outCanvas, bgHex);
-          }
-          URL.revokeObjectURL(rimg.src);
-        }
-        // If still blank after retry, fall back to library downloader as last resort
-        if (canvasIsBlank) {
-          try { qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch {}
-          URL.revokeObjectURL(img.src);
-          return;
-        }
-      }
-
-      const finalBlob = await canvasToPngBlob(outCanvas);
-      if (finalBlob) downloadBlob(finalBlob, 'qr-framed.png');
-      URL.revokeObjectURL(img.src);
-      return;
     }
 
-    // SVG path: wrap inner SVG or canvas snapshot with outer frame SVG
+    // PNG export: rasterize our combined SVG (not the preview) to a canvas
     try {
-      const root = containerRef.current;
-      const svgNode = root?.querySelector('svg');
-      const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-      const frameStroke = border;
-      const strokeW = borderW;
-      const half = strokeW / 2;
-      const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
-      const secondStroke = '';
-      const strokeCol = frameStroke;
-
-      let innerMarkup = '';
-      if (svgNode) {
-        // Use inner SVG content directly for true vector export
-        const svgText = new XMLSerializer().serializeToString(svgNode);
-        const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-        innerMarkup = cleaned
-          .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-          .replace(/<\/svg>\s*$/i, '')
-          .replace(/\n/g, '');
-      } else {
-        // No inner SVG (likely because logo forces canvas). Snapshot preview to PNG data URL and embed as image.
-        const qrBlob = await getQrBlobFromRendered();
-        if (!qrBlob) throw new Error('no-snapshot');
-        const dataUrl = await blobToDataURL(qrBlob);
-        // position the image centered with original size inside the frame
-        const tx = (outer - size) / 2;
-        const ty = (outer - size) / 2;
-        innerMarkup = `<image x="${tx}" y="${ty}" width="${size}" height="${size}" href="${dataUrl}" />`;
-      }
-
-      const wrapped = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
-<defs>
-${defsClip}
-</defs>
-<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
-<rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>
-${secondStroke}
-<g clip-path="url(#clipR)">
-  ${svgNode ? `<g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${innerMarkup}</g>` : innerMarkup}
-</g>
-</svg>`;
-      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-      downloadBlob(outBlob, 'qr-framed.svg');
+      const wrapped = await buildCombinedSVG(outer);
+      const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const exportOuter = Math.max(2048, outer);
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = url;
+      await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+      const canvas = document.createElement('canvas');
+      canvas.width = exportOuter; canvas.height = exportOuter;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { URL.revokeObjectURL(url); return; }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
+      const blob = await canvasToPngBlob(canvas);
+      if (blob) downloadBlob(blob, 'qr-framed.png');
+      URL.revokeObjectURL(url);
+      return;
     } catch {
-      try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
+      try { qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch {}
+      return;
     }
   }
   // (removed unused resetAll)
