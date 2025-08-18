@@ -215,7 +215,23 @@ export default function Designer({ value }: DesignerProps) {
     // Prefer inner SVG snapshot to avoid canvas tainting with custom logos
     const svgEl = root.querySelector('svg');
     if (svgEl) {
-      const svgText = new XMLSerializer().serializeToString(svgEl);
+      let svgText = new XMLSerializer().serializeToString(svgEl);
+      // Inline external images (e.g., custom logo) to avoid CORS-tainted drawImage
+      try {
+        const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
+        const urls: string[] = [];
+        let m: RegExpExecArray | null;
+        while ((m = hrefRegex.exec(svgText)) !== null) {
+          const u = m[1];
+          if (/^https?:\/\//i.test(u)) urls.push(u);
+        }
+        for (const u of Array.from(new Set(urls))) {
+          try {
+            const dataUrl = await urlToDataURL(u);
+            svgText = svgText.split(u).join(dataUrl);
+          } catch {}
+        }
+      } catch {}
       const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
       try {
@@ -248,6 +264,18 @@ export default function Designer({ value }: DesignerProps) {
     const a = document.createElement('a');
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  // Helper: fetch an external URL and return a data URL for safe inlining
+  async function urlToDataURL(url: string): Promise<string> {
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
   }
 
   function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
