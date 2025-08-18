@@ -69,8 +69,7 @@ export default function Designer({ value }: DesignerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const qrRef = useRef<QRCodeStyling | null>(null);
   const suppressUpdateRef = useRef<boolean>(false);
-  // Cache for URL -> dataURL conversions to avoid repeated CORS fetches
-  const dataUrlCacheRef = useRef<Map<string, string>>(new Map());
+  // (removed) data URL cache and CORS inlining logic
 
   // Core options
   const [size, setSize] = useState(220);
@@ -107,11 +106,9 @@ export default function Designer({ value }: DesignerProps) {
   const userAdjustedLogoSizeRef = useRef<boolean>(false);
   const prevLogoUrlRef = useRef<string>("");
 
-  // Frame (visual wrapper)
-  const [frame, setFrame] = useState<"rounded" | "thin" | "square">("square");
+  // (removed) frame/border feature
   const [perfMode, setPerfMode] = useState<boolean>(false);
-  // Export notices (e.g., CORS issues with logos)
-  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  // (removed) export notices related to CORS/logo embedding
   
   // Corner custom presets (runtime only)
   const [cornerPresets, setCornerPresets] = useState<Array<{ label: string; sq: "dot" | "square" | "extra-rounded"; dot: "dot" | "square"; sc: string; dc: string }>>([]);
@@ -156,27 +153,10 @@ export default function Designer({ value }: DesignerProps) {
     }
     prevLogoUrlRef.current = logoUrl;
   }, [logoUrl, ecLevel]);
-  const frameStyle = useMemo(() => {
-    const transparentBg = isBgTransparent(bgColor);
-    const effectiveBg = transparentBg ? 'transparent' : bgColor;
-    // All frames use zero padding so the QR fits perfectly without extra spacing
-    switch (frame) {
-      case "rounded":
-        return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "thin":
-        return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      case "square":
-        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
-      default:
-        return {} as React.CSSProperties;
-    }
-  }, [frame, bgColor]);
+  // (removed) frameStyle memo
 
-  // Effective preview background used for the inner wrapper when a frame is applied
-  const effectivePreviewBg = useMemo(() => {
-    // Use exactly what the user selected so preview reflects transparency too
-    return bgColor;
-  }, [bgColor]);
+  // Effective preview background
+  const effectivePreviewBg = useMemo(() => bgColor, [bgColor]);
 
   // Whether the selected background is transparent
   const isTransparentBg = useMemo(() => {
@@ -305,12 +285,7 @@ export default function Designer({ value }: DesignerProps) {
     return () => mo.disconnect();
   }, [isTransparentBg]);
 
-  // Auto-dismiss export notices after a short delay
-  useEffect(() => {
-    if (!exportNotice) return;
-    const t = setTimeout(() => setExportNotice(null), 4000);
-    return () => clearTimeout(t);
-  }, [exportNotice]);
+  // (removed) export notice auto-dismiss
 
   // Helper to batch many state changes and avoid intermediate preview updates
   function batchUpdate(fn: () => void) {
@@ -322,165 +297,27 @@ export default function Designer({ value }: DesignerProps) {
     });
   }
 
-  // Build a fresh combined SVG (QR + frame) without using the live preview DOM
-  async function buildCombinedSVG(outer: number, forceNoLogo: boolean = false): Promise<string> {
-    // Prepare a temporary SVG QR render using current options
-    const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
-    const strokeW = 1;
-    const half = strokeW / 2;
-    const surface = '#ffffff';
-    const border = '#e5e7eb';
-    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
-    const effectiveBg = transparentBg ? surface : bgColor;
-
-    // Ensure we render QR as SVG regardless of preview type
-    const tempOpts: QRStyleOptions = {
-      ...options,
-      image: forceNoLogo ? undefined : options.image,
-      width: size,
-      height: size,
-      type: 'svg',
-    };
+  // Build a fresh SVG of the QR only (no frame) without using the live preview DOM
+  async function buildCombinedSVG(_outer: number): Promise<string> {
+    // Render QR as SVG with current options and return the serialized SVG as-is
+    const tempOpts: QRStyleOptions = { ...options, width: size, height: size, type: 'svg' };
     const tmp = new QRCodeStyling(tempOpts);
     const tmpDiv = document.createElement('div');
     tmp.append(tmpDiv);
-    // Wait until qr-code-styling renders something
     let svgNode: SVGSVGElement | null = null;
-    let canvasNode: HTMLCanvasElement | null = null;
     for (let i = 0; i < 10; i++) {
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
       svgNode = tmpDiv.querySelector('svg');
-      canvasNode = tmpDiv.querySelector('canvas');
-      if (svgNode || canvasNode) break;
+      if (svgNode) break;
       await new Promise((r) => setTimeout(r, 20));
     }
-
-    let innerMarkup = '';
     if (svgNode) {
-      // Serialize inner QR SVG and inline any external images
       let svgText = new XMLSerializer().serializeToString(svgNode);
-      try {
-        const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
-        type Ref = { raw: string; abs: string };
-        const refs: Ref[] = [];
-        let m: RegExpExecArray | null;
-        while ((m = hrefRegex.exec(svgText)) !== null) {
-          const raw = m[1];
-          // Skip already inlined data URLs
-          if (/^data:/i.test(raw)) continue;
-          // Normalize protocol-relative URLs (e.g., //host/path)
-          const abs = /^https?:\/\//i.test(raw)
-            ? raw
-            : raw.startsWith('//')
-              ? `${window.location.protocol}${raw}`
-              : new URL(raw, window.location.origin).href;
-          refs.push({ raw, abs });
-        }
-        let inlinedFailures = 0;
-        const seen = new Set<string>();
-        for (const { raw, abs } of refs) {
-          if (seen.has(raw)) continue;
-          seen.add(raw);
-          try {
-            const dataUrl = await urlToDataURL(abs);
-            // Replace all occurrences of the raw reference with the data URL
-            svgText = svgText.split(raw).join(dataUrl);
-          } catch {
-            inlinedFailures++;
-          }
-        }
-        if (inlinedFailures > 0 && !forceNoLogo) {
-          // To avoid external references in the exported SVG, rebuild inner markup without logo
-          try {
-            const tmp2 = new QRCodeStyling({ ...options, type: 'svg', image: undefined });
-            const host = document.createElement('div');
-            tmp2.append(host);
-            await new Promise<void>((r) => requestAnimationFrame(() => r()));
-            const svg2 = host.querySelector('svg');
-            if (svg2) {
-              let svgText2 = new XMLSerializer().serializeToString(svg2);
-              svgText2 = svgText2.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-              innerMarkup = svgText2
-                .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-                .replace(/<\/svg>\s*$/i, '')
-                .replace(/\n/g, '');
-              setExportNotice('Some logos could not be embedded due to CORS. Exported without logo to keep file self-contained.');
-            }
-          } catch {
-            // If rebuilding without logo fails, keep current svgText and warn; downstream PNG may still fail
-            setExportNotice('Some logos could not be embedded due to CORS. Export may reference external images.');
-          }
-        }
-      } catch {}
-      if (!innerMarkup) {
-        const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-        innerMarkup = cleaned
-          .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-          .replace(/<\/svg>\s*$/i, '')
-          .replace(/\n/g, '');
-      }
-    } else if (canvasNode) {
-      // Fallback: embed the canvas render as an <image> to avoid losing logos
-      try {
-        const dataUrl = canvasNode.toDataURL('image/png');
-        innerMarkup = `<image width="${size}" height="${size}" x="0" y="0" href="${dataUrl}"/>`;
-      } catch {
-        // Last resort: render without logo to avoid a blank export
-        try {
-          const tmp2 = new QRCodeStyling({ ...options, type: 'svg', image: undefined });
-          const host = document.createElement('div');
-          tmp2.append(host);
-          await new Promise<void>((r) => requestAnimationFrame(() => r()));
-          const svg2 = host.querySelector('svg');
-          if (svg2) {
-            let svgText2 = new XMLSerializer().serializeToString(svg2);
-            svgText2 = svgText2.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-            innerMarkup = svgText2
-              .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-              .replace(/<\/svg>\s*$/i, '')
-              .replace(/\n/g, '');
-            setExportNotice('Logo could not be embedded due to CORS. Exported without logo.');
-          }
-        } catch {}
-      }
+      svgText = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+      return svgText;
     }
-
-    // Final safety: if we still couldn't build innerMarkup (due to CORS or timing),
-    // render a fresh SVG QR without logo so exports are never blank.
-    if (!innerMarkup) {
-      try {
-        const tmp2 = new QRCodeStyling({ ...options, type: 'svg', image: undefined });
-        const host = document.createElement('div');
-        tmp2.append(host);
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-        const svg2 = host.querySelector('svg');
-        if (svg2) {
-          let svgText2 = new XMLSerializer().serializeToString(svg2);
-          svgText2 = svgText2.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-          innerMarkup = svgText2
-            .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-            .replace(/<\/svg>\s*$/i, '')
-            .replace(/\n/g, '');
-          setExportNotice('Logo could not be embedded due to CORS. Exported without logo.');
-        }
-      } catch {}
-    }
-
-    const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
-    const bgRect = transparentBg ? '' : `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>\n`;
-    const wrapped = `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">\n` +
-      `<defs>\n${defsClip}\n</defs>\n` +
-      // Background first (omitted when transparent selected)
-      bgRect +
-      // QR content in the middle, clipped to rounded rect
-      `<g clip-path="url(#clipR)">\n` +
-      `  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${innerMarkup}</g>\n` +
-      `</g>\n` +
-      // Draw border last so it sits on top of QR content
-      `<rect x="${half}" y="${half}" width="${outer - strokeW}" height="${outer - strokeW}" rx="${rx}" ry="${rx}" fill="none" stroke="${border}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>\n` +
-      `</svg>`;
-    return wrapped;
+    // fallback: empty minimal svg of expected size
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"></svg>`;
   }
 
   // (removed unused getThemeColor)
@@ -508,21 +345,7 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   // Helper: fetch an external URL and return a data URL for safe inlining
-  async function urlToDataURL(url: string): Promise<string> {
-    const cache = dataUrlCacheRef.current;
-    const cached = cache.get(url);
-    if (cached) return cached;
-    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
-    const blob = await res.blob();
-    const data = await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result as string);
-      fr.onerror = reject;
-      fr.readAsDataURL(blob);
-    });
-    cache.set(url, data);
-    return data;
-  }
+  // (removed) urlToDataURL helper and data URL caching
 
   // Helper: Blob -> data URL (removed) and blank-detection helpers (removed)
 
@@ -545,72 +368,32 @@ export default function Designer({ value }: DesignerProps) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     if (ext === 'svg') {
-      try {
-        const wrapped = await buildCombinedSVG(outer);
-        const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-        downloadBlob(outBlob, 'qr-framed.svg');
-        return;
-      } catch {
-        // Fallback: try exporting without logo to ensure a self-contained SVG
-        try {
-          const wrappedNoLogo = await buildCombinedSVG(outer, true);
-          const outBlob = new Blob([wrappedNoLogo], { type: 'image/svg+xml;charset=utf-8' });
-          downloadBlob(outBlob, 'qr-framed.svg');
-          setExportNotice('Logo could not be embedded due to CORS. Exported without logo.');
-        } catch {
-          try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
-        }
-        return;
-      }
+      const wrapped = await buildCombinedSVG(outer);
+      const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+      downloadBlob(outBlob, 'qr.svg');
+      return;
     }
 
     // PNG export: rasterize our combined SVG (not the preview) to a canvas
-    try {
-      const wrapped = await buildCombinedSVG(outer);
-      const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      const exportOuter = outer; // export at native size by default
-      const img = new window.Image();
-      img.crossOrigin = 'anonymous';
-      img.src = url;
-      await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-      const canvas = document.createElement('canvas');
-      canvas.width = exportOuter; canvas.height = exportOuter;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { URL.revokeObjectURL(url); return; }
-      ctx.imageSmoothingEnabled = false; // keep QR edges crisp
-      ctx.imageSmoothingQuality = 'low';
-      ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
-      const blob = await canvasToPngBlob(canvas);
-      if (blob) downloadBlob(blob, 'qr.png');
-      URL.revokeObjectURL(url);
-      return;
-    } catch (err) {
-      // Try again without logo to avoid canvas tainting due to cross-origin images
-      try {
-        const wrappedNoLogo = await buildCombinedSVG(outer, true);
-        const svgBlob = new Blob([wrappedNoLogo], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(svgBlob);
-        const exportOuter = outer; // export at native size by default
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.src = url;
-        await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-        const canvas = document.createElement('canvas');
-        canvas.width = exportOuter; canvas.height = exportOuter;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { URL.revokeObjectURL(url); return; }
-        ctx.imageSmoothingEnabled = false; ctx.imageSmoothingQuality = 'low';
-        ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
-        const blob = await canvasToPngBlob(canvas);
-        if (blob) { downloadBlob(blob, 'qr.png'); setExportNotice('Logo could not be embedded due to CORS. Exported PNG without logo.'); }
-        URL.revokeObjectURL(url);
-        return;
-      } catch (e2) {
-        console.error('PNG export failed', err, e2);
-        return;
-      }
-    }
+    const wrapped = await buildCombinedSVG(outer);
+    const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const exportOuter = outer; // export at native size by default
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+    await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+    const canvas = document.createElement('canvas');
+    canvas.width = exportOuter; canvas.height = exportOuter;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { URL.revokeObjectURL(url); return; }
+    ctx.imageSmoothingEnabled = false; // keep QR edges crisp
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
+    const blob = await canvasToPngBlob(canvas);
+    if (blob) downloadBlob(blob, 'qr.png');
+    URL.revokeObjectURL(url);
+    return;
   }
   // (removed unused resetAll)
 
@@ -622,7 +405,6 @@ export default function Designer({ value }: DesignerProps) {
       cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor,
       bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType,
       logoUrl, logoSize, hideBgDots,
-      frame,
       value,
       ts: Date.now(),
     };
@@ -1011,61 +793,17 @@ export default function Designer({ value }: DesignerProps) {
             </div>
           </div>
         </div>
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-[var(--muted)]">Borders</div>
-          <div className="flex gap-2.5 flex-wrap items-center">
-              {(["square","rounded","thin"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFrame(f)}
-                className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''} tip`}
-                style={{ background: 'transparent', borderColor: 'var(--border)' }}
-                data-tip={f}
-              >
-                <div
-                  className="h-10 w-10"
-                  style={(() => {
-                    const common: React.CSSProperties = { background: 'var(--surface)' };
-                    switch (f) {
-                      case 'square':
-                        return { ...common, border: '1px solid var(--border)' } as React.CSSProperties;
-                      case 'rounded':
-                        return { ...common, border: '1px solid var(--border)', borderRadius: 8 } as React.CSSProperties;
-                      case 'thin':
-                        return { ...common, border: '1px solid var(--border)', borderRadius: 4 } as React.CSSProperties;
-                      // removed other styles
-                      default:
-                        return common;
-                    }
-                  })()}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* (removed) Borders section */}
       </div>
       <div className={`${isTransparentBg ? '' : 'glass'} rounded-xl border border-[var(--border)] p-4 flex flex-col gap-5 items-center sticky top-4 self-start h-[calc(100dvh-2rem)] overflow-hidden`} style={{ background: isTransparentBg ? 'transparent' : undefined }}>
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
-        <div style={frameStyle}>
-          <div
-            className={`p-0 border-0`}
-            style={previewInnerStyle}
-          >
-            <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
-          </div>
+        <div className={`p-0 border-0`} style={previewInnerStyle}>
+          <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
         </div>
-        {exportNotice && (
-          <div
-            className="w-full text-xs text-[var(--muted)] bg-[var(--surface)] border border-[var(--border)] rounded px-2 py-1"
-            role="status"
-            aria-live="polite"
-          >
-            {exportNotice}
-          </div>
-        )}
+        {/* (removed) export notice UI */}
         <div className="pt-2 flex flex-wrap gap-3 items-center justify-center w-full">
-          <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("png")}>Download PNG</button>
-          <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("svg")}>Download SVG</button>
+          <button className="btn btn-secondary h-10 px-4" onClick={() => handleDownload("png")}>Download PNG</button>
+          <button className="btn btn-secondary h-10 px-4" onClick={() => handleDownload("svg")}>Download SVG</button>
           <button
             className="btn btn-outline h-10 px-4 flex items-center gap-2"
             onClick={() => {
@@ -1089,7 +827,6 @@ export default function Designer({ value }: DesignerProps) {
               setLogoUrl("");
               setLogoSize(0.25);
               setHideBgDots(true);
-              setFrame("square");
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
