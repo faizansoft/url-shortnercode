@@ -331,11 +331,12 @@ export default function Designer({ value }: DesignerProps) {
     }
 
     const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
+    const bgRect = transparentBg ? '' : `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>\n`;
     const wrapped = `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">\n` +
       `<defs>\n${defsClip}\n</defs>\n` +
-      // Background first
-      `<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>\n` +
+      // Background first (omitted when transparent selected)
+      bgRect +
       // QR content in the middle, clipped to rounded rect
       `<g clip-path="url(#clipR)">\n` +
       `  <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${innerMarkup}</g>\n` +
