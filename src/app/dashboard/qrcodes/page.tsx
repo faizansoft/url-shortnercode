@@ -114,11 +114,43 @@ export default function QRCodesPage() {
                 )}
               </div>
               <div className="flex gap-2 justify-end">
-                <a className="btn btn-secondary h-8" href={it.short_url} target="_blank" rel="noreferrer">Open</a>
+                <a
+                  className="btn btn-secondary h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
+                  href={it.short_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open short link in new tab"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3Z"/>
+                    <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7Z"/>
+                  </svg>
+                  <span className="leading-none">Open</span>
+                </a>
                 {it.qr_data_url ? (
-                  <a className="btn btn-primary btn-no-motion h-8" href={it.qr_data_url} download={`qr-${it.short_code}.png`}>Download PNG</a>
+                  <a
+                    className="btn btn-primary btn-no-motion h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
+                    href={it.qr_data_url}
+                    download={`qr-${it.short_code}.png`}
+                    aria-label="Download QR as PNG"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                      <path d="M19 18H5v3h14v-3Z"/>
+                    </svg>
+                    <span className="leading-none">Download PNG</span>
+                  </a>
                 ) : null}
-                <Link className="btn btn-secondary h-8" href={`/dashboard/qrcodes/customize?url=${encodeURIComponent(it.short_url)}`}>Custom QR</Link>
+                <Link
+                  className="btn btn-secondary h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
+                  href={`/dashboard/qrcodes/customize?url=${encodeURIComponent(it.short_url)}`}
+                  aria-label="Customize QR"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm3.92 1.33H5.5v-1.41l8.56-8.56 1.41 1.41-8.55 8.56ZM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/>
+                  </svg>
+                  <span className="leading-none">Custom QR</span>
+                </Link>
               </div>
             </div>
           ))}
