@@ -80,6 +80,31 @@ export default function QRCodesPage() {
     })();
   }, [origin, prefersDark]);
 
+  // Download SVG for a QR item
+  async function handleDownloadSvg(shortUrl: string, code: string) {
+    try {
+      const svg = await QRCode.toString(shortUrl, {
+        type: 'svg',
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#00000000' },
+        width: 200,
+      } as any);
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qr-${code}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      // no-op; could surface toast if desired
+      console.error('Failed to generate SVG', e);
+    }
+  }
+
   // (customizer handled entirely in dedicated page)
 
   return (
@@ -114,19 +139,18 @@ export default function QRCodesPage() {
                 )}
               </div>
               <div className="flex gap-2 justify-end">
-                <a
+                <button
+                  type="button"
+                  onClick={() => handleDownloadSvg(it.short_url, it.short_code)}
                   className="btn btn-secondary h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
-                  href={it.short_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open short link in new tab"
+                  aria-label="Download QR as SVG"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                    <path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3Z"/>
-                    <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7Z"/>
+                    <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                    <path d="M19 18H5v3h14v-3Z"/>
                   </svg>
-                  <span className="leading-none">Open</span>
-                </a>
+                  <span className="leading-none">SVG</span>
+                </button>
                 {it.qr_data_url ? (
                   <a
                     className="btn btn-primary btn-no-motion h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
