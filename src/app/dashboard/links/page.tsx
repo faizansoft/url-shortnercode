@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
+import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
@@ -62,49 +63,254 @@ export default function LinksIndexPage() {
     return () => mql?.removeEventListener?.('change', update);
   }, []);
 
-  // Generate QR when target changes or theme changes
+  // Generate styled SVG preview when modal opens or target changes
   useEffect(() => {
     if (!showQR) return;
     if (!qrFor) return;
     let cancelled = false;
     (async () => {
       try {
-        const dataUrl = await QRCode.toDataURL(qrFor, {
-          errorCorrectionLevel: "M",
-          margin: 1,
-          color: { dark: prefersDark ? "#ffffff" : "#0b1220", light: "#ffffff00" },
-          width: 200,
-        });
+        const code = qrFor.startsWith(origin + "/") ? qrFor.slice(origin.length + 1) : qrFor.split("/").pop() || "";
+        const svgText = await buildStyledSvgOrDefault(qrFor, code);
+        const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
         if (!cancelled) setQrDataUrl(dataUrl);
       } catch {
-        if (!cancelled) setQrDataUrl(null);
+        try {
+          const fallback = await QRCode.toDataURL(qrFor, { errorCorrectionLevel: "M", margin: 1, color: { dark: "#0b1220", light: "#ffffff" }, width: 200 });
+          if (!cancelled) setQrDataUrl(fallback);
+        } catch {
+          if (!cancelled) setQrDataUrl(null);
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, [showQR, qrFor]);
+  }, [showQR, qrFor, origin]);
 
   async function handleShareQR() {
     try {
       if (!qrDataUrl || !qrFor) return;
+      let pngDataUrl = qrDataUrl;
+      // If preview is SVG, rasterize to PNG for sharing
+      if (qrDataUrl.startsWith('data:image/svg')) {
+        try {
+          const svgText = decodeURIComponent(qrDataUrl.split(',')[1]);
+          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
+        } catch {
+          // If decoding fails, fetch and read as text
+          const res = await fetch(qrDataUrl);
+          const svgText = await res.text();
+          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
+        }
+      }
       if (navigator.share) {
-        // Convert data URL to File
-        const res = await fetch(qrDataUrl);
+        const res = await fetch(pngDataUrl);
         const blob = await res.blob();
-        const file = new File([blob], "qr.png", { type: blob.type || "image/png" });
-        // Some platforms require files plus text/url
-        await navigator.share({
-          files: [file],
-          text: `Scan or open: ${qrFor}`,
-          url: qrFor,
-          title: "Share QR"
-        });
+        const file = new File([blob], "qr.png", { type: "image/png" });
+        await navigator.share({ files: [file], text: `Scan or open: ${qrFor}`, url: qrFor, title: "Share QR" });
       } else {
-        // Fallback: open Twitter intent with link (cannot attach image)
         window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(qrFor)}`,'_blank');
       }
-    } catch (e) {
-      // ignore errors from dismissing share sheet
+    } catch (e) { /* ignore */ }
+  }
+
+// ==== QR export helpers (unified with QR Codes page) ====
+type DotsType = "dots" | "rounded" | "classy" | "classy-rounded" | "square" | "extra-rounded";
+type DotsOpts = NonNullable<QRStyleOptions["dotsOptions"]>;
+type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
+
+interface SavedOptions {
+  perfMode?: boolean;
+  dotsType?: DotsType;
+  dotsColor?: string;
+  dotsGradientOn?: boolean;
+  dotsGradA?: string;
+  dotsGradB?: string;
+  dotsGradRotation?: number;
+  cornerSquareType?: "dot" | "square" | "extra-rounded";
+  cornerSquareColor?: string;
+  cornerDotType?: "dot" | "square";
+  cornerDotColor?: string;
+  bgColor?: string;
+  bgGradientOn?: boolean;
+  bgGradA?: string;
+  bgGradB?: string;
+  bgGradType?: "linear" | "radial";
+  logoUrl?: string;
+  logoSize?: number;
+  hideBgDots?: boolean;
+  ecLevel?: 'L' | 'M' | 'Q' | 'H';
+  margin?: number;
+}
+
+function isDataUrl(u: string): boolean { return typeof u === 'string' && u.startsWith('data:'); }
+
+async function toDataUrl(src: string): Promise<string | null> {
+  try {
+    const res = await fetch(src, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error('failed to read blob'));
+      fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : '');
+      fr.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function generateStyledSvgString(data: string, saved: SavedOptions): Promise<string | null> {
+  try {
+    const perfMode = !!saved?.perfMode;
+    const dotsType: DotsType | undefined = saved?.dotsType;
+    const normHex = (c: string) => c.trim().toLowerCase();
+    const baseDotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+    const safeDotsColor = normHex(baseDotsColor) === normHex(saved?.bgColor ?? '') ? '#0b1220' : baseDotsColor;
+    const dotsGradientOn = !!saved?.dotsGradientOn;
+    const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
+    const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
+    const dotsGradRotation = Number.isFinite(saved?.dotsGradRotation) ? Number(saved.dotsGradRotation) : 0;
+
+    const cornerSquareType = saved?.cornerSquareType ?? 'square';
+    const cornerSquareColor = typeof saved?.cornerSquareColor === 'string' ? saved.cornerSquareColor : '#0b1220';
+    const cornerDotType = saved?.cornerDotType ?? 'dot';
+    const cornerDotColor = typeof saved?.cornerDotColor === 'string' ? saved.cornerDotColor : '#0b1220';
+
+    const bgColor = typeof saved?.bgColor === 'string' ? saved.bgColor : '#ffffff';
+    const bgGradientOn = !!saved?.bgGradientOn;
+    const bgGradA = typeof saved?.bgGradA === 'string' ? saved.bgGradA : '#ffffff';
+    const bgGradB = typeof saved?.bgGradB === 'string' ? saved.bgGradB : '#e2e8f0';
+    const bgGradType = saved?.bgGradType === 'radial' ? 'radial' : 'linear';
+
+    let logoUrl = typeof saved?.logoUrl === 'string' ? saved.logoUrl : '';
+    if (logoUrl && !isDataUrl(logoUrl)) {
+      const inlined = await toDataUrl(logoUrl);
+      logoUrl = inlined || '';
     }
+    const logoSize = Number.isFinite(saved?.logoSize) ? Math.max(0, Math.min(1, Number(saved.logoSize))) : 0.25;
+    const hideBgDots = !!saved?.hideBgDots;
+
+    const ecLevel = ((): 'L'|'M'|'Q'|'H' => {
+      const x = saved?.ecLevel; return x === 'L' || x === 'Q' || x === 'H' ? x : 'M';
+    })();
+    const margin = Number.isFinite(saved?.margin) ? Math.max(0, Number(saved.margin)) : 1;
+
+    const dots: DotsOpts | { color: string; type: DotsType } = dotsGradientOn
+      ? { type: (dotsType ?? 'rounded'), color: safeDotsColor, gradient: { type: 'linear', rotation: dotsGradRotation, colorStops: [ { offset: 0, color: dotsGradA }, { offset: 1, color: dotsGradB } ] } }
+      : { type: (dotsType ?? 'rounded'), color: safeDotsColor };
+
+    const bg: BgOpts | { color: string } = bgGradientOn
+      ? { color: bgColor, gradient: { type: bgGradType, rotation: 0, colorStops: [ { offset: 0, color: bgGradA }, { offset: 1, color: bgGradB } ] } }
+      : { color: bgColor };
+
+    const opts: QRStyleOptions = {
+      width: 200,
+      height: 200,
+      data,
+      type: 'svg',
+      margin,
+      qrOptions: { errorCorrectionLevel: ecLevel },
+      dotsOptions: perfMode ? { color: safeDotsColor, type: 'square' } : (dots as DotsOpts),
+      cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
+      cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
+      backgroundOptions: perfMode ? { color: bgColor } : (bg as BgOpts),
+      image: logoUrl || undefined,
+      imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots, crossOrigin: 'anonymous' },
+    };
+
+    const tmp = new QRCodeStyling(opts);
+    let svgText: string | null = null;
+    const maybeRaw = tmp as unknown as { getRawData?: (type?: 'svg') => Promise<Blob> };
+    if (typeof maybeRaw.getRawData === 'function') {
+      try { const blob = await maybeRaw.getRawData('svg'); svgText = await blob.text(); } catch {}
+    }
+    if (!svgText) {
+      const tmpDiv = document.createElement('div');
+      tmp.append(tmpDiv);
+      let svgNode: SVGSVGElement | null = null;
+      for (let i = 0; i < 60; i++) {
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        svgNode = tmpDiv.querySelector('svg');
+        if (svgNode) break;
+        await new Promise((r) => setTimeout(r, 8));
+      }
+      if (!svgNode) return null;
+      svgText = new XMLSerializer().serializeToString(svgNode);
+    }
+    svgText = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+    return svgText;
+  } catch {
+    return null;
+  }
+}
+
+async function buildStyledSvgOrDefault(shortUrl: string, shortCode: string): Promise<string> {
+  let opts: SavedOptions | null = null;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(shortCode)}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (resStyle.ok) {
+        const { options } = await resStyle.json();
+        if (options && typeof options === 'object') opts = options as SavedOptions;
+      }
+    }
+  } catch {}
+  if (!opts) {
+    try { const raw = window.localStorage.getItem(`qrDesigner:${shortCode}`); if (raw) opts = JSON.parse(raw) as SavedOptions; } catch {}
+  }
+  if (opts) {
+    const svg = await generateStyledSvgString(shortUrl, opts);
+    if (svg) return svg;
+  }
+  const svg = await QRCode.toString(shortUrl, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' } });
+  return svg;
+}
+
+async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<string> {
+  const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+  try {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+    await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
+    const canvas = document.createElement('canvas');
+    canvas.width = exportOuter; canvas.height = exportOuter;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('no ctx');
+    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+  async function handleDownloadPngFromPreview() {
+    try {
+      if (!qrDataUrl || !qrFor) return;
+      let pngDataUrl = qrDataUrl;
+      if (qrDataUrl.startsWith('data:image/svg')) {
+        try {
+          const svgText = decodeURIComponent(qrDataUrl.split(',')[1]);
+          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
+        } catch {
+          const res = await fetch(qrDataUrl);
+          const svgText = await res.text();
+          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
+        }
+      }
+      const a = document.createElement('a');
+      a.href = pngDataUrl;
+      a.download = `qr-${qrFor.replace(`${origin}/`, '')}@2x.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {}
   }
 
   async function handleShareLink() {
@@ -253,17 +459,16 @@ export default function LinksIndexPage() {
                   <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" />
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <div className="flex gap-2">
-                      <a
+                      <button
                         className="btn btn-primary btn-no-motion h-9 px-5 inline-flex items-center gap-2"
-                        href={qrDataUrl}
-                        download={`qr-${qrFor.replace(`${origin}/`, '')}.png`}
+                        onClick={handleDownloadPngFromPreview}
                       >
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                           <path d="M12 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 8.707 10.293L11 12.586V4a1 1 0 0 1 1-1Z"/>
                           <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2a1 1 0 1 0-2 0v2H7v-2a1 1 0 1 0-2 0v2Z"/>
                         </svg>
                         Download PNG
-                      </a>
+                      </button>
                       <button
                         className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
                         onClick={handleShareQR}
