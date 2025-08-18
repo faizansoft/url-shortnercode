@@ -28,6 +28,8 @@ export default function Designer({ value }: DesignerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const qrRef = useRef<QRCodeStyling | null>(null);
   const suppressUpdateRef = useRef<boolean>(false);
+  // Cache for URL -> dataURL conversions to avoid repeated CORS fetches
+  const dataUrlCacheRef = useRef<Map<string, string>>(new Map());
 
   // Core options
   const [size, setSize] = useState(220);
@@ -65,6 +67,8 @@ export default function Designer({ value }: DesignerProps) {
   // Frame (visual wrapper)
   const [frame, setFrame] = useState<"rounded" | "thin" | "square">("square");
   const [perfMode, setPerfMode] = useState<boolean>(false);
+  // Export notices (e.g., CORS issues with logos)
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
   
   // Corner custom presets (runtime only)
   const [cornerPresets, setCornerPresets] = useState<Array<{ label: string; sq: "dot" | "square" | "extra-rounded"; dot: "dot" | "square"; sc: string; dc: string }>>([]);
@@ -192,6 +196,13 @@ export default function Designer({ value }: DesignerProps) {
     qrRef.current?.update(options);
   }, [options]);
 
+  // Auto-dismiss export notices after a short delay
+  useEffect(() => {
+    if (!exportNotice) return;
+    const t = setTimeout(() => setExportNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [exportNotice]);
+
   // Helper to batch many state changes and avoid intermediate preview updates
   function batchUpdate(fn: () => void) {
     suppressUpdateRef.current = true;
@@ -246,13 +257,18 @@ export default function Designer({ value }: DesignerProps) {
           const u = m[1];
           if (/^https?:\/\//i.test(u)) urls.push(u);
         }
+        let inlinedFailures = 0;
         for (const u of Array.from(new Set(urls))) {
           try {
             const dataUrl = await urlToDataURL(u);
             svgText = svgText.split(u).join(dataUrl);
           } catch {
             // If we cannot inline an external logo, keep going; the browser may refuse external refs on rasterization
+            inlinedFailures++;
           }
+        }
+        if (inlinedFailures > 0) {
+          setExportNotice('Some external logos could not be embedded due to CORS. A fallback export will be used.');
         }
       } catch {}
       const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
@@ -280,6 +296,7 @@ export default function Designer({ value }: DesignerProps) {
               .replace(/^[\s\S]*?<svg[^>]*>/i, '')
               .replace(/<\/svg>\s*$/i, '')
               .replace(/\n/g, '');
+            setExportNotice('Logo could not be embedded due to CORS. Exported without logo.');
           }
         } catch {}
       }
@@ -301,6 +318,7 @@ export default function Designer({ value }: DesignerProps) {
             .replace(/^[\s\S]*?<svg[^>]*>/i, '')
             .replace(/<\/svg>\s*$/i, '')
             .replace(/\n/g, '');
+          setExportNotice('Logo could not be embedded due to CORS. Exported without logo.');
         }
       } catch {}
     }
@@ -344,14 +362,19 @@ export default function Designer({ value }: DesignerProps) {
 
   // Helper: fetch an external URL and return a data URL for safe inlining
   async function urlToDataURL(url: string): Promise<string> {
+    const cache = dataUrlCacheRef.current;
+    const cached = cache.get(url);
+    if (cached) return cached;
     const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
     const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
+    const data = await new Promise<string>((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(fr.result as string);
       fr.onerror = reject;
       fr.readAsDataURL(blob);
     });
+    cache.set(url, data);
+    return data;
   }
 
   // Helper: Blob -> data URL (removed) and blank-detection helpers (removed)
@@ -811,6 +834,15 @@ export default function Designer({ value }: DesignerProps) {
             <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
           </div>
         </div>
+        {exportNotice && (
+          <div
+            className="w-full text-xs text-[var(--muted)] bg-[var(--surface)] border border-[var(--border)] rounded px-2 py-1"
+            role="status"
+            aria-live="polite"
+          >
+            {exportNotice}
+          </div>
+        )}
         <div className="pt-2 flex flex-wrap gap-3 items-center justify-center w-full">
           <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("png")}>Download PNG</button>
           <button className="btn btn-secondary h-10 px-4 tip" data-tip="Include frame" onClick={() => handleDownload("svg")}>Download SVG</button>
