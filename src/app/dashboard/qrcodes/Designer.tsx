@@ -300,7 +300,7 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   // Build a fresh combined SVG (QR + frame) without using the live preview DOM
-  async function buildCombinedSVG(outer: number): Promise<string> {
+  async function buildCombinedSVG(outer: number, forceNoLogo: boolean = false): Promise<string> {
     // Prepare a temporary SVG QR render using current options
     const rx = frame === 'rounded' ? 16 : frame === 'thin' ? 6 : 0;
     const strokeW = 1;
@@ -313,6 +313,7 @@ export default function Designer({ value }: DesignerProps) {
     // Ensure we render QR as SVG regardless of preview type
     const tempOpts: QRStyleOptions = {
       ...options,
+      image: forceNoLogo ? undefined : options.image,
       width: size,
       height: size,
       type: 'svg',
@@ -344,7 +345,12 @@ export default function Designer({ value }: DesignerProps) {
           const raw = m[1];
           // Skip already inlined data URLs
           if (/^data:/i.test(raw)) continue;
-          const abs = /^https?:\/\//i.test(raw) ? raw : new URL(raw, window.location.origin).href;
+          // Normalize protocol-relative URLs (e.g., //host/path)
+          const abs = /^https?:\/\//i.test(raw)
+            ? raw
+            : raw.startsWith('//')
+              ? `${window.location.protocol}${raw}`
+              : new URL(raw, window.location.origin).href;
           refs.push({ raw, abs });
         }
         let inlinedFailures = 0;
@@ -360,15 +366,36 @@ export default function Designer({ value }: DesignerProps) {
             inlinedFailures++;
           }
         }
-        if (inlinedFailures > 0) {
-          setExportNotice('Some external logos could not be embedded due to CORS. A fallback export will be used.');
+        if (inlinedFailures > 0 && !forceNoLogo) {
+          // To avoid external references in the exported SVG, rebuild inner markup without logo
+          try {
+            const tmp2 = new QRCodeStyling({ ...options, type: 'svg', image: undefined });
+            const host = document.createElement('div');
+            tmp2.append(host);
+            await new Promise<void>((r) => requestAnimationFrame(() => r()));
+            const svg2 = host.querySelector('svg');
+            if (svg2) {
+              let svgText2 = new XMLSerializer().serializeToString(svg2);
+              svgText2 = svgText2.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+              innerMarkup = svgText2
+                .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+                .replace(/<\/svg>\s*$/i, '')
+                .replace(/\n/g, '');
+              setExportNotice('Some logos could not be embedded due to CORS. Exported without logo to keep file self-contained.');
+            }
+          } catch {
+            // If rebuilding without logo fails, keep current svgText and warn; downstream PNG may still fail
+            setExportNotice('Some logos could not be embedded due to CORS. Export may reference external images.');
+          }
         }
       } catch {}
-      const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
-      innerMarkup = cleaned
-        .replace(/^[\s\S]*?<svg[^>]*>/i, '')
-        .replace(/<\/svg>\s*$/i, '')
-        .replace(/\n/g, '');
+      if (!innerMarkup) {
+        const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+        innerMarkup = cleaned
+          .replace(/^[\s\S]*?<svg[^>]*>/i, '')
+          .replace(/<\/svg>\s*$/i, '')
+          .replace(/\n/g, '');
+      }
     } else if (canvasNode) {
       // Fallback: embed the canvas render as an <image> to avoid losing logos
       try {
@@ -501,7 +528,15 @@ export default function Designer({ value }: DesignerProps) {
         downloadBlob(outBlob, 'qr-framed.svg');
         return;
       } catch {
-        try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
+        // Fallback: try exporting without logo to ensure a self-contained SVG
+        try {
+          const wrappedNoLogo = await buildCombinedSVG(outer, true);
+          const outBlob = new Blob([wrappedNoLogo], { type: 'image/svg+xml;charset=utf-8' });
+          downloadBlob(outBlob, 'qr-framed.svg');
+          setExportNotice('Logo could not be embedded due to CORS. Exported without logo.');
+        } catch {
+          try { qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch {}
+        }
         return;
       }
     }
@@ -528,9 +563,30 @@ export default function Designer({ value }: DesignerProps) {
       URL.revokeObjectURL(url);
       return;
     } catch (err) {
-      // Avoid falling back to lower-quality exporter; surface a soft failure instead
-      console.error('PNG export failed', err);
-      return;
+      // Try again without logo to avoid canvas tainting due to cross-origin images
+      try {
+        const wrappedNoLogo = await buildCombinedSVG(outer, true);
+        const svgBlob = new Blob([wrappedNoLogo], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+        const exportOuter = Math.max(2048, outer);
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+        const canvas = document.createElement('canvas');
+        canvas.width = exportOuter; canvas.height = exportOuter;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { URL.revokeObjectURL(url); return; }
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
+        const blob = await canvasToPngBlob(canvas);
+        if (blob) { downloadBlob(blob, 'qr.png'); setExportNotice('Logo could not be embedded due to CORS. Exported PNG without logo.'); }
+        URL.revokeObjectURL(url);
+        return;
+      } catch (e2) {
+        console.error('PNG export failed', err, e2);
+        return;
+      }
     }
   }
   // (removed unused resetAll)
@@ -887,7 +943,17 @@ export default function Designer({ value }: DesignerProps) {
             <input className="w-full h-9 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} placeholder="https://…/logo.png" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
             <div className="grid grid-cols-2 gap-2 items-center">
               <label className="text-xs">Size</label>
-              <input type="range" min={0.1} max={0.45} step={0.01} value={logoSize} onChange={(e) => setLogoSize(parseFloat(e.target.value))} />
+              <input
+                type="range"
+                min={0.1}
+                max={0.45}
+                step={0.01}
+                value={logoSize}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  setLogoSize(Math.min(0.45, Math.max(0.1, isNaN(v) ? 0.25 : v)));
+                }}
+              />
               <label className="text-xs">Hide bg dots</label>
               <input type="checkbox" checked={hideBgDots} onChange={(e) => setHideBgDots(e.target.checked)} />
             </div>
