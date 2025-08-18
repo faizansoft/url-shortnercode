@@ -287,8 +287,19 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function handleDownload(ext: 'png' | 'svg') {
-    const pad = 0; // no inner padding; QR will meet the frame edge
-    const borderW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
+    const pad = 0; // preview uses zero padding in frameStyle
+    // stroke widths aligned to frameStyle
+    const borderW = (
+      frame === 'accent' ? 3 :
+      frame === 'outline' ? 2 :
+      frame === 'double' ? 2 :
+      frame === 'dashed' ? 2 :
+      frame === 'thick' ? 2 :
+      frame === 'glow' ? 1 :
+      frame === 'rounded' || frame === 'square' || frame === 'thin' ? 1 :
+      frame === 'gradient' ? 2 :
+      1
+    );
     const outer = size + pad * 2;
 
     const surface = '#ffffff';
@@ -335,22 +346,8 @@ export default function Designer({ value }: DesignerProps) {
       const img = new window.Image();
       img.src = URL.createObjectURL(qrBlob);
       await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-
-      // Trim transparent margins from the QR image
-      const trimCanvas = document.createElement('canvas');
-      trimCanvas.width = img.width; trimCanvas.height = img.height;
-      const tctx = trimCanvas.getContext('2d'); if (!tctx) return;
-      tctx.drawImage(img, 0, 0);
-      const { data, width: tw, height: th } = tctx.getImageData(0, 0, trimCanvas.width, trimCanvas.height);
-      let minX = tw, minY = th, maxX = 0, maxY = 0;
-      for (let y = 0; y < th; y++) {
-        for (let x = 0; x < tw; x++) {
-          const a = data[(y * tw + x) * 4 + 3];
-          if (a > 0) { if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
-        }
-      }
-      if (minX > maxX || minY > maxY) { minX = 0; minY = 0; maxX = tw - 1; maxY = th - 1; }
-      const sx = Math.max(0, minX), sy = Math.max(0, minY), sw = Math.max(1, maxX - minX + 1), sh = Math.max(1, maxY - minY + 1);
+      // Preserve intrinsic QR margin exactly as rendered (no trimming)
+      const sx = 0, sy = 0, sw = img.width, sh = img.height;
 
       const exportOuter = Math.max(2048, outer);
       const scale = exportOuter / outer;
@@ -363,7 +360,21 @@ export default function Designer({ value }: DesignerProps) {
       wctx.imageSmoothingEnabled = false; // keep QR crisp while upscaling
 
       // Rounded background fill and clip so QR respects corner shape
-      const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
+      // Corner radii aligned to frameStyle
+      const rx = (
+        frame === 'none' ? 8 :
+        frame === 'rounded' ? 16 :
+        frame === 'thin' ? 6 :
+        frame === 'thick' ? 12 :
+        frame === 'square' ? 0 :
+        frame === 'accent' ? 10 :
+        frame === 'shadow' ? 12 :
+        frame === 'outline' ? 8 :
+        frame === 'dashed' ? 8 :
+        frame === 'double' ? 10 :
+        frame === 'glow' ? 12 :
+        frame === 'gradient' ? 12 : 8
+      );
       const rxScaled = rx * scale * workScale;
       drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
       wctx.fillStyle = effectiveBg; wctx.fill();
@@ -372,12 +383,12 @@ export default function Designer({ value }: DesignerProps) {
       wctx.lineCap = 'round' as CanvasLineCap;
       drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0.5 * scale * workScale, 0.5 * scale * workScale, workSize - 1 * scale * workScale, workSize - 1 * scale * workScale, Math.max(0, rxScaled - 0.5 * scale * workScale));
       if (frame === 'accent') {
-        wctx.lineWidth = 5 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
+        wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
       } else if (frame === 'double') {
         // Draw as two precise rounded rings using even-odd fill to avoid stroke overlap artifacts
-        const t1 = 3 * scale * workScale; // outer ring thickness
-        const inset2 = 5.5 * scale * workScale; // distance from outer edge to second ring outer edge
-        const t2 = 3 * scale * workScale; // second ring thickness
+        const t1 = 2 * scale * workScale; // outer ring thickness (border)
+        const inset2 = 4 * scale * workScale; // match preview outlineOffset:2
+        const t2 = 2 * scale * workScale; // second ring thickness (accent)
 
         // Outer ring
         {
@@ -404,21 +415,21 @@ export default function Designer({ value }: DesignerProps) {
           wctx.fill(path, 'evenodd');
         }
       } else if (frame === 'dashed') {
-        wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.setLineDash([]);
+        wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.setLineDash([]);
       } else if (frame === 'outline') {
-        wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
-      } else if (frame === 'thick') {
-        wctx.lineWidth = 6 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
-      } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
         wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
+      } else if (frame === 'thick') {
+        wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
+      } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
+        wctx.lineWidth = 1 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
       } else if (frame === 'glow') {
-        wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.shadowBlur = 0;
+        wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = 1 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.shadowBlur = 0;
       } else if (frame === 'shadow') {
         wctx.save(); wctx.shadowColor = 'rgba(0,0,0,0.18)'; wctx.shadowBlur = 18 * scale * workScale; wctx.shadowOffsetY = 8 * scale * workScale; wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = 'rgba(0,0,0,0)'; wctx.stroke(); wctx.restore();
       } else if (frame === 'gradient') {
         const g = wctx.createLinearGradient(0, 0, workSize, workSize);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
-        wctx.lineWidth = 4 * scale * workScale; wctx.strokeStyle = g; wctx.stroke();
+        wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = g; wctx.stroke();
       }
 
       // Now draw QR on top, clipped to rounded rect
@@ -478,14 +489,27 @@ export default function Designer({ value }: DesignerProps) {
         .replace(/^[\s\S]*?<svg[^>]*>/i, '')
         .replace(/<\/svg>\s*$/i, '')
         .replace(/\n/g, '');
-      const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
+      const rx = (
+        frame === 'none' ? 8 :
+        frame === 'rounded' ? 16 :
+        frame === 'thin' ? 6 :
+        frame === 'thick' ? 12 :
+        frame === 'square' ? 0 :
+        frame === 'accent' ? 10 :
+        frame === 'shadow' ? 12 :
+        frame === 'outline' ? 8 :
+        frame === 'dashed' ? 8 :
+        frame === 'double' ? 10 :
+        frame === 'glow' ? 12 :
+        frame === 'gradient' ? 12 : 8
+      );
       const border = '#e5e7eb';
       const accent = '#2563eb';
       const surface = '#ffffff';
       const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
       const effectiveBg = transparentBg ? surface : bgColor;
-      const frameStroke = (frame === 'accent') ? accent : border;
-      const strokeW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
+      const frameStroke = (frame === 'thick' || frame === 'accent') ? accent : border;
+      const strokeW = borderW;
 
       const defsGrad = frame === 'gradient'
         ? `<linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>`
@@ -504,7 +528,7 @@ export default function Designer({ value }: DesignerProps) {
            </filter>`
         : '';
       const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
-      const secondStroke = frame === 'double' ? `<rect x="6" y="6" width="${outer-12}" height="${outer-12}" rx="${Math.max(0, rx-4)}" ry="${Math.max(0, rx-4)}" fill="none" stroke="${accent}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+      const secondStroke = frame === 'double' ? `<rect x="4" y="4" width="${outer-8}" height="${outer-8}" rx="${Math.max(0, rx-2)}" ry="${Math.max(0, rx-2)}" fill="none" stroke="${accent}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : '';
       const dashed = frame === 'dashed' ? '6,6' : 'none';
       const strokeCol = frame === 'gradient' ? 'url(#grad1)' : frameStroke;
 
