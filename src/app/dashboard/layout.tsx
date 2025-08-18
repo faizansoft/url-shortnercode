@@ -53,7 +53,7 @@ export default function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="min-h-[100dvh] grid grid-cols-[240px_1fr]">
-      <aside className="glass text-sm p-4 flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-auto scrollbar">
+      <aside className="glass text-sm p-4 flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-hidden">
         <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
           <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%)'}} />
           <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 60%)'}} />

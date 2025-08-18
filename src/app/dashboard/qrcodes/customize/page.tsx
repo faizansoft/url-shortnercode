@@ -7,7 +7,7 @@ import Designer from "../Designer";
 
 export default function CustomizeQRPage() {
   return (
-    <div className="space-y-4 min-h-0">
+    <div className="space-y-4 min-h-screen overflow-hidden">
       <Suspense fallback={<div className="p-4 text-sm text-[var(--muted)]">Loading…</div>}>
         <CustomizeQRInner />
       </Suspense>
@@ -30,11 +30,9 @@ function CustomizeQRInner() {
         </div>
       </div>
 
-      {/* Fixed-height scrollable customization panel */}
-      <div className="p-4 min-h-0 h-[calc(100dvh-10rem)]" style={{ background: 'transparent' }}>
-        <div className="h-full overflow-auto scrollbar">
-          <Designer value={url} />
-        </div>
+      {/* Let Designer manage scrolling internally (only left panel scrolls) */}
+      <div className="pt-2">
+        <Designer value={url} />
       </div>
     </>
   );
