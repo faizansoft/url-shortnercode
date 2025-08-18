@@ -311,7 +311,7 @@ export default function Designer({ value }: DesignerProps) {
 
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6 overflow-hidden">
-      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 h-full overflow-hidden">
+      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 h-full overflow-y-auto">
         {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
