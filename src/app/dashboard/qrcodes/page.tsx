@@ -376,17 +376,29 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     };
 
     const tmp = new QRCodeStyling(opts);
-    const tmpDiv = document.createElement('div');
-    tmp.append(tmpDiv);
-    let svgNode: SVGSVGElement | null = null;
-    for (let i = 0; i < 30; i++) {
-      await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      svgNode = tmpDiv.querySelector('svg');
-      if (svgNode) break;
-      await new Promise((r) => setTimeout(r, 10));
+    // Prefer direct SVG via getRawData to avoid DOM timing issues
+    let svgText: string | null = null;
+    const maybeRaw = tmp as unknown as { getRawData?: (type?: 'svg') => Promise<Blob> };
+    if (typeof maybeRaw.getRawData === 'function') {
+      try {
+        const blob = await maybeRaw.getRawData('svg');
+        svgText = await blob.text();
+      } catch {}
     }
-    if (!svgNode) return null;
-    let svgText = new XMLSerializer().serializeToString(svgNode);
+    if (!svgText) {
+      // Fallback: render into a detached DIV and query the SVG
+      const tmpDiv = document.createElement('div');
+      tmp.append(tmpDiv);
+      let svgNode: SVGSVGElement | null = null;
+      for (let i = 0; i < 60; i++) {
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        svgNode = tmpDiv.querySelector('svg');
+        if (svgNode) break;
+        await new Promise((r) => setTimeout(r, 8));
+      }
+      if (!svgNode) return null;
+      svgText = new XMLSerializer().serializeToString(svgNode);
+    }
     svgText = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
     const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
     return dataUrl;
