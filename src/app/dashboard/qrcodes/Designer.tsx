@@ -381,33 +381,43 @@ export default function Designer({ value }: DesignerProps) {
       // Draw frame stroke BEFORE QR so QR covers any inward bleed
       wctx.lineJoin = 'round' as CanvasLineJoin;
       wctx.lineCap = 'round' as CanvasLineCap;
-      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0.5 * scale * workScale, 0.5 * scale * workScale, workSize - 1 * scale * workScale, workSize - 1 * scale * workScale, Math.max(0, rxScaled - 0.5 * scale * workScale));
+      const strokeInsetRect = (lw: number) => {
+        const inset = lw / 2;
+        drawRoundedRect(
+          wctx as unknown as CanvasRenderingContext2D,
+          inset,
+          inset,
+          workSize - 2 * inset,
+          workSize - 2 * inset,
+          Math.max(0, rxScaled - inset)
+        );
+      };
       if (frame === 'accent') {
-        wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
+        const lw = 3 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = accent; strokeInsetRect(lw); wctx.stroke();
       } else if (frame === 'double') {
         // Draw as two precise rounded rings using even-odd fill to avoid stroke overlap artifacts
         const t1 = 2 * scale * workScale; // outer ring thickness (border)
-        const inset2 = 4 * scale * workScale; // match preview outlineOffset:2
+        const inset2 = 4 * scale * workScale; // inner ring inset
         const t2 = 2 * scale * workScale; // second ring thickness (accent)
 
         // Outer ring
         {
           const path = new Path2D();
-          // outer rect
-          addRoundedRect(path, 0.5 * scale * workScale, 0.5 * scale * workScale, workSize - 1 * scale * workScale, workSize - 1 * scale * workScale, Math.max(0, rxScaled - 0.5 * scale * workScale));
+          // outer rect at canvas bounds
+          addRoundedRect(path, 0, 0, workSize, workSize, rxScaled);
           // inner rect (cutout)
-          addRoundedRect(path, 0.5 * scale * workScale + t1, 0.5 * scale * workScale + t1, workSize - 1 * scale * workScale - 2 * t1, workSize - 1 * scale * workScale - 2 * t1, Math.max(0, rxScaled - 0.5 * scale * workScale - t1));
+          addRoundedRect(path, t1, t1, workSize - 2 * t1, workSize - 2 * t1, Math.max(0, rxScaled - t1));
           wctx.fillStyle = border;
           // even-odd fill to produce ring
           wctx.fill(path, 'evenodd');
         }
         // Second ring
         {
-          const x = 0.5 * scale * workScale + inset2;
-          const y = 0.5 * scale * workScale + inset2;
-          const w = workSize - 1 * scale * workScale - 2 * inset2;
+          const x = inset2;
+          const y = inset2;
+          const w = workSize - 2 * inset2;
           const h = w;
-          const rOuter = Math.max(0, rxScaled - 0.5 * scale * workScale - inset2);
+          const rOuter = Math.max(0, rxScaled - inset2);
           const path = new Path2D();
           addRoundedRect(path, x, y, w, h, rOuter);
           addRoundedRect(path, x + t2, y + t2, w - 2 * t2, h - 2 * t2, Math.max(0, rOuter - t2));
@@ -415,21 +425,21 @@ export default function Designer({ value }: DesignerProps) {
           wctx.fill(path, 'evenodd');
         }
       } else if (frame === 'dashed') {
-        wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.setLineDash([]);
+        const lw = 2 * scale * workScale; wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke(); wctx.setLineDash([]);
       } else if (frame === 'outline') {
-        wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
+        const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
       } else if (frame === 'thick') {
-        wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
+        const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = accent; strokeInsetRect(lw); wctx.stroke();
       } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-        wctx.lineWidth = 1 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
+        const lw = 1 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke();
       } else if (frame === 'glow') {
-        wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = 1 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.shadowBlur = 0;
+        const lw = 1 * scale * workScale; wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke(); wctx.shadowBlur = 0;
       } else if (frame === 'shadow') {
-        wctx.save(); wctx.shadowColor = 'rgba(0,0,0,0.18)'; wctx.shadowBlur = 18 * scale * workScale; wctx.shadowOffsetY = 8 * scale * workScale; wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = 'rgba(0,0,0,0)'; wctx.stroke(); wctx.restore();
+        const lw = 2 * scale * workScale; wctx.save(); wctx.shadowColor = 'rgba(0,0,0,0.18)'; wctx.shadowBlur = 18 * scale * workScale; wctx.shadowOffsetY = 8 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = 'rgba(0,0,0,0)'; strokeInsetRect(lw); wctx.stroke(); wctx.restore();
       } else if (frame === 'gradient') {
         const g = wctx.createLinearGradient(0, 0, workSize, workSize);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
-        wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = g; wctx.stroke();
+        const lw = 2 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = g; strokeInsetRect(lw); wctx.stroke();
       }
 
       // Now draw QR on top, clipped to rounded rect
