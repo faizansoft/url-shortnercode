@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { QRCodeToStringOptions } from "qrcode";
+import type { QRCodeToStringOptions, QRCodeToDataURLOptions } from "qrcode";
 import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
@@ -257,17 +257,17 @@ interface SavedOptions {
 
 // Ensure we can always render a basic QR data URL
 async function robustDefaultDataUrl(data: string): Promise<string> {
-  const attempt = async (opts: QRCodeToStringOptions & { width?: number }) => {
-    return await QRCode.toDataURL(data, opts as any);
+  const attempt = async (opts: QRCodeToDataURLOptions) => {
+    return await QRCode.toDataURL(data, opts);
   };
   try {
-    return await attempt({ errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' }, width: 200 } as any);
+    return await attempt({ errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' }, width: 200 });
   } catch {}
   try {
-    return await attempt({ errorCorrectionLevel: 'M', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 200 } as any);
+    return await attempt({ errorCorrectionLevel: 'M', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 200 });
   } catch {}
   try {
-    return await attempt({ errorCorrectionLevel: 'L', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 160 } as any);
+    return await attempt({ errorCorrectionLevel: 'L', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 160 });
   } catch {}
   // last resort: transparent pixel
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"/>');
@@ -297,7 +297,9 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
   try {
     const perfMode = !!saved?.perfMode;
     const dotsType: DotsType | undefined = saved?.dotsType;
-    let dotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+    const normHex = (c: string) => c.trim().toLowerCase();
+    const baseDotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+    const safeDotsColor = normHex(baseDotsColor) === normHex(saved?.bgColor ?? '') ? '#0b1220' : baseDotsColor;
     const dotsGradientOn = !!saved?.dotsGradientOn;
     const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
     const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
@@ -332,7 +334,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     const dots: DotsOpts | { color: string; type: DotsType } = dotsGradientOn
       ? {
           type: (dotsType ?? 'rounded'),
-          color: dotsColor,
+          color: safeDotsColor,
           gradient: {
             type: 'linear',
             rotation: dotsGradRotation,
@@ -342,7 +344,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
             ],
           },
         }
-      : { type: (dotsType ?? 'rounded'), color: dotsColor };
+      : { type: (dotsType ?? 'rounded'), color: safeDotsColor };
 
     const bg: BgOpts | { color: string } = bgGradientOn
       ? {
@@ -365,7 +367,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
       type: 'svg',
       margin,
       qrOptions: { errorCorrectionLevel: ecLevel },
-      dotsOptions: perfMode ? { color: dotsColor, type: 'square' } : (dots as DotsOpts),
+      dotsOptions: perfMode ? { color: safeDotsColor, type: 'square' } : (dots as DotsOpts),
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
       backgroundOptions: perfMode ? { color: bgColor } : (bg as BgOpts),
