@@ -230,3 +230,51 @@ a:hover {
 .nav-item-active::before { transform: scaleY(1); }
 
 /* (deduped .glass; see definition above) */
+
+/* Tooltips: glossy theme-aligned */
+.tip { position: relative; }
+.tip[data-tip]::after,
+.tip[data-tip]::before {
+  pointer-events: none; position: absolute; opacity: 0; transform: translateY(2px);
+  transition: opacity .15s ease, transform .15s ease; z-index: 40;
+}
+.tip[data-tip]:hover::after,
+.tip[data-tip]:hover::before,
+.tip[data-tip]:focus-visible::after,
+.tip[data-tip]:focus-visible::before { opacity: 1; transform: translateY(0); }
+
+/* Bubble */
+.tip[data-tip]::after {
+  content: attr(data-tip);
+  bottom: calc(100% + 8px); left: 50%; transform: translate(-50%, 2px);
+  padding: .4rem .55rem; font-size: .75rem; line-height: 1rem; white-space: nowrap;
+  color: var(--foreground);
+  background:
+    linear-gradient(
+      to bottom right,
+      color-mix(in oklab, var(--background) 86%, transparent),
+      color-mix(in oklab, var(--surface) 86%, transparent)
+    );
+  border: 1px solid color-mix(in oklab, var(--border) 80%, var(--accent) 20%);
+  border-radius: .55rem; box-shadow: 0 10px 24px rgba(15,23,42,.12), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+/* Arrow */
+.tip[data-tip]::before {
+  content: ""; bottom: calc(100% + 4px); left: 50%; transform: translate(-50%, 2px) rotate(45deg);
+  width: 8px; height: 8px;
+  background:
+    linear-gradient(
+      to bottom right,
+      color-mix(in oklab, var(--background) 86%, transparent),
+      color-mix(in oklab, var(--surface) 86%, transparent)
+    );
+  border-left: 1px solid color-mix(in oklab, var(--border) 80%, var(--accent) 20%);
+  border-top: 1px solid color-mix(in oklab, var(--border) 80%, var(--accent) 20%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tip[data-tip]::after {
+    box-shadow: 0 10px 24px rgba(2,6,23,.4), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+}

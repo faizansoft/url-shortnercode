@@ -145,9 +145,9 @@ export default function QRCodesPage() {
                 <button
                   type="button"
                   onClick={() => handleDownloadSvg(it.short_url, it.short_code)}
-                  className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap"
+                  className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
                   aria-label="Download QR as SVG"
-                  title="Download SVG"
+                  data-tip="Download SVG"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
@@ -158,11 +158,11 @@ export default function QRCodesPage() {
 
                 {it.qr_data_url ? (
                   <a
-                    className="btn btn-primary btn-no-motion h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap"
+                    className="btn btn-primary btn-no-motion h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
                     href={it.qr_data_url}
                     download={`qr-${it.short_code}.png`}
                     aria-label="Download QR as PNG"
-                    title="Download PNG"
+                    data-tip="Download PNG"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                       <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
@@ -172,10 +172,10 @@ export default function QRCodesPage() {
                   </a>
                 ) : (
                   <button
-                    className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap opacity-50 cursor-not-allowed"
+                    className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap opacity-50 cursor-not-allowed tip"
                     disabled
                     aria-disabled
-                    title="Generating..."
+                    data-tip="Generating..."
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                       <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
@@ -186,10 +186,10 @@ export default function QRCodesPage() {
                 )}
 
                 <Link
-                  className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap"
+                  className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
                   href={`/dashboard/qrcodes/customize?url=${encodeURIComponent(it.short_url)}`}
                   aria-label="Customize QR"
-                  title="Customize QR"
+                  data-tip="Customize QR"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm3.92 1.33H5.5v-1.41l8.56-8.56 1.41 1.41-8.55 8.56ZM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/>
