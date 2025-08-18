@@ -287,9 +287,15 @@ export default function Designer({ value }: DesignerProps) {
     const border = await getThemeColor('--border', '#e5e7eb');
     const accent = await getThemeColor('--accent', '#2563eb');
 
+    // Force latest options to render before exporting to avoid stale downloads
+    try { qrRef.current?.update(options); } catch {}
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
     if (ext === 'png') {
-      // If no frame, export raw QR exactly as rendered to avoid any trimming/clipping
+      // If no frame, export exactly what is rendered (no trim/clip)
       if (frame === 'none') {
+        const qrBlobRaw = await getQrBlobFromRendered();
+        if (qrBlobRaw) { downloadBlob(qrBlobRaw, 'qr.png'); return; }
         try { return qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch { /* noop */ }
       }
       const qrBlob = await getQrBlobFromRendered();
@@ -366,13 +372,19 @@ export default function Designer({ value }: DesignerProps) {
 
     // SVG path: wrap inner SVG with outer frame SVG
     try {
-      // If no frame, export raw SVG exactly as rendered
-      if (frame === 'none') {
-        try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { /* fallthrough to raw serialize */ }
-      }
-      // Source inner SVG directly from DOM to ensure parity with preview
       const root = containerRef.current;
       const svgNode = root?.querySelector('svg');
+      // If no frame, export raw SVG exactly as rendered (serialize current node)
+      if (frame === 'none') {
+        if (svgNode) {
+          const svgTextFull = new XMLSerializer().serializeToString(svgNode);
+          const outBlob = new Blob([svgTextFull], { type: 'image/svg+xml;charset=utf-8' });
+          downloadBlob(outBlob, 'qr.svg');
+          return;
+        }
+        try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { /* fallthrough */ }
+      }
+      // Source inner SVG directly from DOM to ensure parity with preview
       if (!svgNode) throw new Error('no-svg');
       const svgText = new XMLSerializer().serializeToString(svgNode);
       // Extract only the inner contents of the rendered SVG (exclude outer <svg> wrapper)
