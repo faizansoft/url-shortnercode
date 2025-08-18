@@ -218,7 +218,7 @@ export default function Designer({ value }: DesignerProps) {
           width: exportSize,
           height: exportSize,
           // Force SVG so we can inline external images safely and rasterize at HD
-          type: 'svg' as any,
+          type: 'svg',
         };
         const tmp = new QRCodeStyling(tempOpts);
         const tmpDiv = document.createElement('div');
