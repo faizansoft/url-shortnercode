@@ -125,9 +125,9 @@ export default function QRCodesPage() {
       ) : items.length === 0 ? (
         <div className="p-4 text-sm text-[var(--muted)]">No links yet. Create your first one to generate a QR code.</div>
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((it) => (
-            <div key={it.short_code} className="rounded-xl glass p-4 flex flex-col gap-3">
+            <div key={it.short_code} className="rounded-xl glass p-4 flex flex-col gap-3 h-full">
               <div className="flex items-center justify-between">
                 <div className="font-mono text-sm">/{it.short_code}</div>
                 <div className="text-xs text-[var(--muted)]">{new Date(it.created_at).toLocaleDateString()}</div>
@@ -140,12 +140,13 @@ export default function QRCodesPage() {
                   <div className="w-40 h-40 grid place-items-center text-sm text-[var(--muted)]">QR</div>
                 )}
               </div>
-              <div className="flex gap-2 justify-end">
+              <div className="mt-auto pt-1 grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => handleDownloadSvg(it.short_url, it.short_code)}
-                  className="btn btn-secondary h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
+                  className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap"
                   aria-label="Download QR as SVG"
+                  title="Download SVG"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
@@ -153,12 +154,14 @@ export default function QRCodesPage() {
                   </svg>
                   <span className="leading-none">SVG</span>
                 </button>
+
                 {it.qr_data_url ? (
                   <a
-                    className="btn btn-primary btn-no-motion h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
+                    className="btn btn-primary btn-no-motion h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap"
                     href={it.qr_data_url}
                     download={`qr-${it.short_code}.png`}
                     aria-label="Download QR as PNG"
+                    title="Download PNG"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                       <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
@@ -166,11 +169,25 @@ export default function QRCodesPage() {
                     </svg>
                     <span className="leading-none">PNG</span>
                   </a>
-                ) : null}
+                ) : (
+                  <button
+                    className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap opacity-50 cursor-not-allowed"
+                    disabled
+                    title="Generating..."
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                      <path d="M19 18H5v3h14v-3Z"/>
+                    </svg>
+                    <span className="leading-none">PNG</span>
+                  </button>
+                )}
+
                 <Link
-                  className="btn btn-secondary h-8 whitespace-nowrap inline-flex items-center gap-2 px-3"
+                  className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap"
                   href={`/dashboard/qrcodes/customize?url=${encodeURIComponent(it.short_url)}`}
                   aria-label="Customize QR"
+                  title="Customize QR"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm3.92 1.33H5.5v-1.41l8.56-8.56 1.41 1.41-8.55 8.56ZM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/>
