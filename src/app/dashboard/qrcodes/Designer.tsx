@@ -59,7 +59,7 @@ export default function Designer({ value }: DesignerProps) {
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
-  const [crossOrigin, setCrossOrigin] = useState<string>("anonymous");
+  // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
 
   // Frame (visual wrapper)
   const [frame, setFrame] = useState<
@@ -189,10 +189,10 @@ export default function Designer({ value }: DesignerProps) {
         imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
         hideBackgroundDots: hideBgDots,
         margin: 2,
-        crossOrigin: crossOrigin || undefined,
+        crossOrigin: 'anonymous',
       },
     };
-  }, [value, size, margin, ecLevel, dotsType, dotsColor, dotsGradA, dotsGradB, dotsGradRotation, cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor, bgColor, bgGradA, bgGradB, bgGradType, logoUrl, logoSize, hideBgDots, crossOrigin, perfMode]);
+  }, [value, size, margin, ecLevel, dotsType, dotsColor, dotsGradA, dotsGradB, dotsGradRotation, cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor, bgColor, bgGradA, bgGradB, bgGradType, logoUrl, logoSize, hideBgDots, perfMode]);
 
   // Initialize
   useEffect(() => {
@@ -339,50 +339,61 @@ export default function Designer({ value }: DesignerProps) {
 
       const exportOuter = Math.max(2048, outer);
       const scale = exportOuter / outer;
-      const canvas = document.createElement('canvas');
-      canvas.width = exportOuter; canvas.height = exportOuter;
-      const ctx = canvas.getContext('2d'); if (!ctx) return;
-      ctx.imageSmoothingEnabled = false;
+      // Work at 2x for smoother rounded corners, then downscale once
+      const workScale = 2;
+      const workSize = exportOuter * workScale;
+      const workCanvas = document.createElement('canvas');
+      workCanvas.width = workSize; workCanvas.height = workSize;
+      const wctx = workCanvas.getContext('2d'); if (!wctx) return;
+      wctx.imageSmoothingEnabled = false; // keep QR crisp while upscaling
 
       // Rounded background fill and clip so QR respects corner shape
       const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
-      const rxScaled = rx * scale;
-      drawRoundedRect(ctx, 0, 0, exportOuter, exportOuter, rxScaled);
-      ctx.fillStyle = effectiveBg; ctx.fill();
-      ctx.save();
-      drawRoundedRect(ctx, 0, 0, exportOuter, exportOuter, rxScaled);
-      ctx.clip();
+      const rxScaled = rx * scale * workScale;
+      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+      wctx.fillStyle = effectiveBg; wctx.fill();
+      wctx.save();
+      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0, 0, workSize, workSize, rxScaled);
+      wctx.clip();
       // Draw trimmed QR to fill the inner area completely, clipped to rounded rect
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, exportOuter, exportOuter);
-      ctx.restore();
+      wctx.drawImage(img, sx, sy, sw, sh, 0, 0, workSize, workSize);
+      wctx.restore();
 
       // Draw frame stroke on top so it visually meets the QR
-      drawRoundedRect(ctx, 0.5 * scale, 0.5 * scale, exportOuter - 1 * scale, exportOuter - 1 * scale, Math.max(0, rxScaled - 0.5 * scale));
+      drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 0.5 * scale * workScale, 0.5 * scale * workScale, workSize - 1 * scale * workScale, workSize - 1 * scale * workScale, Math.max(0, rxScaled - 0.5 * scale * workScale));
       if (frame === 'accent') {
-        ctx.lineWidth = 5 * scale; ctx.strokeStyle = accent; ctx.stroke();
+        wctx.lineWidth = 5 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
       } else if (frame === 'double') {
-        ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke();
-        drawRoundedRect(ctx, 5.5 * scale, 5.5 * scale, exportOuter - 11 * scale, exportOuter - 11 * scale, Math.max(0, rxScaled - 5.5 * scale));
-        ctx.strokeStyle = accent; ctx.lineWidth = 3 * scale; ctx.stroke();
+        wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
+        drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 5.5 * scale * workScale, 5.5 * scale * workScale, workSize - 11 * scale * workScale, workSize - 11 * scale * workScale, Math.max(0, rxScaled - 5.5 * scale * workScale));
+        wctx.strokeStyle = accent; wctx.lineWidth = 3 * scale * workScale; wctx.stroke();
       } else if (frame === 'dashed') {
-        ctx.setLineDash([8 * scale, 8 * scale]); ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
+        wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.setLineDash([]);
       } else if (frame === 'outline') {
-        ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke();
+        wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
       } else if (frame === 'thick') {
-        ctx.lineWidth = 6 * scale; ctx.strokeStyle = border; ctx.stroke();
+        wctx.lineWidth = 6 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
       } else if (frame === 'thin' || frame === 'square' || frame === 'rounded') {
-        ctx.lineWidth = 2 * scale; ctx.strokeStyle = border; ctx.stroke();
+        wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
       } else if (frame === 'glow') {
-        ctx.shadowColor = accent; ctx.shadowBlur = 22 * scale; ctx.lineWidth = 3 * scale; ctx.strokeStyle = border; ctx.stroke(); ctx.shadowBlur = 0;
+        wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.shadowBlur = 0;
       } else if (frame === 'shadow') {
-        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 18 * scale; ctx.shadowOffsetY = 8 * scale; ctx.lineWidth = 2 * scale; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
+        wctx.save(); wctx.shadowColor = 'rgba(0,0,0,0.18)'; wctx.shadowBlur = 18 * scale * workScale; wctx.shadowOffsetY = 8 * scale * workScale; wctx.lineWidth = 2 * scale * workScale; wctx.strokeStyle = 'rgba(0,0,0,0)'; wctx.stroke(); wctx.restore();
       } else if (frame === 'gradient') {
-        const g = ctx.createLinearGradient(0, 0, exportOuter, exportOuter);
+        const g = wctx.createLinearGradient(0, 0, workSize, workSize);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
-        ctx.lineWidth = 4 * scale; ctx.strokeStyle = g; ctx.stroke();
+        wctx.lineWidth = 4 * scale * workScale; wctx.strokeStyle = g; wctx.stroke();
       }
 
-      canvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
+      // Downscale to final canvas with smoothing to get anti-aliased rounded edge
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = exportOuter; outCanvas.height = exportOuter;
+      const octx = outCanvas.getContext('2d'); if (!octx) return;
+      octx.imageSmoothingEnabled = true;
+      octx.imageSmoothingQuality = 'high' as any;
+      octx.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
+
+      outCanvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
       URL.revokeObjectURL(img.src);
       return;
     }
@@ -433,6 +444,19 @@ export default function Designer({ value }: DesignerProps) {
       const defsGrad = frame === 'gradient'
         ? `<linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="50%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>`
         : '';
+      const defsShadow = frame === 'shadow'
+        ? `<filter id="fShadow" x="-20%" y="-20%" width="140%" height="160%">
+             <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="rgba(0,0,0,0.18)"/>
+           </filter>`
+        : '';
+      const defsGlow = frame === 'glow'
+        ? `<filter id="fGlow" x="-40%" y="-40%" width="180%" height="180%">
+             <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur"/>
+             <feFlood flood-color="${accent}" flood-opacity="0.35"/>
+             <feComposite in2="blur" operator="in"/>
+             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+           </filter>`
+        : '';
       const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
       const secondStroke = frame === 'double' ? `<rect x="6" y="6" width="${outer-12}" height="${outer-12}" rx="${Math.max(0, rx-4)}" ry="${Math.max(0, rx-4)}" fill="none" stroke="${accent}" stroke-width="2"/>` : '';
       const dashed = frame === 'dashed' ? '6,6' : 'none';
@@ -442,13 +466,15 @@ export default function Designer({ value }: DesignerProps) {
 <svg xmlns="http://www.w3.org/2000/svg" width="${outer}" height="${outer}" viewBox="0 0 ${outer} ${outer}">
 <defs>
 ${defsGrad}
+${defsShadow}
+${defsGlow}
 ${defsClip}
 </defs>
-<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${surface}"/>
+<rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
 <g clip-path="url(#clipR)">
   <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
 </g>
-<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-dasharray="${dashed}"/>
+<rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-dasharray="${dashed}" ${frame==='shadow' ? 'filter="url(#fShadow)"' : ''} ${frame==='glow' ? 'filter="url(#fGlow)"' : ''}/>
 ${secondStroke}
 </svg>`;
       const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
@@ -483,7 +509,6 @@ ${secondStroke}
     setLogoUrl("");
     setLogoSize(0.25);
     setHideBgDots(true);
-    setCrossOrigin("anonymous");
     // Frame
     setFrame("none");
   };
@@ -495,7 +520,7 @@ ${secondStroke}
       dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation,
       cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor,
       bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType,
-      logoUrl, logoSize, hideBgDots, crossOrigin,
+      logoUrl, logoSize, hideBgDots,
       frame,
       value,
       ts: Date.now(),
@@ -819,8 +844,6 @@ ${secondStroke}
               <input type="range" min={0.1} max={0.45} step={0.01} value={logoSize} onChange={(e) => setLogoSize(parseFloat(e.target.value))} />
               <label className="text-xs">Hide bg dots</label>
               <input type="checkbox" checked={hideBgDots} onChange={(e) => setHideBgDots(e.target.checked)} />
-              <label className="text-xs">crossOrigin</label>
-              <input className="h-8 rounded px-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} value={crossOrigin} onChange={(e) => setCrossOrigin(e.target.value)} />
             </div>
             <div className="mt-2">
               <div className="text-xs font-medium text-[var(--muted)] mb-1">Pick an icon</div>
@@ -939,7 +962,6 @@ ${secondStroke}
               setLogoUrl("");
               setLogoSize(0.25);
               setHideBgDots(true);
-              setCrossOrigin("anonymous");
               setFrame("none");
               setEcLevel("M");
               setSize(220);
