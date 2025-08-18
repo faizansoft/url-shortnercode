@@ -104,6 +104,29 @@ export default function Designer({ value }: DesignerProps) {
 
   // (removed) auto logo size logic
 
+  // Convert a URL (same-origin recommended) to a data URL for reliable embedding inside SVG
+  async function toDataUrl(src: string): Promise<string | null> {
+    try {
+      const res = await fetch(src, { cache: 'force-cache' });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onerror = () => reject(new Error('failed to read blob'));
+        fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : '');
+        fr.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async function selectBuiltinLogo(src: string) {
+    // Prefer inlining as data URL to avoid cross-resource SVG image embedding issues
+    const inlined = await toDataUrl(src);
+    setLogoUrl(inlined || src);
+  }
+
   // Effective preview background and style (solid only)
   const effectivePreviewBg = useMemo(() => bgColor, [bgColor]);
   // (previewInnerStyle removed – unused)
@@ -676,11 +699,11 @@ export default function Designer({ value }: DesignerProps) {
               <div className="text-xs font-medium text-[var(--muted)] mb-1">Pick an icon</div>
               <div className="flex flex-wrap gap-2">
                 {builtinIcons.map(icon => (
-                  <button key={icon.name} className={`h-9 px-2 rounded border flex items-center gap-2 ${logoUrl===icon.src? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => setLogoUrl(icon.src)}>
-                    <Image src={icon.src} alt={icon.name} width={16} height={16} />
-                    <span className="text-xs">{icon.name}</span>
-                  </button>
-                ))}
+                <button key={icon.name} className={`h-9 px-2 rounded border flex items-center gap-2 ${logoUrl===icon.src? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onClick={() => selectBuiltinLogo(icon.src)}>
+                  <Image src={icon.src} alt={icon.name} width={16} height={16} />
+                  <span className="text-xs">{icon.name}</span>
+                </button>
+              ))}
                 <label className="h-9 px-2 rounded border flex items-center gap-2 cursor-pointer" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadIcon(f); }} />
                   <span className="text-xs">Upload…</span>
