@@ -225,6 +225,26 @@ export default function Designer({ value }: DesignerProps) {
     URL.revokeObjectURL(url);
   }
 
+  // Build a filesystem-safe filename from the full shortlink
+  function safeFileNameFromUrl(urlStr: string): string {
+    let raw = urlStr || 'qr';
+    try {
+      const u = new URL(urlStr);
+      // keep hostname + pathname + search if any; include scheme for uniqueness
+      raw = `${u.protocol}//${u.host}${u.pathname}${u.search}` || urlStr;
+    } catch {
+      // not a URL, use as-is
+    }
+    // replace characters not suitable for filenames
+    const cleaned = raw
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 180); // keep it reasonable
+    return cleaned || 'qr';
+  }
+
   // Robust canvas->PNG Blob with fallback via dataURL
   async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
     // Try native toBlob first
@@ -262,11 +282,12 @@ export default function Designer({ value }: DesignerProps) {
     // Ensure latest options are applied before we read states (not the DOM)
     try { qrRef.current?.update(options); } catch {}
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const baseName = safeFileNameFromUrl(value);
 
     if (ext === 'svg') {
       const wrapped = await buildCombinedSVG(outer);
       const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
-      downloadBlob(outBlob, 'qr.svg');
+      downloadBlob(outBlob, `${baseName}.svg`);
       return;
     }
 
@@ -274,7 +295,8 @@ export default function Designer({ value }: DesignerProps) {
     const wrapped = await buildCombinedSVG(outer);
     const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
-    const exportOuter = outer; // export at native size by default
+    // High-resolution export: upscale significantly, but cap sensibly
+    const exportOuter = Math.min(4096, Math.max(1024, outer * 6));
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.src = url;
@@ -287,7 +309,7 @@ export default function Designer({ value }: DesignerProps) {
     ctx.imageSmoothingQuality = 'low';
     ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
     const blob = await canvasToPngBlob(canvas);
-    if (blob) downloadBlob(blob, 'qr.png');
+    if (blob) downloadBlob(blob, `${baseName}.png`);
     URL.revokeObjectURL(url);
     return;
   }
