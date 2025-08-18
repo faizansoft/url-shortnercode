@@ -42,9 +42,10 @@ function isSavedOptions(x: unknown): x is SavedOptions {
   if (!x || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
   // Check a few representative fields for shape without being overly strict
-  const okNum = (k: string) => o[k] === undefined || typeof o[k] === 'number';
-  const okStr = (k: string) => o[k] === undefined || typeof o[k] === 'string';
-  const okBool = (k: string) => o[k] === undefined || typeof o[k] === 'boolean';
+  const isUndefOrNull = (v: unknown) => v === undefined || v === null;
+  const okNum = (k: string) => isUndefOrNull(o[k]) || typeof o[k] === 'number';
+  const okStr = (k: string) => isUndefOrNull(o[k]) || typeof o[k] === 'string';
+  const okBool = (k: string) => isUndefOrNull(o[k]) || typeof o[k] === 'boolean';
   if (!okNum('size') || !okNum('margin') || !okStr('dotsColor') || !okStr('bgColor')) return false;
   if (!okStr('logoUrl') || !okNum('logoSize')) return false;
   return true;
@@ -107,7 +108,7 @@ export default function Designer({ value }: DesignerProps) {
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
-  const savedPresentRef = useRef<boolean>(false);
+  const [hasSaved, setHasSaved] = useState<boolean>(false);
   const savedSnapshotRef = useRef<SavedOptions | null>(null);
 
   // (removed) frame/border feature
@@ -257,8 +258,19 @@ export default function Designer({ value }: DesignerProps) {
   useEffect(() => {
     (async () => {
       try {
-        const u = new URL(value);
-        const short_code = (u.pathname || '').replace(/^\//, '');
+        let short_code = '';
+        try {
+          const u = new URL(value);
+          short_code = (u.pathname || '').replace(/^\//, '');
+        } catch {
+          // value might be a relative path like "/abc123" or just "abc123"
+          const v = String(value || '').trim();
+          short_code = v.replace(/^https?:\/\//, '').replace(/^[^/]*\//, '').replace(/^\//, '');
+          if (!short_code && v) {
+            const parts = v.split('/').filter(Boolean);
+            short_code = parts[parts.length - 1] || '';
+          }
+        }
         if (!short_code) return;
         let o: unknown = null;
         try {
@@ -280,7 +292,7 @@ export default function Designer({ value }: DesignerProps) {
           } catch {}
         }
         if (!isSavedOptions(o)) return;
-        savedPresentRef.current = true;
+        setHasSaved(true);
         savedSnapshotRef.current = o;
         // Apply all saved values safely, suppressing intermediate updates
         suppressUpdateRef.current = true;
@@ -485,7 +497,7 @@ export default function Designer({ value }: DesignerProps) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs font-medium text-[var(--muted)]">Presets</div>
           <div className="flex flex-wrap gap-2">
-            {(savedPresentRef.current
+            {(hasSaved
               ? ([{
                   name: "Saved",
                   apply: () => {

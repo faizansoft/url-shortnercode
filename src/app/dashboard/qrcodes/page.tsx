@@ -251,6 +251,25 @@ interface SavedOptions {
   margin?: number;
 }
 
+function isDataUrl(u: string): boolean { return typeof u === 'string' && u.startsWith('data:'); }
+
+// Convert a URL (same-origin recommended) to a data URL
+async function toDataUrl(src: string): Promise<string | null> {
+  try {
+    const res = await fetch(src, { cache: 'force-cache' });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error('failed to read blob'));
+      fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : '');
+      fr.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 // Build a styled SVG data URL using qr-code-styling and saved options
 async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Promise<string | null> {
   try {
@@ -273,7 +292,11 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     const bgGradB = typeof saved?.bgGradB === 'string' ? saved.bgGradB : '#e2e8f0';
     const bgGradType = saved?.bgGradType === 'radial' ? 'radial' : 'linear';
 
-    const logoUrl = typeof saved?.logoUrl === 'string' ? saved.logoUrl : '';
+    let logoUrl = typeof saved?.logoUrl === 'string' ? saved.logoUrl : '';
+    if (logoUrl && !isDataUrl(logoUrl)) {
+      const inlined = await toDataUrl(logoUrl);
+      if (inlined) logoUrl = inlined;
+    }
     const logoSize = Number.isFinite(saved?.logoSize) ? Math.max(0, Math.min(1, Number(saved.logoSize))) : 0.25;
     const hideBgDots = !!saved?.hideBgDots;
 
@@ -324,7 +347,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
       backgroundOptions: perfMode ? { color: bgColor } : (bg as BgOpts),
       image: logoUrl || undefined,
-      imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots },
+      imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots, crossOrigin: 'anonymous' },
     };
 
     const tmp = new QRCodeStyling(opts);
