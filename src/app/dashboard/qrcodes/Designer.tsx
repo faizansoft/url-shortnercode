@@ -310,8 +310,8 @@ export default function Designer({ value }: DesignerProps) {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
-      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto">
+    <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 lg:gap-6">
+      <div className="rounded-xl glass border border-[var(--border)] p-5 space-y-5 lg:space-y-6 h-full overflow-y-auto">
         {/* Top bar: performance and reset all */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -675,7 +675,7 @@ export default function Designer({ value }: DesignerProps) {
         </div>
         {/* (removed) Borders section */}
       </div>
-      <div className={`glass rounded-xl border border-[var(--border)] p-5 flex flex-col gap-5 items-center lg:sticky lg:top-4 lg:self-start lg:h-[calc(100dvh-2rem)] lg:overflow-hidden`}>
+      <div className={`glass rounded-xl border border-[var(--border)] p-5 flex flex-col gap-5 items-center h-full overflow-hidden`}>
         <div className="text-sm text-[var(--muted)] self-start">Preview</div>
         <div className={`p-3 sm:p-4 md:p-5 rounded-xl border border-[var(--border)] bg-white w-full flex-1 grid place-items-center`}>
           <div ref={containerRef} className="[&>svg]:block [&>canvas]:block" />
