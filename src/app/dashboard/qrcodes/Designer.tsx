@@ -251,19 +251,26 @@ export default function Designer({ value }: DesignerProps) {
       let svgText = new XMLSerializer().serializeToString(svgNode);
       try {
         const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
-        const urls: string[] = [];
+        type Ref = { raw: string; abs: string };
+        const refs: Ref[] = [];
         let m: RegExpExecArray | null;
         while ((m = hrefRegex.exec(svgText)) !== null) {
-          const u = m[1];
-          if (/^https?:\/\//i.test(u)) urls.push(u);
+          const raw = m[1];
+          // Skip already inlined data URLs
+          if (/^data:/i.test(raw)) continue;
+          const abs = /^https?:\/\//i.test(raw) ? raw : new URL(raw, window.location.origin).href;
+          refs.push({ raw, abs });
         }
         let inlinedFailures = 0;
-        for (const u of Array.from(new Set(urls))) {
+        const seen = new Set<string>();
+        for (const { raw, abs } of refs) {
+          if (seen.has(raw)) continue;
+          seen.add(raw);
           try {
-            const dataUrl = await urlToDataURL(u);
-            svgText = svgText.split(u).join(dataUrl);
+            const dataUrl = await urlToDataURL(abs);
+            // Replace all occurrences of the raw reference with the data URL
+            svgText = svgText.split(raw).join(dataUrl);
           } catch {
-            // If we cannot inline an external logo, keep going; the browser may refuse external refs on rasterization
             inlinedFailures++;
           }
         }
