@@ -38,6 +38,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const baseCooldown = Number(process.env.NEXT_PUBLIC_EMAIL_COOLDOWN || 60) || 60;
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  const disableCooldown = (process.env.NEXT_PUBLIC_DISABLE_EMAIL_COOLDOWN || '').toLowerCase() === 'true';
 
   // Auto-redirect if already authenticated (client safety net)
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
 
   // Helper: start exponential backoff cooldown
   const startCooldown = () => {
+    if (disableCooldown) return;
     const next = Math.min(baseCooldown * Math.pow(2, backoffStep), 300);
     setCooldownSec(next);
     setBackoffStep((s) => Math.min(s + 1, 3));
@@ -130,7 +132,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       if (mode === "signup") {
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
         if (password !== confirm) throw new Error("Passwords do not match.");
-        if (cooldownSec > 0) return; // guard during cooldown
+        if (!disableCooldown && cooldownSec > 0) return; // guard during cooldown
         const captchaToken = await getRecaptchaToken('signup').catch(() => undefined);
         const { error } = await supabaseClient.auth.signUp({
           email,
@@ -185,7 +187,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
     try {
       setVariant("info");
       setMessage("");
-      if (resendCooldownSec > 0) return;
+      if (!disableCooldown && resendCooldownSec > 0) return;
       const { error } = await supabaseClient.auth.resend({
         type: "signup",
         email,
@@ -194,13 +196,13 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       if (error) throw error;
       setVariant("success");
       setMessage("We’ve re-sent the verification email. Please check your inbox or spam folder.");
-      setResendCooldownSec(baseCooldown);
+      if (!disableCooldown) setResendCooldownSec(baseCooldown);
     } catch (err: unknown) {
       setVariant("error");
       const text = getErrorMessage(err, "Failed to resend email.");
       if (getStatus(err) === 429 || text.toLowerCase().includes("rate limit") || text.toLowerCase().includes("too many")) {
         setMessage("Email rate limit exceeded. Please wait a minute before trying again.");
-        setResendCooldownSec(baseCooldown);
+        if (!disableCooldown) setResendCooldownSec(baseCooldown);
       } else {
         setMessage(text);
       }
@@ -297,8 +299,8 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
                   </div>
                 )}
 
-                <button type="submit" disabled={loading || cooldownSec > 0} className="btn btn-primary w-full justify-center">
-                  {cooldownSec > 0
+                <button type="submit" disabled={loading || (!disableCooldown && cooldownSec > 0)} className="btn btn-primary w-full justify-center">
+                  {!disableCooldown && cooldownSec > 0
                     ? `Please wait ${cooldownSec}s`
                     : loading
                     ? (mode === "signup" ? "Creating…" : "Signing in…")
@@ -315,13 +317,13 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
               <div className="my-4 w-full h-px" style={{ background: 'var(--border)' }} />
               <div className="text-sm mb-2 text-[color-mix(in_oklab,var(--foreground)_80%,#666)]">Continue with</div>
               <div className="grid grid-cols-3 gap-2">
-                <button disabled={cooldownSec > 0} onClick={() => handleOAuth("google")} className="btn h-9 inline-grid place-items-center" aria-label="Continue with Google">
+                <button disabled={!disableCooldown && cooldownSec > 0} onClick={() => handleOAuth("google")} className="btn h-9 inline-grid place-items-center" aria-label="Continue with Google">
                   <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden fill="currentColor"><path d="M21.6 12.227c0-.64-.057-1.253-.163-1.84H12v3.48h5.4a4.614 4.614 0 0 1-2 3.027v2.514h3.237c1.894-1.744 2.963-4.313 2.963-7.181Z"/><path d="M12 22c2.7 0 4.968-.9 6.624-2.441l-3.238-2.514c-.9.6-2.05.96-3.386.96-2.604 0-4.81-1.758-5.596-4.122H3.05v2.59A9.998 9.998 0 0 0 12 22Z"/><path d="M6.404 13.883A5.997 5.997 0 0 1 6.09 12c0-.652.112-1.284.314-1.883V7.526H3.051A9.998 9.998 0 0 0 2 12c0 1.61.386 3.133 1.051 4.474l3.353-2.59Z"/><path d="M12 6.4c1.47 0 2.79.506 3.827 1.498l2.87-2.87C16.963 3.272 14.695 2.4 12 2.4A9.998 9.998 0 0 0 3.05 7.526l3.353 2.591C7.19 8.753 9.396 6.4 12 6.4Z"/></svg>
                 </button>
-                <button disabled={cooldownSec > 0} onClick={() => handleOAuth("apple")} className="btn h-9 inline-grid place-items-center" aria-label="Continue with Apple">
+                <button disabled={!disableCooldown && cooldownSec > 0} onClick={() => handleOAuth("apple")} className="btn h-9 inline-grid place-items-center" aria-label="Continue with Apple">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M16.365 1.43c0 1.14-.42 2.073-1.25 2.797-.9.798-1.98 1.26-3.164 1.186-.04-1.12.44-2.11 1.29-2.86.9-.8 2-1.25 3.124-1.288ZM19.6 21.2c-.82.78-1.77 1.118-2.85 1.118-1.078 0-1.916-.34-2.95-.34-1.072 0-1.91.34-2.99.34-1.08 0-2.02-.36-2.83-1.14-.88-.82-1.49-1.953-1.83-3.4-.36-1.586-.26-3.064.3-4.43.48-1.17 1.2-2.09 2.16-2.76.96-.67 2.01-1.01 3.14-1.02 1.02 0 2.04.35 3.06.35 1 0 1.96-.35 2.89-1.03.58-.43 1.06-.94 1.43-1.54-.02-.01.02.02 0 0 .04.05.07.1.1.15.68 1.11.97 2.2.88 3.27-.09 1.09-.53 2.07-1.29 2.95-.76.88-1.7 1.43-2.82 1.64.94.19 1.73.62 2.36 1.29.63.67 1.05 1.52 1.28 2.55.23 1.04.19 2.04-.13 3.02-.32.98-.85 1.81-1.59 2.49Z"/></svg>
                 </button>
-                <button disabled={cooldownSec > 0} onClick={() => handleOAuth("facebook")} className="btn h-9 inline-grid place-items-center" aria-label="Continue with Facebook">
+                <button disabled={!disableCooldown && cooldownSec > 0} onClick={() => handleOAuth("facebook")} className="btn h-9 inline-grid place-items-center" aria-label="Continue with Facebook">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M13.5 22v-8h2.6l.4-3h-3V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.2-.1-2.2 0-3.8 1.3-3.8 3.9V11H8v3h3v8h2.5Z"/></svg>
                 </button>
               </div>
@@ -336,8 +338,8 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
               <div className="flex gap-2">
                 <button onClick={() => { setConfirmationSent(false); setMode("login"); }} className="btn btn-secondary h-9">Back to login</button>
                 <button onClick={() => { setConfirmationSent(false); }} className="btn h-9">Use a different email</button>
-                <button disabled={resendCooldownSec > 0} onClick={handleResendVerification} className="btn btn-primary h-9">
-                  {resendCooldownSec > 0 ? `Resend in ${resendCooldownSec}s` : 'Resend email'}
+                <button disabled={!disableCooldown && resendCooldownSec > 0} onClick={handleResendVerification} className="btn btn-primary h-9">
+                  {!disableCooldown && resendCooldownSec > 0 ? `Resend in ${resendCooldownSec}s` : 'Resend email'}
                 </button>
               </div>
             </div>
