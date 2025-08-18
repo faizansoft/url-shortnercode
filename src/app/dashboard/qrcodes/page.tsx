@@ -120,11 +120,11 @@ export default function QRCodesPage() {
       {/* No always-visible designer. Customizer opens only when user clicks the button. */}
 
       {loading ? (
-        <div className="p-4 text-sm text-[var(--muted)]">Loading…</div>
+        <div className="p-4 text-sm text-[var(--muted)]" role="status" aria-live="polite">Loading…</div>
       ) : error ? (
-        <div className="p-4 text-sm text-red-600">{error}</div>
+        <div className="p-4 text-sm text-red-600" role="alert">{error}</div>
       ) : items.length === 0 ? (
-        <div className="p-4 text-sm text-[var(--muted)]">No links yet. Create your first one to generate a QR code.</div>
+        <div className="p-4 text-sm text-[var(--muted)]" aria-live="polite">No links yet. Create your first one to generate a QR code.</div>
       ) : (
         <div className="grid auto-rows-fr gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((it) => (
@@ -174,6 +174,7 @@ export default function QRCodesPage() {
                   <button
                     className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap opacity-50 cursor-not-allowed"
                     disabled
+                    aria-disabled
                     title="Generating..."
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
