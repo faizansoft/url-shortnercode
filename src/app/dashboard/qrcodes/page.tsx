@@ -114,7 +114,7 @@ export default function QRCodesPage() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">QR Codes</h1>
-        <Link className="btn btn-primary" href="/dashboard/create">Create</Link>
+        <Link className="btn btn-primary h-9" href="/dashboard/create">Create</Link>
       </header>
 
       {/* No always-visible designer. Customizer opens only when user clicks the button. */}
@@ -128,7 +128,7 @@ export default function QRCodesPage() {
       ) : (
         <div className="grid auto-rows-fr gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((it) => (
-            <div key={it.short_code} className="rounded-xl glass p-4 flex flex-col gap-3 h-full">
+            <div key={it.short_code} className="rounded-xl glass p-5 flex flex-col gap-3 h-full">
               <div className="flex items-center justify-between">
                 <div className="font-mono text-sm">/{it.short_code}</div>
                 <div className="text-xs text-[var(--muted)]">{new Date(it.created_at).toLocaleDateString()}</div>

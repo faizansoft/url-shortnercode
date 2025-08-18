@@ -261,18 +261,18 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
         </div>
 
         {/* Auth palette right column */}
-        <div className="rounded-2xl p-6 border border-[var(--border)]" style={{ background: 'var(--surface)' }}>
+        <div className="rounded-xl glass p-5">
           {!confirmationSent ? (
             <>
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => { setMode("login"); setMessage(""); }}
-                  className={`btn h-8 ${mode === "login" ? "btn-primary" : "btn-secondary"}`}
+                  className={`btn h-9 ${mode === "login" ? "btn-primary" : "btn-secondary"}`}
                 >Login</button>
                 {!disableSignup && (
                   <button
                     onClick={() => { setMode("signup"); setMessage(""); }}
-                    className={`btn h-8 ${mode === "signup" ? "btn-primary" : "btn-secondary"}`}
+                    className={`btn h-9 ${mode === "signup" ? "btn-primary" : "btn-secondary"}`}
                   >Sign up</button>
                 )}
               </div>
@@ -285,7 +285,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full h-10 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
+                    className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
                   />
                 </div>
@@ -297,7 +297,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-10 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
+                    className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
                   />
                 </div>
@@ -310,13 +310,13 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
                       value={confirm}
                       onChange={(e) => setConfirm(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full h-10 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
+                      className="w-full h-11 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_35%,transparent)]"
                       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
                     />
                   </div>
                 )}
 
-                <button type="submit" disabled={loading || (!disableCooldown && cooldownSec > 0)} className="btn btn-primary w-full justify-center">
+                <button type="submit" disabled={loading || (!disableCooldown && cooldownSec > 0)} className="btn btn-primary h-9 w-full justify-center">
                   {!disableCooldown && cooldownSec > 0
                     ? `Please wait ${cooldownSec}s`
                     : loading
@@ -346,7 +346,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-[var(--border)] p-5 text-sm" style={{ background: 'var(--panel)' }}>
+            <div className="rounded-xl glass p-5 text-sm">
               <div className="text-base font-semibold mb-2">Confirmation email sent</div>
               <p className="text-[var(--muted)] mb-3">
                 We sent a verification link to <span className="font-medium text-[var(--foreground)]">{email}</span>.
@@ -354,7 +354,7 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
               </p>
               <div className="flex gap-2">
                 <button onClick={() => { setConfirmationSent(false); setMode("login"); }} className="btn btn-secondary h-9">Back to login</button>
-                <button onClick={() => { setConfirmationSent(false); }} className="btn h-9">Use a different email</button>
+                <button onClick={() => { setConfirmationSent(false); }} className="btn btn-ghost h-9">Use a different email</button>
                 <button disabled={!disableCooldown && resendCooldownSec > 0} onClick={handleResendVerification} className="btn btn-primary h-9">
                   {!disableCooldown && resendCooldownSec > 0 ? `Resend in ${resendCooldownSec}s` : 'Resend email'}
                 </button>
