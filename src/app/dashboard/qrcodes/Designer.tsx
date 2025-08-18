@@ -120,9 +120,8 @@ export default function Designer({ value }: DesignerProps) {
 
   // Effective preview background used for the inner wrapper when a frame is applied
   const effectivePreviewBg = useMemo(() => {
-    const v = (bgColor || '').toLowerCase();
-    const isTransparent = v === '#ffffff00' || v === 'transparent' || v.endsWith('00');
-    return isTransparent ? '#ffffff' : bgColor;
+    // Use exactly what the user selected so preview reflects transparency too
+    return bgColor;
   }, [bgColor]);
 
   // Build options for qr-code-styling
