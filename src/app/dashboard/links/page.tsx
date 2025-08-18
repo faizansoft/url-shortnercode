@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
 
@@ -21,6 +22,16 @@ export default function LinksIndexPage() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
+  const searchParams = useSearchParams();
+  const q = (searchParams.get("q") || "").toLowerCase();
+
+  const filteredLinks = useMemo(() => {
+    if (!q) return links;
+    return links.filter((l) =>
+      l.short_code.toLowerCase().includes(q) ||
+      l.target_url.toLowerCase().includes(q)
+    );
+  }, [links, q]);
 
   useEffect(() => {
     (async () => {
@@ -132,7 +143,12 @@ export default function LinksIndexPage() {
               </tr>
             </thead>
             <tbody>
-              {links.map((l) => (
+              {filteredLinks.length === 0 ? (
+                <tr>
+                  <td className="p-4 text-[var(--muted)]" colSpan={4}>No matches for "{q}"</td>
+                </tr>
+              ) : null}
+              {filteredLinks.map((l) => (
                 <tr key={l.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] transition-colors">
                   <td className="p-3 font-mono">
                     <a className="underline" href={`/${l.short_code}`} target="_blank" rel="noreferrer">
