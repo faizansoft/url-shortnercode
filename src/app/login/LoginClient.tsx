@@ -42,22 +42,16 @@ export default function LoginClient({ defaultMode = "login" }: Props) {
       if (mode === "signup") {
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
         if (password !== confirm) throw new Error("Passwords do not match.");
-        const { data, error } = await supabaseClient.auth.signUp({
+        const { error } = await supabaseClient.auth.signUp({
           email,
           password,
           // Use email confirmation link flow with redirect to our callback page
           options: { emailRedirectTo: `${siteUrl}/auth/callback` },
         });
         if (error) throw error;
-        // If confirmations are disabled, Supabase may return a session immediately
-        if (data?.session) {
-          setVariant("success");
-          setMessage("Account created. Redirecting…");
-          setTimeout(() => window.location.assign("/dashboard"), 500);
-        } else {
-          setVariant("success");
-          setMessage("Check your email inbox for the confirmation link to activate your account.");
-        }
+        // Always require email confirmation UX
+        setVariant("success");
+        setMessage("Check your email inbox for the confirmation link to activate your account.");
       } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
