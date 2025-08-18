@@ -279,7 +279,7 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function handleDownload(ext: 'png' | 'svg') {
-    const pad = 8; // outer padding inside frame (tighter)
+    const pad = 0; // no inner padding; QR will meet the frame edge
     const borderW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
     const outer = size + pad * 2;
 
@@ -293,22 +293,42 @@ export default function Designer({ value }: DesignerProps) {
       const img = new window.Image();
       img.src = URL.createObjectURL(qrBlob);
       await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+
+      // Trim transparent margins from the QR image
+      const trimCanvas = document.createElement('canvas');
+      trimCanvas.width = img.width; trimCanvas.height = img.height;
+      const tctx = trimCanvas.getContext('2d'); if (!tctx) return;
+      tctx.drawImage(img, 0, 0);
+      const { data, width: tw, height: th } = tctx.getImageData(0, 0, trimCanvas.width, trimCanvas.height);
+      let minX = tw, minY = th, maxX = 0, maxY = 0;
+      for (let y = 0; y < th; y++) {
+        for (let x = 0; x < tw; x++) {
+          const a = data[(y * tw + x) * 4 + 3];
+          if (a > 0) { if (x < minX) minX = x; if (y < minY) minY = y; if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
+        }
+      }
+      if (minX > maxX || minY > maxY) { minX = 0; minY = 0; maxX = tw - 1; maxY = th - 1; }
+      const sx = Math.max(0, minX), sy = Math.max(0, minY), sw = Math.max(1, maxX - minX + 1), sh = Math.max(1, maxY - minY + 1);
+
       const canvas = document.createElement('canvas');
       canvas.width = outer; canvas.height = outer;
       const ctx = canvas.getContext('2d'); if (!ctx) return;
 
-      // Rounded background fill (keeps canvas corners transparent outside path)
+      // Rounded background fill
       const rx = (frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0))));
       drawRoundedRect(ctx, 0, 0, outer, outer, rx);
       ctx.fillStyle = surface; ctx.fill();
 
-      // Frame stroke/fill
-      drawRoundedRect(ctx, 2, 2, outer - 4, outer - 4, Math.max(0, rx - 2));
+      // Draw trimmed QR to fill the inner area completely
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outer, outer);
+
+      // Draw frame stroke on top so it visually meets the QR
+      drawRoundedRect(ctx, 0.5, 0.5, outer - 1, outer - 1, Math.max(0, rx - 0.5));
       if (frame === 'accent') {
         ctx.lineWidth = 5; ctx.strokeStyle = accent; ctx.stroke();
       } else if (frame === 'double') {
         ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke();
-        drawRoundedRect(ctx, 6, 6, outer - 12, outer - 12, Math.max(0, rx - 6));
+        drawRoundedRect(ctx, 5.5, 5.5, outer - 11, outer - 11, Math.max(0, rx - 5.5));
         ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.stroke();
       } else if (frame === 'dashed') {
         ctx.setLineDash([8, 8]); ctx.lineWidth = 3; ctx.strokeStyle = border; ctx.stroke(); ctx.setLineDash([]);
@@ -323,15 +343,10 @@ export default function Designer({ value }: DesignerProps) {
       } else if (frame === 'shadow') {
         ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 8; ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,0,0,0)'; ctx.stroke(); ctx.restore();
       } else if (frame === 'gradient') {
-        // Simple gradient stroke approximation
         const g = ctx.createLinearGradient(0, 0, outer, outer);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
         ctx.lineWidth = 4; ctx.strokeStyle = g; ctx.stroke();
       }
-
-      // Draw QR centered
-      const qrX = (outer - size) / 2; const qrY = (outer - size) / 2;
-      ctx.drawImage(img, qrX, qrY, size, size);
 
       canvas.toBlob((b) => { if (b) downloadBlob(b, 'qr-framed.png'); }, 'image/png');
       URL.revokeObjectURL(img.src);
