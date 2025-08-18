@@ -98,50 +98,39 @@ export default function QRCodesPage() {
     })();
   }, [origin]);
 
-  // Download SVG for a QR item (transparent background, tight bounds)
-  async function handleDownloadSvg(shortUrl: string, code: string) {
-    try {
-      const options: QRCodeToStringOptions = {
-        type: 'svg',
-        errorCorrectionLevel: 'M',
-        margin: 0,
-        color: { dark: '#0b1220', light: 'transparent' },
-      };
-      const svg = await QRCode.toString(shortUrl, options);
-      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `qr-${code}.svg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      // no-op; could surface toast if desired
-      console.error('Failed to generate SVG', e);
-    }
+  // Download SVG for a QR item using styled builder (same as Designer export)
+async function handleDownloadSvg(shortUrl: string, code: string) {
+  try {
+    const svg = await buildStyledSvgOrDefault(shortUrl, code);
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qr-${code}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Failed to generate SVG', e);
   }
+}
 
-  // Download high-resolution PNG for a QR item (transparent background)
-  async function handleDownloadPng(shortUrl: string, code: string) {
-    try {
-      const dataUrl = await QRCode.toDataURL(shortUrl, {
-        errorCorrectionLevel: 'M',
-        margin: 0,
-        color: { dark: '#0b1220', light: 'transparent' },
-        width: 2048, // high-res output
-      });
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = `qr-${code}@2x.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (e) {
-      console.error('Failed to generate PNG', e);
-    }
+  // Download high-resolution PNG for a QR item using styled SVG rasterization
+async function handleDownloadPng(shortUrl: string, code: string) {
+  try {
+    const svg = await buildStyledSvgOrDefault(shortUrl, code);
+    const pngDataUrl = await rasterizeSvgToPng(svg, 2048);
+    const a = document.createElement('a');
+    a.href = pngDataUrl;
+    a.download = `qr-${code}@2x.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) {
+    console.error('Failed to generate PNG', e);
   }
+}
 
   // (customizer handled entirely in dedicated page)
 
@@ -404,5 +393,138 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     return dataUrl;
   } catch {
     return null;
+  }
+}
+
+// Build a styled SVG string (raw XML) using qr-code-styling
+async function generateStyledSvgString(data: string, saved: SavedOptions): Promise<string | null> {
+  try {
+    const perfMode = !!saved?.perfMode;
+    const dotsType: DotsType | undefined = saved?.dotsType;
+    const normHex = (c: string) => c.trim().toLowerCase();
+    const baseDotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+    const safeDotsColor = normHex(baseDotsColor) === normHex(saved?.bgColor ?? '') ? '#0b1220' : baseDotsColor;
+    const dotsGradientOn = !!saved?.dotsGradientOn;
+    const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
+    const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
+    const dotsGradRotation = Number.isFinite(saved?.dotsGradRotation) ? Number(saved.dotsGradRotation) : 0;
+
+    const cornerSquareType = saved?.cornerSquareType ?? 'square';
+    const cornerSquareColor = typeof saved?.cornerSquareColor === 'string' ? saved.cornerSquareColor : '#0b1220';
+    const cornerDotType = saved?.cornerDotType ?? 'dot';
+    const cornerDotColor = typeof saved?.cornerDotColor === 'string' ? saved.cornerDotColor : '#0b1220';
+
+    const bgColor = typeof saved?.bgColor === 'string' ? saved.bgColor : '#ffffff';
+    const bgGradientOn = !!saved?.bgGradientOn;
+    const bgGradA = typeof saved?.bgGradA === 'string' ? saved.bgGradA : '#ffffff';
+    const bgGradB = typeof saved?.bgGradB === 'string' ? saved.bgGradB : '#e2e8f0';
+    const bgGradType = saved?.bgGradType === 'radial' ? 'radial' : 'linear';
+
+    let logoUrl = typeof saved?.logoUrl === 'string' ? saved.logoUrl : '';
+    if (logoUrl && !isDataUrl(logoUrl)) {
+      const inlined = await toDataUrl(logoUrl);
+      logoUrl = inlined || '';
+    }
+    const logoSize = Number.isFinite(saved?.logoSize) ? Math.max(0, Math.min(1, Number(saved.logoSize))) : 0.25;
+    const hideBgDots = !!saved?.hideBgDots;
+
+    const ecLevel = ((): 'L'|'M'|'Q'|'H' => {
+      const x = saved?.ecLevel; return x === 'L' || x === 'Q' || x === 'H' ? x : 'M';
+    })();
+    const margin = Number.isFinite(saved?.margin) ? Math.max(0, Number(saved.margin)) : 1;
+
+    const dots: DotsOpts | { color: string; type: DotsType } = dotsGradientOn
+      ? { type: (dotsType ?? 'rounded'), color: safeDotsColor, gradient: { type: 'linear', rotation: dotsGradRotation, colorStops: [ { offset: 0, color: dotsGradA }, { offset: 1, color: dotsGradB } ] } }
+      : { type: (dotsType ?? 'rounded'), color: safeDotsColor };
+
+    const bg: BgOpts | { color: string } = bgGradientOn
+      ? { color: bgColor, gradient: { type: bgGradType, rotation: 0, colorStops: [ { offset: 0, color: bgGradA }, { offset: 1, color: bgGradB } ] } }
+      : { color: bgColor };
+
+    const opts: QRStyleOptions = {
+      width: 200,
+      height: 200,
+      data,
+      type: 'svg',
+      margin,
+      qrOptions: { errorCorrectionLevel: ecLevel },
+      dotsOptions: perfMode ? { color: safeDotsColor, type: 'square' } : (dots as DotsOpts),
+      cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
+      cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
+      backgroundOptions: perfMode ? { color: bgColor } : (bg as BgOpts),
+      image: logoUrl || undefined,
+      imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots, crossOrigin: 'anonymous' },
+    };
+
+    const tmp = new QRCodeStyling(opts);
+    let svgText: string | null = null;
+    const maybeRaw = tmp as unknown as { getRawData?: (type?: 'svg') => Promise<Blob> };
+    if (typeof maybeRaw.getRawData === 'function') {
+      try { const blob = await maybeRaw.getRawData('svg'); svgText = await blob.text(); } catch {}
+    }
+    if (!svgText) {
+      const tmpDiv = document.createElement('div');
+      tmp.append(tmpDiv);
+      let svgNode: SVGSVGElement | null = null;
+      for (let i = 0; i < 60; i++) {
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        svgNode = tmpDiv.querySelector('svg');
+        if (svgNode) break;
+        await new Promise((r) => setTimeout(r, 8));
+      }
+      if (!svgNode) return null;
+      svgText = new XMLSerializer().serializeToString(svgNode);
+    }
+    svgText = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+    return svgText;
+  } catch {
+    return null;
+  }
+}
+
+// Try saved options from API/localStorage, else default QR SVG
+async function buildStyledSvgOrDefault(shortUrl: string, shortCode: string): Promise<string> {
+  let opts: SavedOptions | null = null;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(shortCode)}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (resStyle.ok) {
+        const { options } = await resStyle.json();
+        if (options && typeof options === 'object') opts = options as SavedOptions;
+      }
+    }
+  } catch {}
+  if (!opts) {
+    try { const raw = window.localStorage.getItem(`qrDesigner:${shortCode}`); if (raw) opts = JSON.parse(raw) as SavedOptions; } catch {}
+  }
+  if (opts) {
+    const svg = await generateStyledSvgString(shortUrl, opts);
+    if (svg) return svg;
+  }
+  const svg = await QRCode.toString(shortUrl, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' } } as QRCodeToStringOptions);
+  return svg;
+}
+
+// Rasterize SVG XML into a PNG data URL
+async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<string> {
+  const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+  try {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+    await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
+    const canvas = document.createElement('canvas');
+    canvas.width = exportOuter; canvas.height = exportOuter;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('no ctx');
+    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
