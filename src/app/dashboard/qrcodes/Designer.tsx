@@ -27,6 +27,7 @@ const palette = [
 export default function Designer({ value }: DesignerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const qrRef = useRef<QRCodeStyling | null>(null);
+  const suppressUpdateRef = useRef<boolean>(false);
 
   // Core options
   const [size, setSize] = useState(220);
@@ -125,15 +126,18 @@ export default function Designer({ value }: DesignerProps) {
       case "accent":
         return { borderRadius: 10, padding: 0, border: "3px solid #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "shadow":
-        return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
+        // Add a subtle border and allow overflow so the shadow is visible
+        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: effectiveBg, overflow: "visible" } as React.CSSProperties;
       case "outline":
-        return { borderRadius: 8, padding: 0, outline: "2px solid #e5e7eb", outlineOffset: 0, background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
+        // Use a true border instead of CSS outline to avoid outline clipping/visibility issues
+        return { borderRadius: 8, padding: 0, border: "2px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "dashed":
         return { borderRadius: 8, padding: 0, border: "2px dashed #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "double":
         return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", outline: "2px solid #2563eb", outlineOffset: 2, background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "glow":
-        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 0 0 4px rgba(37,99,235,0.35), 0 12px 28px rgba(0,0,0,0.18)", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
+        // Allow overflow so the outer glow is visible
+        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 0 0 4px rgba(37,99,235,0.35), 0 12px 28px rgba(0,0,0,0.18)", background: effectiveBg, overflow: "visible" } as React.CSSProperties;
       case "gradient":
         // Keep gradient frame background; inner QR background still controlled by QR options
         return { borderRadius: 12, padding: 2, background: "conic-gradient(from 0deg, #2563eb, #7c3aed, #22c55e, #2563eb)", overflow: "hidden" } as React.CSSProperties;
@@ -207,10 +211,21 @@ export default function Designer({ value }: DesignerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update on options change
+  // Update on options change, but allow temporary suppression to avoid flicker during batched resets
   useEffect(() => {
+    if (suppressUpdateRef.current) return;
     qrRef.current?.update(options);
   }, [options]);
+
+  // Helper to batch many state changes and avoid intermediate preview updates
+  function batchUpdate(fn: () => void) {
+    suppressUpdateRef.current = true;
+    fn();
+    // Release on next frame; effect will apply the final consolidated options
+    requestAnimationFrame(() => {
+      suppressUpdateRef.current = false;
+    });
+  }
 
   // Handlers
   async function getThemeColor(varName: string, fallback: string) {
@@ -435,7 +450,17 @@ export default function Designer({ value }: DesignerProps) {
       } else if (frame === 'glow') {
         const lw = 1 * scale * workScale; wctx.shadowColor = accent; wctx.shadowBlur = 22 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = border; strokeInsetRect(lw); wctx.stroke(); wctx.shadowBlur = 0;
       } else if (frame === 'shadow') {
-        const lw = 2 * scale * workScale; wctx.save(); wctx.shadowColor = 'rgba(0,0,0,0.18)'; wctx.shadowBlur = 18 * scale * workScale; wctx.shadowOffsetY = 8 * scale * workScale; wctx.lineWidth = lw; wctx.strokeStyle = 'rgba(0,0,0,0)'; strokeInsetRect(lw); wctx.stroke(); wctx.restore();
+        // Draw the shadow by stroking with the effective background color so only the shadow remains visible
+        const lw = 2 * scale * workScale;
+        wctx.save();
+        wctx.shadowColor = 'rgba(0,0,0,0.18)';
+        wctx.shadowBlur = 18 * scale * workScale;
+        wctx.shadowOffsetY = 8 * scale * workScale;
+        wctx.lineWidth = lw;
+        wctx.strokeStyle = effectiveBg; // stroke blends into background, leaving the drop shadow visible
+        strokeInsetRect(lw);
+        wctx.stroke();
+        wctx.restore();
       } else if (frame === 'gradient') {
         const g = wctx.createLinearGradient(0, 0, workSize, workSize);
         g.addColorStop(0, accent); g.addColorStop(0.5, '#7c3aed'); g.addColorStop(1, '#22c55e');
@@ -564,33 +589,35 @@ ${secondStroke}
     }
   }
   const resetAll = () => {
-    setSize(220);
-    setMargin(2);
-    setEcLevel("M");
-    setPerfMode(false);
-    // Dots
-    setDotsType("rounded");
-    setDotsColor("#0b1220");
-    setDotsGradientOn(false);
-    setDotsGradA("#0b1220");
-    setDotsGradB("#2563eb");
-    // Corners
-    setCornerSquareType("square");
-    setCornerSquareColor("#0b1220");
-    setCornerDotType("dot");
-    setCornerDotColor("#0b1220");
-    // Background
-    setBgColor("#ffffff00");
-    setBgGradientOn(false);
-    setBgGradA("#ffffff");
-    setBgGradB("#e2e8f0");
-    setBgGradType("linear");
-    // Logo
-    setLogoUrl("");
-    setLogoSize(0.25);
-    setHideBgDots(true);
-    // Frame
-    setFrame("none");
+    batchUpdate(() => {
+      setSize(220);
+      setMargin(2);
+      setEcLevel("M");
+      setPerfMode(false);
+      // Dots
+      setDotsType("rounded");
+      setDotsColor("#0b1220");
+      setDotsGradientOn(false);
+      setDotsGradA("#0b1220");
+      setDotsGradB("#2563eb");
+      // Corners
+      setCornerSquareType("square");
+      setCornerSquareColor("#0b1220");
+      setCornerDotType("dot");
+      setCornerDotColor("#0b1220");
+      // Background
+      setBgColor("#ffffff00");
+      setBgGradientOn(false);
+      setBgGradA("#ffffff");
+      setBgGradB("#e2e8f0");
+      setBgGradType("linear");
+      // Logo
+      setLogoUrl("");
+      setLogoSize(0.25);
+      setHideBgDots(true);
+      // Frame
+      setFrame("none");
+    });
   };
 
   const saveChanges = () => {
