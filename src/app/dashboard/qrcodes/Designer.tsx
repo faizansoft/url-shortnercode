@@ -212,12 +212,7 @@ export default function Designer({ value }: DesignerProps) {
   async function getQrBlobFromRendered(): Promise<Blob | null> {
     const root = containerRef.current;
     if (!root) return null;
-    // Prefer canvas if present
-    const canvas = root.querySelector('canvas');
-    if (canvas && 'toBlob' in canvas) {
-      return await new Promise<Blob | null>((resolve) => (canvas as HTMLCanvasElement).toBlob((b) => resolve(b), 'image/png'));
-    }
-    // Else try SVG -> rasterize to PNG blob
+    // Prefer inner SVG snapshot to avoid canvas tainting with custom logos
     const svgEl = root.querySelector('svg');
     if (svgEl) {
       const svgText = new XMLSerializer().serializeToString(svgEl);
@@ -239,6 +234,11 @@ export default function Designer({ value }: DesignerProps) {
       } finally {
         URL.revokeObjectURL(url);
       }
+    }
+    // Fallback: use canvas if SVG is not present
+    const canvas = root.querySelector('canvas');
+    if (canvas && 'toBlob' in canvas) {
+      return await new Promise<Blob | null>((resolve) => (canvas as HTMLCanvasElement).toBlob((b) => resolve(b), 'image/png'));
     }
     return null;
   }
