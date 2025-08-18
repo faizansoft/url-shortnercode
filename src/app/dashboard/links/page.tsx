@@ -116,14 +116,23 @@ export default function LinksIndexPage() {
     return new File([blob], "qr.png", { type: "image/png" });
   }
 
+  type NavigatorWithShare = Navigator & {
+    share?: (data?: ShareData) => Promise<void>;
+    canShare?: (data?: ShareData) => boolean;
+  };
+
   async function handleSocialShare(platform: 'twitter' | 'facebook' | 'linkedin' | 'whatsapp') {
     try {
       if (!qrFor) return;
       // Try native share with media first
       try {
         const file = await preparePngFileFromPreview();
-        if ((navigator as any).canShare ? (navigator as any).canShare({ files: [file] }) : true) {
-          await navigator.share({ files: [file], text: `Scan or open: ${qrFor}`, url: qrFor, title: 'Share QR' });
+        const nav = navigator as NavigatorWithShare;
+        const supportsShare = typeof nav.share === 'function';
+        const supportsCanShare = typeof nav.canShare === 'function';
+        const canShareFiles = supportsCanShare ? nav.canShare!({ files: [file] }) : true;
+        if (supportsShare && canShareFiles) {
+          await nav.share({ files: [file], text: `Scan or open: ${qrFor}`, url: qrFor, title: 'Share QR' });
           return;
         }
       } catch { /* continue to fallback */ }

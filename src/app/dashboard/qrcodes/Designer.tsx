@@ -710,8 +710,15 @@ export default function Designer({ value }: DesignerProps) {
           <div className="space-y-2">
             <div className="text-xs font-medium text-[var(--muted)]">Code color</div>
             <div className="flex gap-2 flex-wrap">
-              {palette.map((c) => (
-                <button key={c} className="h-6 w-6 rounded-full border" style={{ background: c, borderColor: 'var(--border)' }} onClick={() => setDotsColor(c)} />
+              {[...(palette.includes(dotsColor) ? [] : [dotsColor]), ...palette].map((c) => (
+                <button
+                  key={c}
+                  className={`h-6 w-6 rounded-full border ${dotsColor===c ? 'outline outline-2 outline-[var(--accent)] outline-offset-2' : ''}`}
+                  style={{ background: c, borderColor: 'var(--border)' }}
+                  onClick={() => setDotsColor(c)}
+                  aria-pressed={dotsColor===c}
+                  aria-label={`Code color ${c}`}
+                />
               ))}
             </div>
           </div>
