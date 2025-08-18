@@ -569,7 +569,7 @@ export default function Designer({ value }: DesignerProps) {
       const wrapped = await buildCombinedSVG(outer);
       const svgBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
-      const exportOuter = Math.max(2048, outer);
+      const exportOuter = outer; // export at native size by default
       const img = new window.Image();
       img.crossOrigin = 'anonymous';
       img.src = url;
@@ -578,8 +578,8 @@ export default function Designer({ value }: DesignerProps) {
       canvas.width = exportOuter; canvas.height = exportOuter;
       const ctx = canvas.getContext('2d');
       if (!ctx) { URL.revokeObjectURL(url); return; }
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingEnabled = false; // keep QR edges crisp
+      ctx.imageSmoothingQuality = 'low';
       ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
       const blob = await canvasToPngBlob(canvas);
       if (blob) downloadBlob(blob, 'qr.png');
@@ -591,7 +591,7 @@ export default function Designer({ value }: DesignerProps) {
         const wrappedNoLogo = await buildCombinedSVG(outer, true);
         const svgBlob = new Blob([wrappedNoLogo], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(svgBlob);
-        const exportOuter = Math.max(2048, outer);
+        const exportOuter = outer; // export at native size by default
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.src = url;
@@ -600,7 +600,7 @@ export default function Designer({ value }: DesignerProps) {
         canvas.width = exportOuter; canvas.height = exportOuter;
         const ctx = canvas.getContext('2d');
         if (!ctx) { URL.revokeObjectURL(url); return; }
-        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingEnabled = false; ctx.imageSmoothingQuality = 'low';
         ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
         const blob = await canvasToPngBlob(canvas);
         if (blob) { downloadBlob(blob, 'qr.png'); setExportNotice('Logo could not be embedded due to CORS. Exported PNG without logo.'); }
