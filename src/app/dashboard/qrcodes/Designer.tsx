@@ -210,14 +210,14 @@ export default function Designer({ value }: DesignerProps) {
   }
 
   async function getQrBlobFromRendered(): Promise<Blob | null> {
+    // 1) Prefer the on-screen canvas (matches preview best)
     const root = containerRef.current;
     if (!root) return null;
-    // Prefer canvas if present
     const canvas = root.querySelector('canvas');
     if (canvas && 'toBlob' in canvas) {
       return await new Promise<Blob | null>((resolve) => (canvas as HTMLCanvasElement).toBlob((b) => resolve(b), 'image/png'));
     }
-    // Else try SVG -> rasterize to PNG blob
+    // 2) Fallback: rasterize the on-screen SVG
     const svgEl = root.querySelector('svg');
     if (svgEl) {
       const svgText = new XMLSerializer().serializeToString(svgEl);
@@ -235,11 +235,16 @@ export default function Designer({ value }: DesignerProps) {
         ctx2.drawImage(img, 0, 0, size, size);
         return await new Promise<Blob | null>((resolve) => canvas2.toBlob((b) => resolve(b), 'image/png'));
       } catch {
-        return null;
+        // continue to last fallback
       } finally {
         URL.revokeObjectURL(url);
       }
     }
+    // 3) Last fallback: let the library generate raw PNG
+    try {
+      const b = await qrRef.current?.getRawData('png');
+      if (b) return b;
+    } catch {}
     return null;
   }
 
@@ -320,9 +325,18 @@ export default function Designer({ value }: DesignerProps) {
     }
 
     // SVG export: wrap inner SVG with outer background/border and clipping
+    // Prefer DOM SVG to match preview; fall back to library raw if needed
+    let svgText: string | null = null;
     const svgEl = containerRef.current?.querySelector('svg');
-    if (!svgEl) { try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { return; } }
-    const svgText = new XMLSerializer().serializeToString(svgEl);
+    if (svgEl) {
+      svgText = new XMLSerializer().serializeToString(svgEl);
+    } else {
+      try {
+        const raw = await qrRef.current?.getRawData('svg');
+        if (raw) svgText = await raw.text();
+      } catch {}
+      if (!svgText) { try { return qrRef.current?.download({ extension: 'svg', name: 'qr' }); } catch { return; } }
+    }
     const cleaned = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
     const inner = cleaned
       .replace(/^[\s\S]*?<svg[^>]*>/i, '')
