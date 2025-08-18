@@ -111,10 +111,19 @@ a:hover {
 
 /* Subtle card glass effect utilities */
 .glass {
-  background-color: color-mix(in oklab, var(--background) 88%, transparent);
-  border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(37,99,235,.10);
+  /* modern glossy card: subtle gradient, soft border, deeper blur */
+  background:
+    linear-gradient(
+      to bottom right,
+      color-mix(in oklab, var(--background) 86%, transparent),
+      color-mix(in oklab, var(--surface) 86%, transparent)
+    );
+  border: 1px solid color-mix(in oklab, var(--border) 80%, var(--accent) 20%);
+  backdrop-filter: blur(14px) saturate(1.05);
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255,255,255,.08);
+  border-radius: .9rem;
 }
 
 /* Brand gradient utilities */
@@ -209,10 +218,4 @@ a:hover {
 .nav-item:hover::before { transform: scaleY(.6); }
 .nav-item-active::before { transform: scaleY(1); }
 
-/* Elevated glass card with edge highlight */
-.glass {
-  background-color: color-mix(in oklab, var(--background) 88%, transparent);
-  border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(37,99,235,.10);
-}
+/* (deduped .glass; see definition above) */
