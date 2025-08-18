@@ -753,7 +753,19 @@ export default function Designer({ value }: DesignerProps) {
               {(["square","rounded","thin","circle"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => setFrame(f)}
+                onClick={() => {
+                  if (f === 'circle') {
+                    // Switch QR to circular modules and finders (renderer-level), not just mask
+                    batchUpdate(() => {
+                      setFrame('circle');
+                      setDotsType('dots');
+                      setCornerSquareType('dot');
+                      setCornerDotType('dot');
+                    });
+                  } else {
+                    setFrame(f);
+                  }
+                }}
                 className={`h-14 w-14 rounded-md border grid place-items-center ${frame===f? 'ring-2 ring-[var(--accent)]' : ''} tip`}
                 style={{ background: 'transparent', borderColor: 'var(--border)' }}
                 data-tip={f}
