@@ -271,6 +271,21 @@ export default function Designer({ value }: DesignerProps) {
     ctx.closePath();
   }
 
+  // Path2D version for even-odd ring construction
+  function addRoundedRect(path: Path2D, x: number, y: number, w: number, h: number, r: number) {
+    const rr = Math.max(0, r);
+    path.moveTo(x + rr, y);
+    // top-right corner
+    path.arcTo(x + w, y, x + w, y + h, rr);
+    // bottom-right
+    path.arcTo(x + w, y + h, x, y + h, rr);
+    // bottom-left
+    path.arcTo(x, y + h, x, y, rr);
+    // top-left
+    path.arcTo(x, y, x + w, y, rr);
+    path.closePath();
+  }
+
   async function handleDownload(ext: 'png' | 'svg') {
     const pad = 0; // no inner padding; QR will meet the frame edge
     const borderW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
@@ -359,9 +374,35 @@ export default function Designer({ value }: DesignerProps) {
       if (frame === 'accent') {
         wctx.lineWidth = 5 * scale * workScale; wctx.strokeStyle = accent; wctx.stroke();
       } else if (frame === 'double') {
-        wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke();
-        drawRoundedRect(wctx as unknown as CanvasRenderingContext2D, 5.5 * scale * workScale, 5.5 * scale * workScale, workSize - 11 * scale * workScale, workSize - 11 * scale * workScale, Math.max(0, rxScaled - 5.5 * scale * workScale));
-        wctx.strokeStyle = accent; wctx.lineWidth = 3 * scale * workScale; wctx.stroke();
+        // Draw as two precise rounded rings using even-odd fill to avoid stroke overlap artifacts
+        const t1 = 3 * scale * workScale; // outer ring thickness
+        const inset2 = 5.5 * scale * workScale; // distance from outer edge to second ring outer edge
+        const t2 = 3 * scale * workScale; // second ring thickness
+
+        // Outer ring
+        {
+          const path = new Path2D();
+          // outer rect
+          addRoundedRect(path, 0.5 * scale * workScale, 0.5 * scale * workScale, workSize - 1 * scale * workScale, workSize - 1 * scale * workScale, Math.max(0, rxScaled - 0.5 * scale * workScale));
+          // inner rect (cutout)
+          addRoundedRect(path, 0.5 * scale * workScale + t1, 0.5 * scale * workScale + t1, workSize - 1 * scale * workScale - 2 * t1, workSize - 1 * scale * workScale - 2 * t1, Math.max(0, rxScaled - 0.5 * scale * workScale - t1));
+          wctx.fillStyle = border;
+          // even-odd fill to produce ring
+          (wctx as any).fill(path, 'evenodd');
+        }
+        // Second ring
+        {
+          const x = 0.5 * scale * workScale + inset2;
+          const y = 0.5 * scale * workScale + inset2;
+          const w = workSize - 1 * scale * workScale - 2 * inset2;
+          const h = w;
+          const rOuter = Math.max(0, rxScaled - 0.5 * scale * workScale - inset2);
+          const path = new Path2D();
+          addRoundedRect(path, x, y, w, h, rOuter);
+          addRoundedRect(path, x + t2, y + t2, w - 2 * t2, h - 2 * t2, Math.max(0, rOuter - t2));
+          wctx.fillStyle = accent;
+          (wctx as any).fill(path, 'evenodd');
+        }
       } else if (frame === 'dashed') {
         wctx.setLineDash([8 * scale * workScale, 8 * scale * workScale]); wctx.lineWidth = 3 * scale * workScale; wctx.strokeStyle = border; wctx.stroke(); wctx.setLineDash([]);
       } else if (frame === 'outline') {
@@ -460,7 +501,7 @@ export default function Designer({ value }: DesignerProps) {
            </filter>`
         : '';
       const defsClip = `<clipPath id="clipR"><rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}"/></clipPath>`;
-      const secondStroke = frame === 'double' ? `<rect x="6" y="6" width="${outer-12}" height="${outer-12}" rx="${Math.max(0, rx-4)}" ry="${Math.max(0, rx-4)}" fill="none" stroke="${accent}" stroke-width="2"/>` : '';
+      const secondStroke = frame === 'double' ? `<rect x="6" y="6" width="${outer-12}" height="${outer-12}" rx="${Math.max(0, rx-4)}" ry="${Math.max(0, rx-4)}" fill="none" stroke="${accent}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` : '';
       const dashed = frame === 'dashed' ? '6,6' : 'none';
       const strokeCol = frame === 'gradient' ? 'url(#grad1)' : frameStroke;
 
@@ -474,10 +515,10 @@ ${defsClip}
 </defs>
 <rect x="0" y="0" width="${outer}" height="${outer}" rx="${rx}" ry="${rx}" fill="${effectiveBg}"/>
 <rect x="2" y="2" width="${outer-4}" height="${outer-4}" rx="${rx}" ry="${rx}" fill="none" stroke="${strokeCol}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="${dashed}" ${frame==='shadow' ? 'filter="url(#fShadow)"' : ''} ${frame==='glow' ? 'filter="url(#fGlow)"' : ''}/>
+${secondStroke}
 <g clip-path="url(#clipR)">
   <g transform="translate(${(outer - size)/2}, ${(outer - size)/2})">${inner}</g>
 </g>
-${secondStroke}
 </svg>`;
       const outBlob = new Blob([wrapped], { type: 'image/svg+xml;charset=utf-8' });
       downloadBlob(outBlob, 'qr-framed.svg');
