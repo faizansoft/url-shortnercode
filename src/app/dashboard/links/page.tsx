@@ -89,28 +89,56 @@ export default function LinksIndexPage() {
   async function handleShareQR() {
     try {
       if (!qrDataUrl || !qrFor) return;
-      let pngDataUrl = qrDataUrl;
-      // If preview is SVG, rasterize to PNG for sharing
-      if (qrDataUrl.startsWith('data:image/svg')) {
-        try {
-          const svgText = decodeURIComponent(qrDataUrl.split(',')[1]);
-          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
-        } catch {
-          // If decoding fails, fetch and read as text
-          const res = await fetch(qrDataUrl);
-          const svgText = await res.text();
-          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
-        }
-      }
+      const file = await preparePngFileFromPreview();
       if (navigator.share) {
-        const res = await fetch(pngDataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], "qr.png", { type: "image/png" });
         await navigator.share({ files: [file], text: `Scan or open: ${qrFor}`, url: qrFor, title: "Share QR" });
       } else {
         window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(qrFor)}`,'_blank');
       }
     } catch (e) { /* ignore */ }
+  }
+
+  async function preparePngFileFromPreview(): Promise<File> {
+    if (!qrDataUrl || !qrFor) throw new Error('no data');
+    let pngDataUrl = qrDataUrl;
+    if (qrDataUrl.startsWith('data:image/svg')) {
+      try {
+        const svgText = decodeURIComponent(qrDataUrl.split(',')[1]);
+        pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
+      } catch {
+        const res = await fetch(qrDataUrl);
+        const svgText = await res.text();
+        pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
+      }
+    }
+    const res = await fetch(pngDataUrl);
+    const blob = await res.blob();
+    return new File([blob], "qr.png", { type: "image/png" });
+  }
+
+  async function handleSocialShare(platform: 'twitter' | 'facebook' | 'linkedin' | 'whatsapp') {
+    try {
+      if (!qrFor) return;
+      // Try native share with media first
+      try {
+        const file = await preparePngFileFromPreview();
+        if ((navigator as any).canShare ? (navigator as any).canShare({ files: [file] }) : true) {
+          await navigator.share({ files: [file], text: `Scan or open: ${qrFor}`, url: qrFor, title: 'Share QR' });
+          return;
+        }
+      } catch { /* continue to fallback */ }
+
+      // Fallback to platform web intents (no media attachment supported via URL schemes)
+      const url = qrFor;
+      const links: Record<string, string> = {
+        twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`,
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+        whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(url)}`,
+      };
+      const href = links[platform];
+      if (href) window.open(href, '_blank');
+    } catch { /* ignore */ }
   }
 
 // ==== QR export helpers (unified with QR Codes page) ====
@@ -483,18 +511,18 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
                   <div className="w-full">
                     <div className="text-sm mb-2 text-center text-[color-mix(in_oklab,var(--foreground)_80%,#666)]">Share</div>
                     <div className="flex justify-center gap-3 flex-wrap">
-                      <a className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on X" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                      <button className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on X" onClick={() => handleSocialShare('twitter')}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2H21l-6.56 7.49L22.5 22H15.4l-5.14-6.68L3.62 22H1l7.06-8.06L1.5 2h7.26l4.64 6.13L18.244 2Zm-2.45 18h1.7L8.32 4h-1.7l9.174 16Z"/></svg>
-                      </a>
-                      <a className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on Facebook" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                      </button>
+                      <button className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on Facebook" onClick={() => handleSocialShare('facebook')}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M13.5 22v-8h2.6l.4-3h-3V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.2-.1-2.2 0-3.8 1.3-3.8 3.9V11H8v3h3v8h2.5Z"/></svg>
-                      </a>
-                      <a className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on LinkedIn" href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                      </button>
+                      <button className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on LinkedIn" onClick={() => handleSocialShare('linkedin')}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M6.94 6.5A2.44 2.44 0 1 1 2.06 6.5a2.44 2.44 0 0 1 4.88 0ZM3 21.5h3.9V9.03H3V21.5Zm7.2-12.47H14V10c.6-1.2 2.01-2.2 4.16-2.2 4.45 0 5.27 2.76 5.27 6.35v7.36h-3.9v-6.53c 0-1.56-.03-3.56-2.17-3.56-2.17 0-2.5 1.7-2.5 3.45v6.64H8.2V9.03h1.99Z"/></svg>
-                      </a>
-                      <a className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on WhatsApp" href={`https://api.whatsapp.com/send?text=${encodeURIComponent(qrFor)}`} target="_blank" rel="noreferrer">
+                      </button>
+                      <button className="btn btn-secondary h-9 w-12 p-0 inline-grid place-items-center" aria-label="Share on WhatsApp" onClick={() => handleSocialShare('whatsapp')}>
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M20.5 3.5A11 11 0 0 0 3.02 17.6L2 22l 4.5-1.02A11 11 0 1 0 20.5 3.5Zm-8.5 18a9 9 0 0 1-4.59-1.27l-.33-.2-2.72 .62.58-2.65-.22-.34a9 9 0 1 1 7.28 3.84Zm5.15-6.51c-.28-.14-1.65-.82-1.9-.91-.25-.09-.44-.14-.62 .14-.19 .28-.72 .9-.88 1.08-.16 .19-.33 .21-.61 .07-.28-.14-1.17-.43-2.23-1.36-.82-.73-1.38-1.63-1.54-1.91-.16-.28-.02-.43 .12-.57 .12-.12 .28-.33 .42-.49 .14-.16 .19-.28 .28-.47 .09-.19 .05-.35-.02-.49-.07-.14-.62-1.49-.85-2.05-.22-.53-.45-.46-.62-.46l-.53-.01c-.19 0-.49 .07-.75 .35-.26 .28-.98 .96-.98 2.34 0 1.38 1.01 2.72 1.14 2.9 .14 .19 1.99 3.04 4.83 4.26.68 .29 1.21 .46 1.63 .59 .68 .22 1.3 .19 1.79 .12 .55-.08 1.65-.67 1.88-1.31 .23-.65 .23-1.19 .16-1.31-.07-.12-.26-.19-.54-.33Z"/></svg>
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </>
