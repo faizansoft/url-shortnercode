@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
+import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
 // Customization moved to a dedicated page: /dashboard/qrcodes/customize
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
@@ -51,6 +52,25 @@ export default function QRCodesPage() {
         // Generate QR codes in parallel
         const generated = await Promise.all(
           withShort.map(async (it) => {
+            // Try to fetch saved style for this short_code
+            let styledDataUrl: string | null = null;
+            try {
+              const { data } = await supabaseClient.auth.getSession();
+              const token = data.session?.access_token;
+              if (token) {
+                const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(it.short_code)}` , { headers: { Authorization: `Bearer ${token}` } });
+                if (resStyle.ok) {
+                  const { options } = await resStyle.json();
+                  if (options && typeof options === 'object') {
+                    styledDataUrl = await generateStyledSvgDataUrl(it.short_url, options);
+                  }
+                }
+              }
+            } catch {}
+
+            if (styledDataUrl) return { ...it, qr_data_url: styledDataUrl };
+
+            // Fallback to default simple QR if no style exists or failed
             try {
               const dataUrl = await QRCode.toDataURL(it.short_url, {
                 errorCorrectionLevel: "M",
@@ -200,4 +220,99 @@ export default function QRCodesPage() {
 
     </div>
   );
+}
+
+// Build a styled SVG data URL using qr-code-styling and saved options
+async function generateStyledSvgDataUrl(data: string, saved: any): Promise<string | null> {
+  try {
+    const perfMode = !!saved?.perfMode;
+    const dotsType = saved?.dotsType as QRStyleOptions['dotsOptions'] extends infer _T ? any : any;
+    const dotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+    const dotsGradientOn = !!saved?.dotsGradientOn;
+    const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
+    const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
+    const dotsGradRotation = Number.isFinite(saved?.dotsGradRotation) ? Number(saved.dotsGradRotation) : 0;
+
+    const cornerSquareType = saved?.cornerSquareType ?? 'square';
+    const cornerSquareColor = typeof saved?.cornerSquareColor === 'string' ? saved.cornerSquareColor : '#0b1220';
+    const cornerDotType = saved?.cornerDotType ?? 'dot';
+    const cornerDotColor = typeof saved?.cornerDotColor === 'string' ? saved.cornerDotColor : '#0b1220';
+
+    const bgColor = typeof saved?.bgColor === 'string' ? saved.bgColor : '#ffffff';
+    const bgGradientOn = !!saved?.bgGradientOn;
+    const bgGradA = typeof saved?.bgGradA === 'string' ? saved.bgGradA : '#ffffff';
+    const bgGradB = typeof saved?.bgGradB === 'string' ? saved.bgGradB : '#e2e8f0';
+    const bgGradType = saved?.bgGradType === 'radial' ? 'radial' : 'linear';
+
+    const logoUrl = typeof saved?.logoUrl === 'string' ? saved.logoUrl : '';
+    const logoSize = Number.isFinite(saved?.logoSize) ? Math.max(0, Math.min(1, Number(saved.logoSize))) : 0.25;
+    const hideBgDots = !!saved?.hideBgDots;
+
+    const ecLevel = ((): 'L'|'M'|'Q'|'H' => {
+      const x = saved?.ecLevel;
+      return x === 'L' || x === 'Q' || x === 'H' ? x : 'M';
+    })();
+    const margin = Number.isFinite(saved?.margin) ? Math.max(0, Number(saved.margin)) : 1;
+
+    const dots = dotsGradientOn
+      ? {
+          type: dotsType ?? 'rounded',
+          color: dotsColor,
+          gradient: {
+            type: 'linear',
+            rotation: dotsGradRotation,
+            colorStops: [
+              { offset: 0, color: dotsGradA },
+              { offset: 1, color: dotsGradB },
+            ],
+          },
+        }
+      : { type: dotsType ?? 'rounded', color: dotsColor };
+
+    const bg = bgGradientOn
+      ? {
+          color: bgColor,
+          gradient: {
+            type: bgGradType,
+            rotation: 0,
+            colorStops: [
+              { offset: 0, color: bgGradA },
+              { offset: 1, color: bgGradB },
+            ],
+          },
+        }
+      : { color: bgColor };
+
+    const opts: QRStyleOptions = {
+      width: 200,
+      height: 200,
+      data,
+      type: 'svg',
+      margin,
+      qrOptions: { errorCorrectionLevel: ecLevel },
+      dotsOptions: perfMode ? { color: dotsColor, type: 'square' } : (dots as any),
+      cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
+      cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
+      backgroundOptions: perfMode ? { color: bgColor } : (bg as any),
+      image: logoUrl || undefined,
+      imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots },
+    };
+
+    const tmp = new QRCodeStyling(opts);
+    const tmpDiv = document.createElement('div');
+    tmp.append(tmpDiv);
+    let svgNode: SVGSVGElement | null = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      svgNode = tmpDiv.querySelector('svg');
+      if (svgNode) break;
+    }
+    if (!svgNode) return null;
+    let svgText = new XMLSerializer().serializeToString(svgNode);
+    svgText = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+    const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+    return dataUrl;
+  } catch {
+    return null;
+  }
 }

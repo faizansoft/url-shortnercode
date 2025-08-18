@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
+import { supabaseClient } from "@/lib/supabaseClient";
 // Explicit local helper types to satisfy TS
 type DotsOpts = NonNullable<QRStyleOptions["dotsOptions"]>;
 type BgOpts = NonNullable<QRStyleOptions["backgroundOptions"]>;
@@ -315,7 +316,7 @@ export default function Designer({ value }: DesignerProps) {
   }
   // (removed unused resetAll)
 
-  const saveChanges = () => {
+  const saveChanges = async () => {
     if (typeof window === 'undefined') return;
     const payload = {
       size, margin, ecLevel, perfMode,
@@ -326,9 +327,29 @@ export default function Designer({ value }: DesignerProps) {
       value,
       ts: Date.now(),
     };
+    // Persist locally as a fallback
+    try { window.localStorage.setItem('qrDesigner:last', JSON.stringify(payload)); } catch {}
+
+    // Persist to backend (qr_styles upsert)
     try {
-      window.localStorage.setItem('qrDesigner:last', JSON.stringify(payload));
-    } catch {}
+      const u = new URL(value);
+      const short_code = (u.pathname || '').replace(/^\//, '');
+      if (!short_code) return;
+      const { data } = await supabaseClient.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      await fetch('/api/qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ short_code, options: payload }),
+      });
+    } catch (e) {
+      // silent fail; could show toast
+      console.error('Failed to save QR style', e);
+    }
   };
 
   return (
