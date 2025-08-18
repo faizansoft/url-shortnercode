@@ -90,7 +90,6 @@ export default function QRCodesPage() {
         errorCorrectionLevel: 'M',
         margin: 1,
         color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#00000000' },
-        width: 200,
       };
       const svg = await QRCode.toString(shortUrl, options);
       const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
@@ -105,6 +104,26 @@ export default function QRCodesPage() {
     } catch (e) {
       // no-op; could surface toast if desired
       console.error('Failed to generate SVG', e);
+    }
+  }
+
+  // Download high-resolution PNG for a QR item
+  async function handleDownloadPng(shortUrl: string, code: string) {
+    try {
+      const dataUrl = await QRCode.toDataURL(shortUrl, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        color: { dark: prefersDark ? '#ffffff' : '#0b1220', light: '#ffffff00' },
+        width: 2048, // high-res output
+      });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `qr-${code}@2x.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error('Failed to generate PNG', e);
     }
   }
 
@@ -156,34 +175,19 @@ export default function QRCodesPage() {
                   <span className="leading-none">SVG</span>
                 </button>
 
-                {it.qr_data_url ? (
-                  <a
-                    className="btn btn-primary btn-no-motion h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
-                    href={it.qr_data_url}
-                    download={`qr-${it.short_code}.png`}
-                    aria-label="Download QR as PNG"
-                    data-tip="Download PNG"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                      <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
-                      <path d="M19 18H5v3h14v-3Z"/>
-                    </svg>
-                    <span className="leading-none">PNG</span>
-                  </a>
-                ) : (
-                  <button
-                    className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap opacity-50 cursor-not-allowed tip"
-                    disabled
-                    aria-disabled
-                    data-tip="Generating..."
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                      <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
-                      <path d="M19 18H5v3h14v-3Z"/>
-                    </svg>
-                    <span className="leading-none">PNG</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPng(it.short_url, it.short_code)}
+                  className="btn btn-primary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
+                  aria-label="Download QR as PNG"
+                  data-tip="Download high-res PNG"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                    <path d="M19 18H5v3h14v-3Z"/>
+                  </svg>
+                  <span className="leading-none">PNG</span>
+                </button>
 
                 <Link
                   className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
