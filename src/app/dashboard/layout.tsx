@@ -170,7 +170,7 @@ export default function DashboardLayout({
         </header>
         <main className={`p-6 flex-1 min-h-0 ${isCustomize ? 'overflow-hidden' : 'overflow-auto scrollbar'}`}>
           <AuthGuard>
-            <div className="mx-auto max-w-6xl w-full space-y-4">{children}</div>
+            <div className="mx-auto max-w-6xl w-full space-y-4 h-full min-h-0 flex flex-col">{children}</div>
           </AuthGuard>
         </main>
       </div>
