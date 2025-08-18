@@ -145,12 +145,12 @@ export default function CreateLinkPage() {
               <div className="text-sm text-red-600">{error}</div>
             )}
             <div className="flex gap-3">
-              <button disabled={creating || !url || !validateUrl(url)} className="btn btn-primary h-10">
+              <button disabled={creating || !url || !validateUrl(url)} className="btn btn-primary h-9">
                 {creating ? "Creating…" : "Create link"}
               </button>
               <button
                 type="button"
-                className="btn btn-secondary h-10"
+                className="btn btn-secondary h-9"
                 onClick={() => {
                   setUrl("");
                   setCode("");
@@ -173,8 +173,8 @@ export default function CreateLinkPage() {
                 {created.shortUrl}
               </div>
               <div className="flex gap-2">
-                <a className="btn btn-secondary h-8" href={created.shortUrl} target="_blank" rel="noreferrer">Open</a>
-                <button className="btn h-8" onClick={async () => {
+                <a className="btn btn-secondary h-9" href={created.shortUrl} target="_blank" rel="noreferrer">Open</a>
+                <button className="btn btn-secondary h-9" onClick={async () => {
                   await navigator.clipboard.writeText(created.shortUrl);
                   setCopied(true);
                   setToast({ kind: "success", msg: "Copied to clipboard" });
@@ -187,7 +187,7 @@ export default function CreateLinkPage() {
                 <div className="rounded-md p-3 space-y-3 flex flex-col items-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                   <Image src={qrDataUrl} alt="QR code for short URL" width={160} height={160} className="w-40 h-40" />
                   <div className="flex gap-2">
-                    <a className="btn h-8" href={qrDataUrl} download={`qr-${created.code}.png`}>Download PNG</a>
+                    <a className="btn btn-primary h-9" href={qrDataUrl} download={`qr-${created.code}.png`}>Download PNG</a>
                   </div>
                 </div>
               ) : (
