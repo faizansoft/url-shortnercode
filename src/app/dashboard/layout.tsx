@@ -51,6 +51,8 @@ function DashboardSearchBox() {
 export default function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const pathname = usePathname();
+  const isCustomize = pathname === "/dashboard/qrcodes/customize";
   return (
     <div className="min-h-[100dvh] grid grid-cols-[240px_1fr]">
       <aside className="glass text-sm p-4 flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-hidden" style={{ borderRadius: 0 }}>
@@ -166,7 +168,7 @@ export default function DashboardLayout({
             <UserMenu />
           </div>
         </header>
-        <main className="p-6 flex-1 min-h-0 overflow-auto scrollbar">
+        <main className={`p-6 flex-1 min-h-0 ${isCustomize ? 'overflow-hidden' : 'overflow-auto scrollbar'}`}>
           <AuthGuard>
             <div className="mx-auto max-w-6xl w-full space-y-4">{children}</div>
           </AuthGuard>
