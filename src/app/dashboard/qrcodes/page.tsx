@@ -68,20 +68,24 @@ export default function QRCodesPage() {
               }
             } catch {}
 
+            // LocalStorage fallback per short code
+            if (!styledDataUrl) {
+              try {
+                const raw = window.localStorage.getItem(`qrDesigner:${it.short_code}`);
+                if (raw) {
+                  const opts = JSON.parse(raw);
+                  if (opts && typeof opts === 'object') {
+                    styledDataUrl = await generateStyledSvgDataUrl(it.short_url, opts);
+                  }
+                }
+              } catch {}
+            }
+
             if (styledDataUrl) return { ...it, qr_data_url: styledDataUrl };
 
             // Fallback to default simple QR if no style exists or failed
-            try {
-              const dataUrl = await QRCode.toDataURL(it.short_url, {
-                errorCorrectionLevel: "M",
-                margin: 1,
-                color: { dark: "#0b1220", light: "#ffffff" },
-                width: 200,
-              });
-              return { ...it, qr_data_url: dataUrl };
-            } catch {
-              return it; // leave qr_data_url null
-            }
+            const dataUrl = await robustDefaultDataUrl(it.short_url);
+            return { ...it, qr_data_url: dataUrl };
           })
         );
 
@@ -251,6 +255,24 @@ interface SavedOptions {
   margin?: number;
 }
 
+// Ensure we can always render a basic QR data URL
+async function robustDefaultDataUrl(data: string): Promise<string> {
+  const attempt = async (opts: QRCodeToStringOptions & { width?: number }) => {
+    return await QRCode.toDataURL(data, opts as any);
+  };
+  try {
+    return await attempt({ errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' }, width: 200 } as any);
+  } catch {}
+  try {
+    return await attempt({ errorCorrectionLevel: 'M', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 200 } as any);
+  } catch {}
+  try {
+    return await attempt({ errorCorrectionLevel: 'L', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 160 } as any);
+  } catch {}
+  // last resort: transparent pixel
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"/>');
+}
+
 function isDataUrl(u: string): boolean { return typeof u === 'string' && u.startsWith('data:'); }
 
 // Convert a URL (same-origin recommended) to a data URL
@@ -275,7 +297,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
   try {
     const perfMode = !!saved?.perfMode;
     const dotsType: DotsType | undefined = saved?.dotsType;
-    const dotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+    let dotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
     const dotsGradientOn = !!saved?.dotsGradientOn;
     const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
     const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
@@ -296,6 +318,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     if (logoUrl && !isDataUrl(logoUrl)) {
       const inlined = await toDataUrl(logoUrl);
       if (inlined) logoUrl = inlined;
+      else logoUrl = '';// prevent broken external refs inside data: SVGs
     }
     const logoSize = Number.isFinite(saved?.logoSize) ? Math.max(0, Math.min(1, Number(saved.logoSize))) : 0.25;
     const hideBgDots = !!saved?.hideBgDots;
@@ -354,10 +377,11 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     const tmpDiv = document.createElement('div');
     tmp.append(tmpDiv);
     let svgNode: SVGSVGElement | null = null;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 30; i++) {
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
       svgNode = tmpDiv.querySelector('svg');
       if (svgNode) break;
+      await new Promise((r) => setTimeout(r, 10));
     }
     if (!svgNode) return null;
     let svgText = new XMLSerializer().serializeToString(svgNode);

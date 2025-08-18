@@ -284,7 +284,13 @@ export default function Designer({ value }: DesignerProps) {
             }
           }
         } catch {}
-        // Fallback to last local draft
+        // Fallback to per-code local draft, then last global draft
+        if (!o) {
+          try {
+            const specific = window.localStorage.getItem(`qrDesigner:${short_code}`);
+            if (specific) o = JSON.parse(specific);
+          } catch {}
+        }
         if (!o) {
           try {
             const raw = window.localStorage.getItem('qrDesigner:last');
@@ -457,7 +463,19 @@ export default function Designer({ value }: DesignerProps) {
       ts: Date.now(),
     };
     // Persist locally as a fallback
-    try { window.localStorage.setItem('qrDesigner:last', JSON.stringify(payload)); } catch {}
+    try {
+      window.localStorage.setItem('qrDesigner:last', JSON.stringify(payload));
+      try {
+        const u = new URL(value);
+        const sc = (u.pathname || '').replace(/^\//, '');
+        if (sc) window.localStorage.setItem(`qrDesigner:${sc}`, JSON.stringify(payload));
+      } catch {
+        const v = String(value || '').trim();
+        const parts = v.split('/').filter(Boolean);
+        const sc = parts[parts.length - 1];
+        if (sc) window.localStorage.setItem(`qrDesigner:${sc}`, JSON.stringify(payload));
+      }
+    } catch {}
 
     // Persist to backend (qr_styles upsert)
     try {
