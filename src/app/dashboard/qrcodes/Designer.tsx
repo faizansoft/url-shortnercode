@@ -208,6 +208,63 @@ export default function Designer({ value }: DesignerProps) {
   async function getQrBlobFromRendered(): Promise<Blob | null> {
     const root = containerRef.current;
     if (!root) return null;
+    // If a logo is present, build a high-resolution offscreen QR via SVG and rasterize it for HD export
+    if (logoUrl) {
+      try {
+        // Render a very high-res QR so composition/downscale produces HD results
+        const exportSize = 4096;
+        const tempOpts: QRStyleOptions = {
+          ...options,
+          width: exportSize,
+          height: exportSize,
+          // Force SVG so we can inline external images safely and rasterize at HD
+          type: 'svg' as any,
+        };
+        const tmp = new QRCodeStyling(tempOpts);
+        const tmpDiv = document.createElement('div');
+        tmp.append(tmpDiv);
+        // Wait one frame for render
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        const svgNode = tmpDiv.querySelector('svg');
+        if (svgNode) {
+          let svgText = new XMLSerializer().serializeToString(svgNode);
+          // Inline external images
+          try {
+            const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
+            const urls: string[] = [];
+            let m: RegExpExecArray | null;
+            while ((m = hrefRegex.exec(svgText)) !== null) {
+              const u = m[1];
+              if (/^https?:\/\//i.test(u)) urls.push(u);
+            }
+            for (const u of Array.from(new Set(urls))) {
+              try {
+                const dataUrl = await urlToDataURL(u);
+                svgText = svgText.split(u).join(dataUrl);
+              } catch {}
+            }
+          } catch {}
+          const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+          try {
+            const img = new window.Image();
+            img.crossOrigin = 'anonymous';
+            img.src = url;
+            await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
+            const canvas2 = document.createElement('canvas');
+            canvas2.width = exportSize; canvas2.height = exportSize;
+            const ctx2 = canvas2.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings);
+            if (!ctx2) return null;
+            (ctx2 as CanvasRenderingContext2D).imageSmoothingEnabled = false;
+            (ctx2 as CanvasRenderingContext2D).drawImage(img, 0, 0, exportSize, exportSize);
+            const blob = await new Promise<Blob | null>((resolve) => canvas2.toBlob((b) => resolve(b), 'image/png'));
+            if (blob) return blob;
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        }
+      } catch {}
+    }
     // If logo is an external URL, avoid canvas (likely tainted) and prefer SVG path
     const isExternalLogo = !!logoUrl && /^https?:\/\//i.test(logoUrl);
     // 1) Try canvas first only when logo is not external (safe for uploaded/data URLs)
@@ -445,9 +502,9 @@ export default function Designer({ value }: DesignerProps) {
       outCanvas.width = exportOuter; outCanvas.height = exportOuter;
       const octx = outCanvas.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings) as CanvasRenderingContext2D | null; if (!octx) return;
       const out2d: CanvasRenderingContext2D = octx;
-      // Keep modules crisp on the final canvas as well
-      out2d.imageSmoothingEnabled = false;
-      out2d.imageSmoothingQuality = 'low';
+      // Downscale with smoothing to preserve logo quality; modules remain crisp due to high-res source
+      out2d.imageSmoothingEnabled = true;
+      out2d.imageSmoothingQuality = 'high';
       out2d.drawImage(workCanvas, 0, 0, exportOuter, exportOuter);
 
       // Blank-detection: if final canvas is mostly background color, retry once
@@ -484,8 +541,8 @@ export default function Designer({ value }: DesignerProps) {
             wctx2.restore();
 
             out2d.clearRect(0, 0, exportOuter, exportOuter);
-            out2d.imageSmoothingEnabled = false;
-            out2d.imageSmoothingQuality = 'low';
+            out2d.imageSmoothingEnabled = true;
+            out2d.imageSmoothingQuality = 'high';
             out2d.drawImage(workCanvas2, 0, 0, exportOuter, exportOuter);
             canvasIsBlank = isCanvasMostlyColor(outCanvas, bgHex);
           }
