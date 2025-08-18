@@ -268,130 +268,6 @@ export default function Designer({ value }: DesignerProps) {
 
   // (removed unused getThemeColor)
 
-  async function getQrBlobFromRendered(): Promise<Blob | null> {
-    const root = containerRef.current;
-    if (!root) return null;
-    // If a logo is present, build a high-resolution offscreen QR via SVG and rasterize it for HD export
-    if (logoUrl) {
-      try {
-        // Render a very high-res QR so composition/downscale produces HD results
-        const exportSize = 4096;
-        const tempOpts: QRStyleOptions = {
-          ...options,
-          width: exportSize,
-          height: exportSize,
-          // Force SVG so we can inline external images safely and rasterize at HD
-          type: 'svg',
-        };
-        const tmp = new QRCodeStyling(tempOpts);
-        const tmpDiv = document.createElement('div');
-        tmp.append(tmpDiv);
-        // Wait one frame for render
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
-        const svgNode = tmpDiv.querySelector('svg');
-        if (svgNode) {
-          let svgText = new XMLSerializer().serializeToString(svgNode);
-          // Inline external images
-          try {
-            const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
-            const urls: string[] = [];
-            let m: RegExpExecArray | null;
-            while ((m = hrefRegex.exec(svgText)) !== null) {
-              const u = m[1];
-              if (/^https?:\/\//i.test(u)) urls.push(u);
-            }
-            for (const u of Array.from(new Set(urls))) {
-              try {
-                const dataUrl = await urlToDataURL(u);
-                svgText = svgText.split(u).join(dataUrl);
-              } catch {}
-            }
-          } catch {}
-          const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-          const url = URL.createObjectURL(svgBlob);
-          try {
-            const img = new window.Image();
-            img.crossOrigin = 'anonymous';
-            img.src = url;
-            await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-            const canvas2 = document.createElement('canvas');
-            canvas2.width = exportSize; canvas2.height = exportSize;
-            const ctx2 = canvas2.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings);
-            if (!ctx2) return null;
-            (ctx2 as CanvasRenderingContext2D).imageSmoothingEnabled = false;
-            (ctx2 as CanvasRenderingContext2D).drawImage(img, 0, 0, exportSize, exportSize);
-            const blob = await new Promise<Blob | null>((resolve) => canvas2.toBlob((b) => resolve(b), 'image/png'));
-            if (blob) return blob;
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-        }
-      } catch {}
-    }
-    // If logo is an external URL, avoid canvas (likely tainted) and prefer SVG path
-    const isExternalLogo = !!logoUrl && /^https?:\/\//i.test(logoUrl);
-    // 1) Try canvas first only when logo is not external (safe for uploaded/data URLs)
-    const canvases = Array.from(root.querySelectorAll('canvas')) as HTMLCanvasElement[];
-    const canvas = canvases.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0];
-    if (!isExternalLogo && canvas && canvas.width > 0 && canvas.height > 0 && 'toBlob' in canvas) {
-      try {
-        // Draw onto a fresh canvas to avoid rare blank toBlob results
-        const off = document.createElement('canvas');
-        off.width = canvas.width;
-        off.height = canvas.height;
-        const octx = off.getContext('2d');
-        if (!octx) throw new Error('no-ctx');
-        octx.imageSmoothingEnabled = false;
-        octx.drawImage(canvas as HTMLCanvasElement, 0, 0);
-        const blob = await canvasToPngBlob(off as HTMLCanvasElement);
-        if (blob) return blob;
-      } catch {
-        // fall through to SVG rasterization
-      }
-    }
-    // 2) Fallback: rasterize from inner SVG (with external logos inlined) to avoid CORS taint
-    const svgEl = root.querySelector('svg');
-    if (svgEl) {
-      let svgText = new XMLSerializer().serializeToString(svgEl);
-      // Inline external images (e.g., custom logo) to avoid CORS-tainted drawImage
-      try {
-        const hrefRegex = /<image[^>]+(?:xlink:href|href)=["']([^"']+)["'][^>]*>/gi;
-        const urls: string[] = [];
-        let m: RegExpExecArray | null;
-        while ((m = hrefRegex.exec(svgText)) !== null) {
-          const u = m[1];
-          if (/^https?:\/\//i.test(u)) urls.push(u);
-        }
-        for (const u of Array.from(new Set(urls))) {
-          try {
-            const dataUrl = await urlToDataURL(u);
-            svgText = svgText.split(u).join(dataUrl);
-          } catch {}
-        }
-      } catch {}
-      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      try {
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.src = url;
-        await new Promise((res, rej) => { img.onload = () => res(null); img.onerror = rej; });
-        const canvas2 = document.createElement('canvas');
-        canvas2.width = size; canvas2.height = size;
-        const ctx2 = canvas2.getContext('2d');
-        if (!ctx2) return null;
-        ctx2.drawImage(img, 0, 0, size, size);
-        return await new Promise<Blob | null>((resolve) => canvas2.toBlob((b) => resolve(b), 'image/png'));
-      } catch {
-        return null;
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    }
-    // 3) If neither worked, give up
-    return null;
-  }
-
   function downloadBlob(blob: Blob, name: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -426,57 +302,7 @@ export default function Designer({ value }: DesignerProps) {
     });
   }
 
-  // Helper: Blob -> data URL
-  async function blobToDataURL(blob: Blob): Promise<string> {
-    return await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result as string);
-      fr.onerror = reject;
-      fr.readAsDataURL(blob);
-    });
-  }
-
-  // ---- Color + canvas sampling helpers (for blank detection) ----
-  function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-    const h = hex.replace('#', '').trim();
-    if (h.length === 3) {
-      const r = parseInt(h[0] + h[0], 16);
-      const g = parseInt(h[1] + h[1], 16);
-      const b = parseInt(h[2] + h[2], 16);
-      return { r, g, b };
-    }
-    if (h.length === 6 || h.length === 8) {
-      const r = parseInt(h.slice(0, 2), 16);
-      const g = parseInt(h.slice(2, 4), 16);
-      const b = parseInt(h.slice(4, 6), 16);
-      return { r, g, b };
-    }
-    return null;
-  }
-
-  function isCanvasMostlyColor(canvas: HTMLCanvasElement, targetHex: string, tolerance = 8): boolean {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return false;
-    const rgb = hexToRgb(targetHex) || { r: 255, g: 255, b: 255 };
-    const W = canvas.width, H = canvas.height;
-    if (W === 0 || H === 0) return false;
-    // sample a 6x6 grid avoiding the outer 5% border to skip stroke
-    let matches = 0;
-    let checked = 0;
-    for (let yi = 0; yi < 6; yi++) {
-      for (let xi = 0; xi < 6; xi++) {
-        const x = Math.round((0.05 + (xi + 0.5) / 6 * 0.90) * W);
-        const y = Math.round((0.05 + (yi + 0.5) / 6 * 0.90) * H);
-        const data = ctx.getImageData(Math.min(Math.max(x, 0), W - 1), Math.min(Math.max(y, 0), H - 1), 1, 1).data;
-        const dr = Math.abs(data[0] - rgb.r);
-        const dg = Math.abs(data[1] - rgb.g);
-        const db = Math.abs(data[2] - rgb.b);
-        if (dr <= tolerance && dg <= tolerance && db <= tolerance) matches++;
-        checked++;
-      }
-    }
-    return checked > 0 && matches / checked > 0.92; // mostly background
-  }
+  // Helper: Blob -> data URL (removed) and blank-detection helpers (removed)
 
   function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
     const rr = Math.max(0, r);
@@ -526,11 +352,12 @@ export default function Designer({ value }: DesignerProps) {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, exportOuter, exportOuter);
       const blob = await canvasToPngBlob(canvas);
-      if (blob) downloadBlob(blob, 'qr-framed.png');
+      if (blob) downloadBlob(blob, 'qr.png');
       URL.revokeObjectURL(url);
       return;
-    } catch {
-      try { qrRef.current?.download({ extension: 'png', name: 'qr' }); } catch {}
+    } catch (err) {
+      // Avoid falling back to lower-quality exporter; surface a soft failure instead
+      console.error('PNG export failed', err);
       return;
     }
   }
