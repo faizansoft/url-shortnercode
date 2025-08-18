@@ -216,13 +216,13 @@ export default function Designer({ value }: DesignerProps) {
       width: size,
       height: size,
       data: value,
-      margin,
-      type: logoUrl ? "canvas" : "svg",
+      margin: isTransparentBg ? 0 : margin,
+      type: 'svg',
       qrOptions: { errorCorrectionLevel: ecLevel },
       dotsOptions: perfMode ? { color: dotsColor, type: "square" } : dots,
       cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
       cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
-      backgroundOptions: perfMode ? (isTransparentBg ? { color: 'transparent' } : { color: bgColor }) : bg,
+      backgroundOptions: isTransparentBg ? { color: 'transparent' } : (perfMode ? { color: bgColor } : bg),
       image: logoUrl || undefined,
       imageOptions: {
         imageSize: perfMode ? Math.min(logoSize, 0.2) : logoSize,
@@ -251,6 +251,36 @@ export default function Designer({ value }: DesignerProps) {
     if (suppressUpdateRef.current) return;
     qrRef.current?.update(options);
   }, [options]);
+
+  // Ensure preview SVG has no white background when transparent is selected
+  useEffect(() => {
+    if (!isTransparentBg) return;
+    const root = containerRef.current;
+    if (!root) return;
+    const apply = () => {
+      const svg = root.querySelector('svg');
+      if (!svg) return;
+      // Force SVG element to be transparent
+      (svg as SVGSVGElement).style.background = 'transparent';
+      // Try to find a background rect covering the full canvas and remove its fill
+      const rects = Array.from(svg.querySelectorAll('rect')) as SVGRectElement[];
+      for (const r of rects) {
+        const fill = (r.getAttribute('fill') || '').toLowerCase();
+        const looksWhite = fill === '#fff' || fill === '#ffffff' || fill === 'white' || /rgb\s*\(\s*255\s*,\s*255\s*,\s*255\s*\)/.test(fill);
+        if (looksWhite) r.setAttribute('fill', 'none');
+        // Also handle full-canvas rects regardless of fill value
+        const x = r.getAttribute('x') || '0';
+        const y = r.getAttribute('y') || '0';
+        const w = r.getAttribute('width');
+        const h = r.getAttribute('height');
+        if (x === '0' && y === '0' && w && h) r.setAttribute('fill', 'none');
+      }
+    };
+    apply();
+    const mo = new MutationObserver(() => apply());
+    mo.observe(root, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [isTransparentBg]);
 
   // Auto-dismiss export notices after a short delay
   useEffect(() => {
