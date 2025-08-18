@@ -110,34 +110,37 @@ export default function Designer({ value }: DesignerProps) {
     reader.readAsDataURL(file);
   };
   const frameStyle = useMemo(() => {
+    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const effectiveBg = transparentBg ? '#ffffff' : bgColor;
     // All frames use zero padding so the QR fits perfectly without extra spacing
     switch (frame) {
       case "rounded":
-        return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 16, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "thin":
-        return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 6, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "thick":
-        return { borderRadius: 12, padding: 0, border: "2px solid #2563eb", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, border: "2px solid #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "square":
-        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 0, padding: 0, border: "1px solid #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "accent":
-        return { borderRadius: 10, padding: 0, border: "3px solid #2563eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 10, padding: 0, border: "3px solid #2563eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "shadow":
-        return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "outline":
-        return { borderRadius: 8, padding: 0, outline: "2px solid #e5e7eb", outlineOffset: 0, background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 8, padding: 0, outline: "2px solid #e5e7eb", outlineOffset: 0, background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "dashed":
-        return { borderRadius: 8, padding: 0, border: "2px dashed #e5e7eb", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 8, padding: 0, border: "2px dashed #e5e7eb", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "double":
-        return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", outline: "2px solid #2563eb", outlineOffset: 2, background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 10, padding: 0, border: "2px solid #e5e7eb", outline: "2px solid #2563eb", outlineOffset: 2, background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "glow":
-        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 0 0 4px rgba(37,99,235,0.35), 0 12px 28px rgba(0,0,0,0.18)", background: "#ffffff", overflow: "hidden" } as React.CSSProperties;
+        return { borderRadius: 12, padding: 0, border: "1px solid #e5e7eb", boxShadow: "0 0 0 4px rgba(37,99,235,0.35), 0 12px 28px rgba(0,0,0,0.18)", background: effectiveBg, overflow: "hidden" } as React.CSSProperties;
       case "gradient":
+        // Keep gradient frame background; inner QR background still controlled by QR options
         return { borderRadius: 12, padding: 2, background: "conic-gradient(from 0deg, #2563eb, #7c3aed, #22c55e, #2563eb)", overflow: "hidden" } as React.CSSProperties;
       default:
         return {} as React.CSSProperties;
     }
-  }, [frame]);
+  }, [frame, bgColor]);
 
   // Build options for qr-code-styling
   const options = useMemo<QRStyleOptions>(() => {
@@ -276,6 +279,8 @@ export default function Designer({ value }: DesignerProps) {
     const surface = '#ffffff';
     const border = '#e5e7eb';
     const accent = '#2563eb';
+    const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+    const effectiveBg = transparentBg ? surface : bgColor;
 
     // Force latest options to render before exporting to avoid stale downloads
     try { qrRef.current?.update(options); } catch {}
@@ -343,7 +348,7 @@ export default function Designer({ value }: DesignerProps) {
       const rx = (frame === 'none') ? 8 : ((frame === 'rounded' || frame === 'glow' || frame === 'shadow' || frame === 'gradient') ? 16 : (frame === 'outline' ? 10 : (frame === 'thin' ? 6 : (frame === 'thick' ? 14 : (frame === 'double' ? 12 : 0)))));
       const rxScaled = rx * scale;
       drawRoundedRect(ctx, 0, 0, exportOuter, exportOuter, rxScaled);
-      ctx.fillStyle = surface; ctx.fill();
+      ctx.fillStyle = effectiveBg; ctx.fill();
       ctx.save();
       drawRoundedRect(ctx, 0, 0, exportOuter, exportOuter, rxScaled);
       ctx.clip();
@@ -420,6 +425,8 @@ export default function Designer({ value }: DesignerProps) {
       const border = '#e5e7eb';
       const accent = '#2563eb';
       const surface = '#ffffff';
+      const transparentBg = (bgColor || '').toLowerCase() === '#ffffff00' || (bgColor || '').toLowerCase() === 'transparent' || (bgColor || '').endsWith('00');
+      const effectiveBg = transparentBg ? surface : bgColor;
       const frameStroke = (frame === 'accent') ? accent : border;
       const strokeW = (frame === 'thick' ? 6 : frame === 'accent' ? 5 : frame === 'outline' ? 3 : frame === 'double' ? 3 : frame === 'dashed' ? 3 : frame === 'gradient' ? 4 : 2);
 
