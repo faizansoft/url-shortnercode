@@ -439,6 +439,23 @@ export default function Designer({ value }: DesignerProps) {
 
   // (removed unused drawRoundedRect)
 
+  // Convert data URL to Blob
+  function dataUrlToBlob(dataUrl: string): { blob: Blob; mime: string } | null {
+    try {
+      const m = /^data:([^;,]+);base64,(.*)$/i.exec(dataUrl);
+      if (!m) return null;
+      const mime = m[1];
+      const b64 = m[2];
+      const bin = atob(b64);
+      const len = bin.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      return { blob: new Blob([bytes], { type: mime }), mime };
+    } catch {
+      return null;
+    }
+  }
+
   function downloadBlob(blob: Blob, name: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -453,12 +470,50 @@ export default function Designer({ value }: DesignerProps) {
 
   const saveChanges = async () => {
     if (typeof window === 'undefined') return;
+    // Resolve short_code from value (robust)
+    let short_code = '';
+    try {
+      const u = new URL(value);
+      short_code = (u.pathname || '').replace(/^\//, '');
+    } catch {
+      const v = String(value || '').trim();
+      short_code = v.replace(/^https?:\/\//, '').replace(/^[^/]*\//, '').replace(/^\//, '');
+      if (!short_code && v) {
+        const parts = v.split('/').filter(Boolean);
+        short_code = parts[parts.length - 1] || '';
+      }
+    }
+
+    // Upload base64 logo to Supabase Storage and use public URL
+    let finalLogoUrl = logoUrl;
+    try {
+      const { data: sess } = await supabaseClient.auth.getSession();
+      const userId = sess.session?.user?.id || '';
+      if (userId && short_code && isDataUrl(logoUrl)) {
+        const conv = dataUrlToBlob(logoUrl);
+        if (conv) {
+          const { blob, mime } = conv;
+          const ext = mime.includes('svg') ? 'svg' : mime.includes('jpeg') ? 'jpg' : mime.includes('png') ? 'png' : 'bin';
+          const path = `logos/${userId}/${short_code}-${Date.now()}.${ext}`;
+          const bucket = 'qr-logos';
+          const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: mime });
+          if (!up.error) {
+            const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
+            const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
+            if (pubUrl) finalLogoUrl = pubUrl;
+          }
+        }
+      }
+    } catch {
+      // ignore upload issues; fallback to existing logoUrl
+    }
+
     const payload = {
       size, margin, ecLevel, perfMode,
       dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation,
       cornerSquareType, cornerSquareColor, cornerDotType, cornerDotColor,
       bgColor, bgGradientOn, bgGradA, bgGradB, bgGradType,
-      logoUrl, logoSize, hideBgDots,
+      logoUrl: finalLogoUrl, logoSize, hideBgDots,
       value,
       ts: Date.now(),
     };
@@ -466,21 +521,12 @@ export default function Designer({ value }: DesignerProps) {
     try {
       window.localStorage.setItem('qrDesigner:last', JSON.stringify(payload));
       try {
-        const u = new URL(value);
-        const sc = (u.pathname || '').replace(/^\//, '');
-        if (sc) window.localStorage.setItem(`qrDesigner:${sc}`, JSON.stringify(payload));
-      } catch {
-        const v = String(value || '').trim();
-        const parts = v.split('/').filter(Boolean);
-        const sc = parts[parts.length - 1];
-        if (sc) window.localStorage.setItem(`qrDesigner:${sc}`, JSON.stringify(payload));
-      }
+        if (short_code) window.localStorage.setItem(`qrDesigner:${short_code}`, JSON.stringify(payload));
+      } catch {}
     } catch {}
 
     // Persist to backend (qr_styles upsert)
     try {
-      const u = new URL(value);
-      const short_code = (u.pathname || '').replace(/^\//, '');
       if (!short_code) return;
       const { data } = await supabaseClient.auth.getSession();
       const token = data.session?.access_token;
