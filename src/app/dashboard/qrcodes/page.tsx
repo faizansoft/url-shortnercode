@@ -49,7 +49,7 @@ export default function QRCodesPage() {
           qr_data_url: null as string | null,
         }));
 
-        // Generate QR codes in parallel
+        // Generate or resolve QR previews in parallel (prefer stored thumbnails)
         const generated = await Promise.all(
           withShort.map(async (it) => {
             // Try to fetch saved style for this short_code
@@ -62,7 +62,50 @@ export default function QRCodesPage() {
                 if (resStyle.ok) {
                   const { options } = await resStyle.json();
                   if (options && typeof options === 'object') {
-                    styledDataUrl = await generateStyledSvgDataUrl(it.short_url, options);
+                    // If we have a stored thumbnail URL, use it directly (fast path)
+                    const thumb = (options as { thumbnailUrl?: unknown }).thumbnailUrl;
+                    if (typeof thumb === 'string' && thumb) {
+                      styledDataUrl = thumb;
+                    } else {
+                      // Fallback: generate a styled SVG data URL on the client (slower)
+                      styledDataUrl = await generateStyledSvgDataUrl(it.short_url, options);
+                      // Auto-backfill: attempt to create and upload a 256px PNG thumbnail, then update options
+                      try {
+                        // Build raw SVG for best quality rasterization
+                        const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
+                        if (svg) {
+                          const pngDataUrl = await rasterizeSvgToPng(svg, 256);
+                          const resBlob = await fetch(pngDataUrl);
+                          const blob = await resBlob.blob();
+                          const { data: sess } = await supabaseClient.auth.getSession();
+                          const uid = sess.session?.user?.id || '';
+                          if (uid) {
+                            const bucket = 'qr-thumbs';
+                            const path = `thumbs/${uid}/${it.short_code}.png`;
+                            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+                            if (!up.error) {
+                              const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
+                              const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
+                              if (pubUrl) {
+                                const thumbUrl = `${pubUrl}?v=${Date.now()}`;
+                                styledDataUrl = thumbUrl;
+                                // Merge and update options with thumbnailUrl
+                                try {
+                                  await fetch('/api/qr', {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${sess.session?.access_token ?? ''}`,
+                                    },
+                                    body: JSON.stringify({ short_code: it.short_code, options: { ...(options as object), thumbnailUrl: thumbUrl } }),
+                                  });
+                                } catch {}
+                              }
+                            }
+                          }
+                        }
+                      } catch {}
+                    }
                   }
                 }
               }
@@ -160,7 +203,13 @@ async function handleDownloadPng(shortUrl: string, code: string) {
               <div className="truncate text-sm" title={it.target_url}>{it.target_url}</div>
               <div className="rounded-md p-3 self-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 {it.qr_data_url ? (
-                  <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" />
+                  /^https?:/i.test(it.qr_data_url)
+                    ? (
+                        <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" loading="lazy" decoding="async" />
+                      )
+                    : (
+                        <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" />
+                      )
                 ) : (
                   <div className="w-40 h-40 grid place-items-center text-sm text-[var(--muted)]">QR</div>
                 )}

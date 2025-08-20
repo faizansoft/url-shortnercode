@@ -63,7 +63,8 @@ export default function LinksIndexPage() {
     return () => mql?.removeEventListener?.('change', update);
   }, []);
 
-  // Generate styled SVG preview when modal opens or target changes
+  // Generate preview when modal opens or target changes.
+  // Prefer stored thumbnailUrl; if missing, render styled/default and auto-backfill thumbnail.
   useEffect(() => {
     if (!showQR) return;
     if (!qrFor) return;
@@ -71,9 +72,91 @@ export default function LinksIndexPage() {
     (async () => {
       try {
         const code = qrFor.startsWith(origin + "/") ? qrFor.slice(origin.length + 1) : qrFor.split("/").pop() || "";
+        // 1) Try stored options to use thumbnailUrl fast
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) {
+            const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
+            if (resStyle.ok) {
+              const { options } = await resStyle.json();
+              const thumb = options?.thumbnailUrl as unknown;
+              if (typeof thumb === 'string' && thumb) {
+                if (!cancelled) setQrDataUrl(thumb);
+                return;
+              }
+              // Generate styled SVG preview, show immediately
+              const svgText = await generateStyledSvgString(qrFor, options || {} as any);
+              if (svgText) {
+                const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+                if (!cancelled) setQrDataUrl(svgDataUrl);
+                // Auto-backfill thumbnail in background
+                try {
+                  const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
+                  const resBlob = await fetch(pngDataUrl);
+                  const blob = await resBlob.blob();
+                  const uid = data.session?.user?.id || '';
+                  if (uid) {
+                    const bucket = 'qr-thumbs';
+                    const path = `thumbs/${uid}/${code}.png`;
+                    const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+                    if (!up.error) {
+                      const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
+                      const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
+                      if (pubUrl) {
+                        const thumbUrl = `${pubUrl}?v=${Date.now()}`;
+                        if (!cancelled) setQrDataUrl(thumbUrl);
+                        // Update options with thumbnailUrl
+                        try {
+                          await fetch('/api/qr', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ short_code: code, options: { ...(options || {}), thumbnailUrl: thumbUrl } }),
+                          });
+                        } catch {}
+                      }
+                    }
+                  }
+                } catch {}
+                return;
+              }
+            }
+          }
+        } catch {}
+
+        // 2) Fallback: build default or styled SVG via helper and show; also try to backfill thumbnail
         const svgText = await buildStyledSvgOrDefault(qrFor, code);
         const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
         if (!cancelled) setQrDataUrl(dataUrl);
+        // Backfill thumbnail from whatever we have (default or styled)
+        try {
+          const { data } = await supabaseClient.auth.getSession();
+          const token = data.session?.access_token;
+          const uid = data.session?.user?.id || '';
+          if (uid && token) {
+            const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
+            const resBlob = await fetch(pngDataUrl);
+            const blob = await resBlob.blob();
+            const bucket = 'qr-thumbs';
+            const path = `thumbs/${uid}/${code}.png`;
+            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+            if (!up.error) {
+              const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
+              const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
+              if (pubUrl) {
+                const thumbUrl = `${pubUrl}?v=${Date.now()}`;
+                if (!cancelled) setQrDataUrl(thumbUrl);
+                try {
+                  await fetch('/api/qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ short_code: code, options: { thumbnailUrl: thumbUrl } }),
+                  });
+                } catch {}
+              }
+            }
+          }
+        } catch {}
       } catch {
         try {
           const fallback = await QRCode.toDataURL(qrFor, { errorCorrectionLevel: "M", margin: 1, color: { dark: "#0b1220", light: "#ffffff" }, width: 200 });
@@ -493,7 +576,13 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
             <div className="rounded-md p-4 flex flex-col items-center gap-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               {qrDataUrl ? (
                 <>
-                  <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" />
+                  {/^https?:/i.test(qrDataUrl)
+                    ? (
+                        <img src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" loading="lazy" decoding="async" />
+                      )
+                    : (
+                        <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" />
+                      )}
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <div className="flex gap-2">
                       <button

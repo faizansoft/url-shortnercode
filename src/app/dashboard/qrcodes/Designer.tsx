@@ -166,6 +166,32 @@ export default function Designer({ value }: DesignerProps) {
     }
   }
 
+  // Generate a small PNG thumbnail (e.g., 256px) from current SVG
+  async function buildThumbnailPngBlob(): Promise<Blob | null> {
+    const svgText = await buildCombinedSVG();
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    try {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = url;
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
+      const sizePx = 256; // thumbnail target
+      const canvas = document.createElement('canvas');
+      canvas.width = sizePx; canvas.height = sizePx;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingQuality = 'low';
+      ctx.drawImage(img, 0, 0, sizePx, sizePx);
+      return await canvasToPngBlob(canvas);
+    } catch {
+      return null;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function selectBuiltinLogo(src: string) {
     // Prefer inlining as data URL to avoid cross-resource SVG image embedding issues
     const inlined = await toDataUrl(src);
@@ -508,6 +534,31 @@ export default function Designer({ value }: DesignerProps) {
       // ignore upload issues; fallback to existing logoUrl
     }
 
+    // Try to build and upload a thumbnail image to Supabase Storage
+    let thumbnailUrl: string | undefined = undefined;
+    try {
+      const thumbBlob = await buildThumbnailPngBlob();
+      if (thumbBlob) {
+        const { data: sess2 } = await supabaseClient.auth.getSession();
+        const userId2 = sess2.session?.user?.id || '';
+        if (userId2 && short_code) {
+          const bucketT = 'qr-thumbs';
+          const pathT = `thumbs/${userId2}/${short_code}.png`; // stable path per code
+          const upT = await supabaseClient.storage.from(bucketT).upload(pathT, thumbBlob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+          if (!upT.error) {
+            const pub = supabaseClient.storage.from(bucketT).getPublicUrl(pathT);
+            const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
+            if (pubUrl) {
+              // Bust caches with timestamp param
+              thumbnailUrl = `${pubUrl}?v=${Date.now()}`;
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore thumbnail failures
+    }
+
     const payload = {
       size, margin, ecLevel, perfMode,
       dotsType, dotsColor, dotsGradientOn, dotsGradA, dotsGradB, dotsGradRotation,
@@ -516,6 +567,7 @@ export default function Designer({ value }: DesignerProps) {
       logoUrl: finalLogoUrl, logoSize, hideBgDots,
       value,
       ts: Date.now(),
+      ...(thumbnailUrl ? { thumbnailUrl } : {}),
     };
     // Persist locally as a fallback
     try {
