@@ -64,7 +64,7 @@ export default function AnalyticsDashboard() {
 
   const hourlySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.hourly ? Object.entries(data.hourly) : [];
-    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+    return entries.sort((a, b) => Number(a[0]) - Number(b[0]));
   }, [data]);
 
   const weekdaySeries = useMemo(() => {
@@ -223,19 +223,26 @@ function DailyBars({ fromPairs, height = 100 }: { fromPairs: Array<[string, numb
   const max = Math.max(1, ...fromPairs.map(([, v]) => v));
   return (
     <div className="flex items-end gap-1" style={{ height }}>
-      {fromPairs.map(([day, v]) => (
-        <div
-          key={day}
-          className="flex-1 min-w-[4px] rounded relative"
-          style={{ background: 'color-mix(in oklab, var(--surface) 92%, var(--foreground))' }}
-          title={`${day}: ${v}`}
-        >
+      {fromPairs.map(([day, v]) => {
+        const h = (v / max) * height;
+        const innerH = v > 0 ? Math.max(2, Math.round(h)) : 0; // ensure visibility for small non-zero values
+        return (
           <div
-            className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
-            style={{ height: `${(v / max) * 100}%` }}
-          />
-        </div>
-      ))}
+            key={day}
+            className="flex-1 min-w-[4px] rounded relative border"
+            style={{
+              background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))',
+              borderColor: 'var(--border)'
+            }}
+            title={`${day}: ${v}`}
+          >
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
+              style={{ height: `${innerH}px` }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
