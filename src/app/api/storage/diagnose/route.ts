@@ -27,7 +27,7 @@ export async function GET() {
     if (error) {
       errors.push(`listBuckets error: ${error.message}`)
     } else {
-      buckets = (data || []).map((b) => ({ id: b.id, name: (b as any).name }))
+      buckets = (data || []).map((b) => ({ id: b.id, name: (b as { name?: string }).name }))
     }
   } catch (e: unknown) {
     errors.push(`listBuckets threw: ${e instanceof Error ? e.message : 'unknown error'}`)
