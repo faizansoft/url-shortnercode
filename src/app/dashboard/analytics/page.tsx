@@ -219,30 +219,47 @@ function avgClicks(summary?: Partial<Summary> | null) {
   return Math.round((total / links) * 10) / 10;
 }
 
-function DailyBars({ fromPairs, height = 100 }: { fromPairs: Array<[string, number]>; height?: number }) {
+function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: Array<[string, number]>; height?: number; withLabels?: boolean }) {
   const max = Math.max(1, ...fromPairs.map(([, v]) => v));
+  const labelEvery = Math.max(1, Math.ceil(fromPairs.length / 14));
   return (
-    <div className="flex items-end gap-1" style={{ height }}>
-      {fromPairs.map(([day, v]) => {
-        const h = (v / max) * height;
-        const innerH = v > 0 ? Math.max(2, Math.round(h)) : 0; // ensure visibility for small non-zero values
-        return (
-          <div
-            key={day}
-            className="flex-1 min-w-[4px] rounded relative border"
-            style={{
-              background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))',
-              borderColor: 'var(--border)'
-            }}
-            title={`${day}: ${v}`}
-          >
+    <div className="flex flex-col gap-2">
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${fromPairs.length || 1}, minmax(0,1fr))`, height }}>
+        {fromPairs.map(([key, v]) => {
+          const h = (v / max) * height;
+          const innerH = v > 0 ? Math.max(2, Math.round(h)) : 0; // ensure visibility for small non-zero values
+          return (
             <div
-              className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
-              style={{ height: `${innerH}px` }}
-            />
-          </div>
-        );
-      })}
+              key={key}
+              className="relative rounded border"
+              style={{
+                background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))',
+                borderColor: 'var(--border)'
+              }}
+              title={`${key}: ${v}`}
+            >
+              <div
+                className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
+                style={{ height: `${innerH}px` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      {withLabels && (
+        <div className="grid gap-1 text-[10px] leading-3 text-[var(--muted)]" style={{ gridTemplateColumns: `repeat(${fromPairs.length || 1}, minmax(0,1fr))` }}>
+          {fromPairs.map(([key], idx) => {
+            const show = idx % labelEvery === 0 || idx === fromPairs.length - 1;
+            // For YYYY-MM-DD use DD, for hour "0..23" use same, else use key
+            const dd = /\d{4}-\d{2}-\d{2}/.test(key) ? key.slice(8, 10) : key;
+            return (
+              <div key={`lbl-${key}`} className="text-center tabular-nums">
+                {show ? dd : ''}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
