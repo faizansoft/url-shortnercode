@@ -71,6 +71,10 @@ export default function AnalyticsDashboard() {
     return order.map((k) => [k, Number(w[k] || 0)]) as Array<[string, number]>;
   }, [data]);
 
+  const dailyTotal = useMemo(() => dailySeries.reduce((s, [, v]) => s + v, 0), [dailySeries]);
+  const hourlyTotal = useMemo(() => hourlySeries.reduce((s, [, v]) => s + v, 0), [hourlySeries]);
+  const weekdayTotal = useMemo(() => weekdaySeries.reduce((s, [, v]) => s + v, 0), [weekdaySeries]);
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
@@ -91,17 +95,29 @@ export default function AnalyticsDashboard() {
 
           <section className="rounded-xl glass p-5">
             <div className="p-0 pb-3 font-medium">Clicks over time (30 days)</div>
-            <DailyBars fromPairs={dailySeries} height={120} />
+            {dailyTotal > 0 ? (
+              <DailyBars fromPairs={dailySeries} height={120} />
+            ) : (
+              <div className="text-sm text-[var(--muted)] h-[120px] flex items-center justify-center">No clicks in the last 30 days</div>
+            )}
           </section>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
-              <DailyBars fromPairs={hourlySeries} height={100} />
+              {hourlyTotal > 0 ? (
+                <DailyBars fromPairs={hourlySeries} height={100} />
+              ) : (
+                <div className="text-sm text-[var(--muted)] h-[100px] flex items-center justify-center">No clicks in the last 24 hours</div>
+              )}
             </section>
             <section className="rounded-xl glass p-5">
               <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
-              <DailyBars fromPairs={weekdaySeries} height={100} />
+              {weekdayTotal > 0 ? (
+                <DailyBars fromPairs={weekdaySeries} height={100} />
+              ) : (
+                <div className="text-sm text-[var(--muted)] h-[100px] flex items-center justify-center">No clicks recorded yet</div>
+              )}
             </section>
           </div>
 
