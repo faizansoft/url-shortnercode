@@ -78,40 +78,41 @@ export default function LinksIndexPage() {
                 if (!cancelled) setQrDataUrl(thumb);
                 return;
               }
-              // Generate styled SVG preview, show immediately
+              // Generate styled SVG preview, rasterize to PNG for UI immediately
               const svgText = await generateStyledSvgString(qrFor, (options || {} as SavedOptions));
               if (svgText) {
-                const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-                if (!cancelled) setQrDataUrl(svgDataUrl);
-                // Auto-backfill thumbnail in background
                 try {
                   const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
-                  const resBlob = await fetch(pngDataUrl);
-                  const blob = await resBlob.blob();
-                  const uid = data.session?.user?.id || '';
-                  if (uid) {
-                    const bucket = 'qr-thumbs';
-                    const path = `thumbs/${uid}/${code}.png`;
-                    const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
-                    if (!up.error) {
-                      const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
-                      const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
-                      if (pubUrl) {
-                        const thumbUrl = `${pubUrl}?v=${Date.now()}`;
-                        if (!cancelled) setQrDataUrl(thumbUrl);
-                        // Update options with thumbnailUrl
-                        try {
-                          await fetch('/api/qr', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({ short_code: code, options: { ...(options || {}), thumbnailUrl: thumbUrl } }),
-                          });
-                        } catch {}
+                  if (!cancelled) setQrDataUrl(pngDataUrl);
+                  // Auto-backfill thumbnail in background
+                  try {
+                    const resBlob = await fetch(pngDataUrl);
+                    const blob = await resBlob.blob();
+                    const uid = data.session?.user?.id || '';
+                    if (uid) {
+                      const bucket = 'qr-thumbs';
+                      const path = `thumbs/${uid}/${code}.png`;
+                      const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+                      if (!up.error) {
+                        const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
+                        const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
+                        if (pubUrl) {
+                          const thumbUrl = `${pubUrl}?v=${Date.now()}`;
+                          if (!cancelled) setQrDataUrl(thumbUrl);
+                          // Update options with thumbnailUrl
+                          try {
+                            await fetch('/api/qr', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ short_code: code, options: { ...(options || {}), thumbnailUrl: thumbUrl } }),
+                            });
+                          } catch {}
+                        }
                       }
                     }
-                  }
+                  } catch {}
+                  return;
                 } catch {}
-                return;
               }
             }
           }
@@ -119,8 +120,14 @@ export default function LinksIndexPage() {
 
         // 2) Fallback: build default or styled SVG via helper and show; also try to backfill thumbnail
         const svgText = await buildStyledSvgOrDefault(qrFor, code);
-        const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-        if (!cancelled) setQrDataUrl(dataUrl);
+        // Prefer PNG for UI responsiveness
+        try {
+          const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
+          if (!cancelled) setQrDataUrl(pngDataUrl);
+        } catch {
+          const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+          if (!cancelled) setQrDataUrl(dataUrl);
+        }
         // Backfill thumbnail from whatever we have (default or styled)
         try {
           const { data } = await supabaseClient.auth.getSession();

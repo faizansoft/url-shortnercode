@@ -68,14 +68,13 @@ export default function QRCodesPage() {
                     if (typeof thumb === 'string' && thumb) {
                       styledDataUrl = thumb;
                     } else {
-                      // Fallback: generate a styled SVG data URL on the client (slower)
-                      styledDataUrl = await generateStyledSvgDataUrl(it.short_url, options);
-                      // Auto-backfill: attempt to create and upload a 256px PNG thumbnail, then update options
-                      try {
-                        // Build raw SVG for best quality rasterization
-                        const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
-                        if (svg) {
-                          const pngDataUrl = await rasterizeSvgToPng(svg, 256);
+                      // Fallback: generate styled SVG, rasterize to PNG for immediate UI
+                      const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
+                      if (svg) {
+                        const pngDataUrl = await rasterizeSvgToPng(svg, 256);
+                        styledDataUrl = pngDataUrl;
+                        // Auto-backfill: create/upload PNG thumbnail, then update options
+                        try {
                           const resBlob = await fetch(pngDataUrl);
                           const blob = await resBlob.blob();
                           const { data: sess } = await supabaseClient.auth.getSession();
@@ -104,8 +103,8 @@ export default function QRCodesPage() {
                               }
                             }
                           }
-                        }
-                      } catch {}
+                        } catch {}
+                      }
                     }
                   }
                 }
@@ -119,7 +118,8 @@ export default function QRCodesPage() {
                 if (raw) {
                   const opts = JSON.parse(raw);
                   if (opts && typeof opts === 'object') {
-                    styledDataUrl = await generateStyledSvgDataUrl(it.short_url, opts);
+                    const svg = await generateStyledSvgString(it.short_url, opts as SavedOptions);
+                    if (svg) styledDataUrl = await rasterizeSvgToPng(svg, 256);
                   }
                 }
               } catch {}
