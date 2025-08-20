@@ -81,11 +81,6 @@ export default function AnalyticsDashboard() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Analytics</h1>
-        <div className="flex items-center gap-2">
-          <RangeBtn current={days} value={7} onClick={() => setDays(7)} label="7d" />
-          <RangeBtn current={days} value={30} onClick={() => setDays(30)} label="30d" />
-          <RangeBtn current={days} value={90} onClick={() => setDays(90)} label="90d" />
-        </div>
       </header>
 
       {loading ? (
@@ -100,84 +95,84 @@ export default function AnalyticsDashboard() {
             <StatCard label="Avg Clicks / Link" value={avgClicks(data?.summary)} />
           </div>
 
-          <section className="rounded-xl glass p-5">
-            <div className="p-0 pb-3 font-medium">Clicks over time ({days} days)</div>
-            {dailyTotal > 0 ? (
-              <DailyBars fromPairs={dailySeries} height={120} />
-            ) : (
-              <div className="text-sm text-[var(--muted)] h-[120px] flex items-center justify-center">No clicks in the selected period</div>
-            )}
-          </section>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+            {/* Left column (2/3): charts */}
+            <div className="xl:col-span-2 space-y-4">
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Clicks over time ({days} days)</div>
+                {dailyTotal > 0 ? (
+                  <DailyBars fromPairs={dailySeries} height={160} />
+                ) : (
+                  <div className="text-sm text-[var(--muted)] h-[160px] flex items-center justify-center">No clicks in the selected period</div>
+                )}
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
+                {hourlyTotal > 0 ? (
+                  <DailyBars fromPairs={hourlySeries} height={140} />
+                ) : (
+                  <div className="text-sm text-[var(--muted)] h-[140px] flex items-center justify-center">No clicks in the last 24 hours</div>
+                )}
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
+                {weekdayTotal > 0 ? (
+                  <DailyBars fromPairs={weekdaySeries} height={140} />
+                ) : (
+                  <div className="text-sm text-[var(--muted)] h-[140px] flex items-center justify-center">No clicks recorded yet</div>
+                )}
+              </section>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
-              {hourlyTotal > 0 ? (
-                <DailyBars fromPairs={hourlySeries} height={100} />
-              ) : (
-                <div className="text-sm text-[var(--muted)] h-[100px] flex items-center justify-center">No clicks in the last 24 hours</div>
-              )}
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
-              {weekdayTotal > 0 ? (
-                <DailyBars fromPairs={weekdaySeries} height={100} />
-              ) : (
-                <div className="text-sm text-[var(--muted)] h-[100px] flex items-center justify-center">No clicks recorded yet</div>
-              )}
-            </section>
+            {/* Right column (1/3): filters and ranked lists */}
+            <div className="space-y-4">
+              <aside className="rounded-xl glass p-5 sticky top-4">
+                <div className="p-0 pb-3 font-medium">Filters</div>
+                <div className="flex items-center gap-2">
+                  <RangeBtn current={days} value={7} onClick={() => setDays(7)} label="7d" />
+                  <RangeBtn current={days} value={30} onClick={() => setDays(30)} label="30d" />
+                  <RangeBtn current={days} value={90} onClick={() => setDays(90)} label="90d" />
+                </div>
+                <div className="mt-3 text-xs text-[var(--muted)]">Daily range applies to the time chart.</div>
+              </aside>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Top Links</div>
+                <RankedBars items={(data?.topLinks ?? []).map((x) => ({ label: `/${x.code}`, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Top Referrers</div>
+                <RankedBars items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Countries</div>
+                <RankedBars items={(data?.countries ?? []).map((x) => ({ label: x.country, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Devices</div>
+                <RankedBars items={(data?.devices ?? []).map((x) => ({ label: x.device, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Browsers</div>
+                <RankedBars items={(data?.browsers ?? []).map((x) => ({ label: x.browser, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Operating Systems</div>
+                <RankedBars items={(data?.oses ?? []).map((x) => ({ label: x.os, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Referrer Domains</div>
+                <RankedBars items={(data?.referrerDomains ?? []).map((x) => ({ label: x.domain, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Regions</div>
+                <RankedBars items={(data?.regions ?? []).map((x) => ({ label: x.region, count: x.count }))} />
+              </section>
+              <section className="rounded-xl glass p-5">
+                <div className="p-0 pb-3 font-medium">Cities</div>
+                <RankedBars items={(data?.cities ?? []).map((x) => ({ label: x.city, count: x.count }))} />
+              </section>
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Top Links</div>
-              <RankedBars
-                items={(data?.topLinks ?? []).map((x) => ({ label: `/${x.code}`, count: x.count }))}
-              />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Top Referrers</div>
-              <RankedBars items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, count: x.count }))} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Countries</div>
-              <RankedBars items={(data?.countries ?? []).map((x) => ({ label: x.country, count: x.count }))} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Devices</div>
-              <RankedBars items={(data?.devices ?? []).map((x) => ({ label: x.device, count: x.count }))} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Browsers</div>
-              <RankedBars items={(data?.browsers ?? []).map((x) => ({ label: x.browser, count: x.count }))} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Operating Systems</div>
-              <RankedBars items={(data?.oses ?? []).map((x) => ({ label: x.os, count: x.count }))} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Referrer Domains</div>
-              <RankedBars items={(data?.referrerDomains ?? []).map((x) => ({ label: x.domain, count: x.count }))} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Regions</div>
-              <RankedBars items={(data?.regions ?? []).map((x) => ({ label: x.region, count: x.count }))} />
-            </section>
-          </div>
-
-          <section className="rounded-xl glass p-5">
-            <div className="p-0 pb-3 font-medium">Cities</div>
-            <RankedBars items={(data?.cities ?? []).map((x) => ({ label: x.city, count: x.count }))} />
-          </section>
         </>
       )}
     </div>
