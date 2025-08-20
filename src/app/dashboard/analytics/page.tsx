@@ -94,87 +94,236 @@ export default function AnalyticsDashboard() {
             <StatCard label="Total Links" value={data?.summary?.totalLinks ?? 0} />
             <StatCard label="Avg Clicks / Link" value={avgClicks(data?.summary)} />
           </div>
+          {/* Top row: top day + device donut */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <section className="rounded-xl glass p-5 lg:col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Top performing date by total engagements</div>
+                <div className="text-xs text-[var(--muted)]">Showing last {days} days</div>
+              </div>
+              <TopDay fromPairs={dailySeries} />
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Total engagements by device</div>
+                <div className="text-xs text-[var(--muted)]">Donut</div>
+              </div>
+              <DonutChart
+                items={(data?.devices ?? []).map((x) => ({ label: x.device, value: x.count }))}
+              />
+            </section>
+          </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
-            {/* Left column (2/3): charts */}
-            <div className="xl:col-span-2 space-y-4">
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Clicks over time ({days} days)</div>
-                {dailyTotal > 0 ? (
-                  <DailyBars fromPairs={dailySeries} height={160} />
-                ) : (
-                  <div className="text-sm text-[var(--muted)] h-[160px] flex items-center justify-center">No clicks in the selected period</div>
-                )}
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
-                {hourlyTotal > 0 ? (
-                  <DailyBars fromPairs={hourlySeries} height={140} />
-                ) : (
-                  <div className="text-sm text-[var(--muted)] h-[140px] flex items-center justify-center">No clicks in the last 24 hours</div>
-                )}
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
-                {weekdayTotal > 0 ? (
-                  <DailyBars fromPairs={weekdaySeries} height={140} />
-                ) : (
-                  <div className="text-sm text-[var(--muted)] h-[140px] flex items-center justify-center">No clicks recorded yet</div>
-                )}
-              </section>
-            </div>
+          {/* Row: line over time + referrer bars */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <section className="rounded-xl glass p-5 lg:col-span-2">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Total engagements over time</div>
+                <div className="text-xs text-[var(--muted)]">{days}d</div>
+              </div>
+              {dailyTotal > 0 ? (
+                <LineChart labels={dailySeries.map(([d]) => d)} values={dailySeries.map(([, v]) => v)} height={220} />
+              ) : (
+                <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No data</div>
+              )}
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Total engagements by referrer</div>
+                <div className="text-xs text-[var(--muted)]">Last 30d</div>
+              </div>
+              <HBarChart items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, value: x.count }))} />
+            </section>
+          </div>
 
-            {/* Right column (1/3): filters and ranked lists */}
-            <div className="space-y-4">
-              <aside className="rounded-xl glass p-5 sticky top-4">
-                <div className="p-0 pb-3 font-medium">Filters</div>
-                <div className="flex items-center gap-2">
-                  <RangeBtn current={days} value={7} onClick={() => setDays(7)} label="7d" />
-                  <RangeBtn current={days} value={30} onClick={() => setDays(30)} label="30d" />
-                  <RangeBtn current={days} value={90} onClick={() => setDays(90)} label="90d" />
-                </div>
-                <div className="mt-3 text-xs text-[var(--muted)]">Daily range applies to the time chart.</div>
-              </aside>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Top Links</div>
-                <RankedBars items={(data?.topLinks ?? []).map((x) => ({ label: `/${x.code}`, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Top Referrers</div>
-                <RankedBars items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Countries</div>
-                <RankedBars items={(data?.countries ?? []).map((x) => ({ label: x.country, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Devices</div>
-                <RankedBars items={(data?.devices ?? []).map((x) => ({ label: x.device, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Browsers</div>
-                <RankedBars items={(data?.browsers ?? []).map((x) => ({ label: x.browser, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Operating Systems</div>
-                <RankedBars items={(data?.oses ?? []).map((x) => ({ label: x.os, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Referrer Domains</div>
-                <RankedBars items={(data?.referrerDomains ?? []).map((x) => ({ label: x.domain, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Regions</div>
-                <RankedBars items={(data?.regions ?? []).map((x) => ({ label: x.region, count: x.count }))} />
-              </section>
-              <section className="rounded-xl glass p-5">
-                <div className="p-0 pb-3 font-medium">Cities</div>
-                <RankedBars items={(data?.cities ?? []).map((x) => ({ label: x.city, count: x.count }))} />
-              </section>
-            </div>
+          {/* Row: weekday + hourly + filters */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
+              {weekdayTotal > 0 ? (
+                <DailyBars fromPairs={weekdaySeries} height={140} />
+              ) : (
+                <div className="text-sm text-[var(--muted)] h-[140px] flex items-center justify-center">No clicks recorded yet</div>
+              )}
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
+              {hourlyTotal > 0 ? (
+                <DailyBars fromPairs={hourlySeries} height={140} />
+              ) : (
+                <div className="text-sm text-[var(--muted)] h-[140px] flex items-center justify-center">No clicks in the last 24 hours</div>
+              )}
+            </section>
+            <aside className="rounded-xl glass p-5">
+              <div className="p-0 pb-3 font-medium">Filters</div>
+              <div className="flex items-center gap-2">
+                <RangeBtn current={days} value={7} onClick={() => setDays(7)} label="7d" />
+                <RangeBtn current={days} value={30} onClick={() => setDays(30)} label="30d" />
+                <RangeBtn current={days} value={90} onClick={() => setDays(90)} label="90d" />
+              </div>
+              <div className="mt-3 text-xs text-[var(--muted)]">Daily range applies to charts.</div>
+            </aside>
+          </div>
+
+          {/* Location cards: map placeholder + tabular lists */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <section className="rounded-xl glass p-5">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Total engagements by location</div>
+                <div className="text-xs text-[var(--muted)]">Map</div>
+              </div>
+              <div className="mt-3 rounded border h-[320px] grid place-items-center text-sm text-[var(--muted)]">
+                World map visualization coming soon
+              </div>
+            </section>
+            <section className="rounded-xl glass p-5">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Total engagements by location</div>
+              </div>
+              <LocationTabs
+                countries={(data?.countries ?? []).map((x, i) => ({ idx: i + 1, name: x.country, value: x.count }))}
+                regions={(data?.regions ?? []).map((x, i) => ({ idx: i + 1, name: x.region, value: x.count }))}
+                cities={(data?.cities ?? []).map((x, i) => ({ idx: i + 1, name: x.city, value: x.count }))}
+              />
+            </section>
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Lightweight SVG line chart for daily engagements over time
+function LineChart({ labels, values, height = 200 }: { labels: string[]; values: number[]; height?: number }) {
+  const w = Math.max(240, Math.min(1200, labels.length * 28));
+  const h = height;
+  const max = Math.max(1, ...values);
+  const pts = values.map((v, i) => [
+    (i / Math.max(1, values.length - 1)) * (w - 40) + 20,
+    h - (v / max) * (h - 30) - 10,
+  ] as const);
+  const d = pts.map((p, i) => (i === 0 ? `M ${p[0]},${p[1]}` : `L ${p[0]},${p[1]}`)).join(' ');
+  return (
+    <div className="overflow-x-auto">
+      <svg width={w} height={h} className="block">
+        <rect x={0} y={0} width={w} height={h} fill="transparent" />
+        <path d={d} fill="none" stroke="var(--accent)" strokeWidth={2} />
+        {pts.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={3} fill="var(--accent)" />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// Donut chart for categorical splits (e.g., devices)
+function DonutChart({ items, size = 220 }: { items: Array<{ label: string; value: number }>; size?: number }) {
+  const total = items.reduce((s, it) => s + it.value, 0) || 1;
+  const r = size / 2 - 12;
+  const cx = size / 2;
+  const cy = size / 2;
+  let acc = 0;
+  const colors = ['#14b8a6', '#60a5fa', '#f59e0b', '#a78bfa', '#22c55e', '#f97316'];
+  return (
+    <div className="flex gap-4 items-center">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="color-mix(in oklab, var(--surface) 85%, var(--foreground))" strokeWidth={18} />
+        {items.map((it, i) => {
+          const frac = it.value / total;
+          const start = acc * 2 * Math.PI - Math.PI / 2;
+          const end = (acc + frac) * 2 * Math.PI - Math.PI / 2;
+          acc += frac;
+          const x1 = cx + r * Math.cos(start), y1 = cy + r * Math.sin(start);
+          const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
+          const large = end - start > Math.PI ? 1 : 0;
+          const path = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+          return <path key={i} d={path} stroke={colors[i % colors.length]} strokeWidth={18} fill="none" />;
+        })}
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={18} fill="var(--foreground)">
+          {total}
+        </text>
+      </svg>
+      <ul className="text-sm space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ['#14b8a6','#60a5fa','#f59e0b','#a78bfa','#22c55e','#f97316'][i % 6] }} />
+            <span className="min-w-[96px]">{it.label}</span>
+            <span className="tabular-nums ml-auto">{it.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Horizontal bar chart for ranked lists (e.g., referrers)
+function HBarChart({ items }: { items: Array<{ label: string; value: number }> }) {
+  const max = Math.max(1, ...items.map(i => i.value));
+  return (
+    <ul className="space-y-2">
+      {items.map((it, i) => (
+        <li key={i} className="flex items-center gap-3">
+          <span className="w-32 truncate" title={it.label}>{it.label}</span>
+          <div className="flex-1 h-3 rounded bg-[color-mix(in_oklab,var(--surface)_85%,var(--foreground))]">
+            <div className="h-full rounded bg-[var(--accent)]" style={{ width: `${(it.value / max) * 100}%` }} />
+          </div>
+          <span className="w-14 text-right tabular-nums">{it.value}</span>
+        </li>
+      ))}
+      {items.length === 0 && <li className="text-sm text-[var(--muted)]">No data</li>}
+    </ul>
+  );
+}
+
+// Highlights the best performing day
+function TopDay({ fromPairs }: { fromPairs: Array<[string, number]> }) {
+  if (fromPairs.length === 0) return <div className="text-sm text-[var(--muted)]">No data</div>;
+  const best = fromPairs.reduce((a, b) => (b[1] > a[1] ? b : a));
+  return (
+    <div className="mt-2 flex items-center justify-between p-4 rounded border bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
+      <div>
+        <div className="text-xl font-semibold">{new Date(best[0]).toDateString?.() || best[0]}</div>
+        <div className="text-sm text-[var(--muted)]">Highest daily engagements</div>
+      </div>
+      <div className="text-3xl font-bold tabular-nums">{best[1]}</div>
+    </div>
+  );
+}
+
+// Tabbed table for Countries / Regions / Cities
+function LocationTabs({ countries, regions, cities }: { countries: Array<{ idx: number; name: string; value: number }>; regions: Array<{ idx: number; name: string; value: number }>; cities: Array<{ idx: number; name: string; value: number }>; }) {
+  const [tab, setTab] = useState<'countries' | 'regions' | 'cities'>('countries');
+  const data = tab === 'countries' ? countries : tab === 'regions' ? regions : cities;
+  return (
+    <div>
+      <div className="inline-flex items-center rounded border p-1 gap-1 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)] text-sm">
+        {(['countries','regions','cities'] as const).map(k => (
+          <button key={k} onClick={() => setTab(k)} className={`px-3 py-1 rounded ${tab===k? 'bg-[var(--surface)] border': ''}`}>{k[0].toUpperCase()+k.slice(1)}</button>
+        ))}
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-[color-mix(in_oklab,var(--foreground)_65%,#64748b)]">
+            <tr>
+              <th className="p-2 w-10">#</th>
+              <th className="p-2">Name</th>
+              <th className="p-2 w-28 text-right">Engagements</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((r) => (
+              <tr key={r.idx} className="border-t border-[var(--border)]">
+                <td className="p-2">{r.idx}</td>
+                <td className="p-2">{r.name}</td>
+                <td className="p-2 text-right tabular-nums">{r.value}</td>
+              </tr>
+            ))}
+            {data.length === 0 && (
+              <tr><td colSpan={3} className="p-3 text-sm text-[var(--muted)] text-center">No data</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
