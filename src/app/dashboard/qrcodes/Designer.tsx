@@ -45,7 +45,6 @@ function isSavedOptions(x: unknown): x is SavedOptions {
   const isUndefOrNull = (v: unknown) => v === undefined || v === null;
   const okNum = (k: string) => isUndefOrNull(o[k]) || typeof o[k] === 'number';
   const okStr = (k: string) => isUndefOrNull(o[k]) || typeof o[k] === 'string';
-  const okBool = (k: string) => isUndefOrNull(o[k]) || typeof o[k] === 'boolean';
   if (!okNum('size') || !okNum('margin') || !okStr('dotsColor') || !okStr('bgColor')) return false;
   if (!okStr('logoUrl') || !okNum('logoSize')) return false;
   return true;
@@ -80,7 +79,7 @@ export default function Designer({ value }: DesignerProps) {
   const [size, setSize] = useState(220);
   const [margin, setMargin] = useState(2);
   const [ecLevel, setEcLevel] = useState<"L" | "M" | "Q" | "H">("M");
-  const [prefersDark, setPrefersDark] = useState<boolean>(false); // retained but no longer affects colors
+  // Removed dark mode tracking (not used)
 
   // Dots/pattern
   const [dotsType, setDotsType] = useState<DotsType>("rounded");
@@ -128,15 +127,7 @@ export default function Designer({ value }: DesignerProps) {
     ] as const
   ), []);
 
-  // Theme detection no longer changes QR colors; look is fixed regardless of OS theme
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    const update = () => setPrefersDark(!!mql?.matches);
-    update();
-    mql?.addEventListener?.('change', update);
-    return () => mql?.removeEventListener?.('change', update);
-  }, []);
+  // Theme detection removed
 
   const onUploadIcon = (file: File) => {
     const reader = new FileReader();

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
 import Image from "next/image";
@@ -19,7 +20,7 @@ export default function LinksIndexPage() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [showShareLink, setShowShareLink] = useState(false);
   const [shareFor, setShareFor] = useState("");
-  const [prefersDark, setPrefersDark] = useState<boolean>(false);
+  
   const [copied, setCopied] = useState<string | null>(null);
 
   const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
@@ -53,15 +54,7 @@ export default function LinksIndexPage() {
     })();
   }, []);
 
-  // Dark mode detection for QR color
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mql = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    const update = () => setPrefersDark(!!mql?.matches);
-    update();
-    mql?.addEventListener?.('change', update);
-    return () => mql?.removeEventListener?.('change', update);
-  }, []);
+  // Dark mode detection removed (not used)
 
   // Generate preview when modal opens or target changes.
   // Prefer stored thumbnailUrl; if missing, render styled/default and auto-backfill thumbnail.
@@ -86,7 +79,7 @@ export default function LinksIndexPage() {
                 return;
               }
               // Generate styled SVG preview, show immediately
-              const svgText = await generateStyledSvgString(qrFor, options || {} as any);
+              const svgText = await generateStyledSvgString(qrFor, (options || {} as SavedOptions));
               if (svgText) {
                 const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
                 if (!cancelled) setQrDataUrl(svgDataUrl);
@@ -167,7 +160,7 @@ export default function LinksIndexPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [showQR, qrFor, origin]);
+  }, [showQR, qrFor, origin, buildStyledSvgOrDefault, generateStyledSvgString]);
 
   async function handleShareQR() {
     try {
@@ -178,7 +171,7 @@ export default function LinksIndexPage() {
       } else {
         window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(qrFor)}`,'_blank');
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   async function preparePngFileFromPreview(): Promise<File> {
