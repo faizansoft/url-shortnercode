@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
         topLinks: [],
         countries: [],
         devices: [],
+        diagnostics: { resolvedUserId: null, linkCount: 0, clickCount: 0 },
       })
     }
 
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
         topLinks: [],
         countries: [],
         devices: [],
+        diagnostics: { resolvedUserId: user_id, linkCount: 0, clickCount: 0 },
       })
     }
 
@@ -244,6 +246,7 @@ export async function GET(req: NextRequest) {
       referrerDomains: referrerDomains,
       hourly,
       weekdays,
+      diagnostics: { resolvedUserId: user_id, linkCount: linkIds.length, clickCount: totalClicks },
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
