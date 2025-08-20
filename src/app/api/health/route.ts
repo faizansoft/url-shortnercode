@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   let supabaseUrlNorm: string | null = null
   let authUserId: string | null = null
   let publicUrl: string | null = null
-  let errors: Array<{ where: string; message: string }> = []
+  const errors: Array<{ where: string; message: string }> = []
 
   // Normalize URL like server client does
   try {
