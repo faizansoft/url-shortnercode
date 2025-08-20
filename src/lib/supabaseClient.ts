@@ -33,9 +33,12 @@ export function getSupabaseClient(): SupabaseClient {
 
 // Backward-compatible export that lazily initializes on first property access
 export const supabaseClient = new Proxy({} as SupabaseClient, {
-  get(_target, prop, receiver) {
-    const client = getSupabaseClient() as any
-    const value = Reflect.get(client, prop, receiver)
-    return typeof value === 'function' ? value.bind(client) : value
+  get(_target, prop: string | symbol, receiver: unknown) {
+    const client = getSupabaseClient()
+    const value = Reflect.get(client as object, prop, receiver) as unknown
+    if (typeof value === 'function') {
+      return (value as (...args: unknown[]) => unknown).bind(client)
+    }
+    return value
   },
 })
