@@ -32,6 +32,8 @@ type AnalyticsData = {
   range?: { days: number };
 };
 
+ 
+
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export default function AnalyticsDashboard() {
                 <div className="font-medium">Total engagements by referrer</div>
                 <div className="text-xs text-[var(--muted)]">Last 30d</div>
               </div>
-              <HBarChart items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, value: x.count }))} />
+              <ColumnChart items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, value: x.count }))} height={240} />
             </section>
           </div>
 
@@ -189,6 +191,56 @@ export default function AnalyticsDashboard() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Vertical column chart (with gridlines) for referrers
+function ColumnChart({ items, height = 240 }: { items: Array<{ label: string; value: number }>; height?: number }) {
+  const labels = items.map(i => i.label);
+  const values = items.map(i => i.value);
+  const max = Math.max(1, ...values);
+  const barWidth = 36;
+  const gap = 20;
+  const padding = 28; // left/right padding
+  const w = Math.max(320, padding * 2 + items.length * barWidth + (items.length - 1) * gap);
+  const h = height;
+  const chartTop = 10;
+  const chartBottom = 28; // space for x labels
+  const chartHeight = h - chartTop - chartBottom;
+  const steps = 5; // gridlines count
+  const yFor = (v: number) => chartTop + chartHeight - (v / max) * chartHeight;
+
+  if (items.length === 0) {
+    return <div className="text-sm text-[var(--muted)] h-[240px] grid place-items-center">No data</div>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <svg width={w} height={h} className="block">
+        <rect x={0} y={0} width={w} height={h} fill="transparent" />
+        {/* Horizontal gridlines */}
+        {Array.from({ length: steps + 1 }).map((_, i) => {
+          const y = chartTop + (i / steps) * chartHeight;
+          return (
+            <line key={i} x1={padding - 6} x2={w - padding + 6} y1={y} y2={y} stroke="color-mix(in oklab, var(--surface) 85%, var(--foreground))" strokeWidth={1} />
+          );
+        })}
+        {/* Bars */}
+        {items.map((it, i) => {
+          const x = padding + i * (barWidth + gap);
+          const y = yFor(it.value);
+          const bh = Math.max(2, chartTop + chartHeight - y);
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={barWidth} height={bh} rx={2} fill="var(--accent)" />
+              {/* value label above bar (optional) */}
+              {/* <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" className="tabular-nums" fontSize={11} fill="var(--foreground)">{it.value}</text> */}
+              <text x={x + barWidth / 2} y={h - 8} textAnchor="middle" fontSize={11} fill="var(--foreground)">{labels[i]}</text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
