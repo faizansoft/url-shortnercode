@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { getSupabaseServer } from '@/lib/supabaseServer'
 import { generateShortCode, isValidUrl } from '@/lib/shortCode'
 
 export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   try {
+    const supabaseServer = getSupabaseServer()
     const { target_url, code } = await req.json()
 
     if (typeof target_url !== 'string' || !isValidUrl(target_url)) {
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const supabaseServer = getSupabaseServer()
     const { searchParams } = new URL(req.url)
     const code = searchParams.get('code')
 
@@ -95,12 +98,14 @@ export async function GET(req: NextRequest) {
 
     if (code) {
       // detail view: fetch link and some basic analytics
-      const { data: link, error } = await supabaseServer
+      type LinkRow = { id: string; short_code: string; target_url: string; user_id: string; created_at?: string }
+      const { data: linkRaw, error } = await supabaseServer
         .from('links')
         .select('id, short_code, target_url, user_id, created_at')
         .eq('short_code', code)
         .maybeSingle()
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      const link = (linkRaw ?? null) as LinkRow | null
       if (!link) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
       // Pull recent clicks (up to 1000 rows). Avoid referencing a specific timestamp column

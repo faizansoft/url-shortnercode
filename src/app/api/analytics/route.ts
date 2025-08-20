@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { getSupabaseServer } from '@/lib/supabaseServer'
+
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
 
 // GET /api/analytics
 // Aggregates clicks for the authenticated user's links
@@ -8,6 +11,7 @@ export async function GET(req: NextRequest) {
     const auth = req.headers.get('authorization') || req.headers.get('Authorization')
     const token = auth?.startsWith('Bearer ') ? auth.slice('Bearer '.length) : null
 
+    const supabaseServer = getSupabaseServer()
     let user_id: string | null = null
     if (token) {
       const { data, error } = await supabaseServer.auth.getUser(token)
@@ -68,8 +72,10 @@ export async function GET(req: NextRequest) {
     const getCountry = (r: AnyRow): string | null => (r['country'] ?? r['country_code'] ?? r['countryCode'] ?? null) as string | null
     const getDevice = (r: AnyRow): string | null => (r['device'] ?? r['ua_device'] ?? r['user_agent_device'] ?? null) as string | null
 
+    type LinkRow = { id: string; short_code: string }
     const linkMap = new Map<string, { short_code: string }>()
-    for (const l of links ?? []) linkMap.set(l.id, { short_code: l.short_code })
+    const typedLinks = (links ?? []) as unknown as LinkRow[]
+    for (const l of typedLinks) linkMap.set(l.id, { short_code: l.short_code })
 
     const getRegion = (r: AnyRow): string | null => (r['region'] ?? r['region_name'] ?? r['subdivision'] ?? null) as string | null
     const getCity = (r: AnyRow): string | null => (r['city'] ?? r['city_name'] ?? null) as string | null

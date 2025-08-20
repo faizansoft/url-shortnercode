@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { getSupabaseServer } from '@/lib/supabaseServer'
 
 export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   _req: NextRequest,
@@ -9,11 +10,13 @@ export async function GET(
 ) {
   const { code } = await ctx.params
   if (!code || code.length < 3) {
-    return NextResponse.redirect(new URL('/_not-found', _req.url), 302)
+    return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
 
   // Find target URL
-  const { data: link, error } = await supabaseServer
+  const supabaseServer = getSupabaseServer()
+  type LinkRow = { id: string; target_url: string }
+  const { data: linkRaw, error } = await supabaseServer
     .from('links')
     .select('id, target_url')
     .eq('short_code', code)
@@ -22,8 +25,9 @@ export async function GET(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  const link = (linkRaw ?? null) as LinkRow | null
   if (!link) {
-    return NextResponse.redirect(new URL('/_not-found', _req.url), 302)
+    return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
 
   // Fire-and-forget click log (don’t block redirect)
@@ -77,7 +81,13 @@ export async function GET(
     // Swallow errors to not block redirect
   }
 
-  return NextResponse.redirect(link.target_url, 302)
+  const targetUrl = (() => {
+    try { return new URL(link.target_url) } catch { return null }
+  })()
+  if (!targetUrl) {
+    return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
+  }
+  return NextResponse.redirect(targetUrl, 302)
 }
 
 // Minimal user-agent parser to enrich analytics without extra deps

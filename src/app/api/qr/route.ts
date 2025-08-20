@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { getSupabaseServer } from '@/lib/supabaseServer'
 
 export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
 
 // Table expected:
 // create table qr_styles (
@@ -15,6 +16,7 @@ export const runtime = 'edge'
 
 export async function GET(req: NextRequest) {
   try {
+    const supabaseServer = getSupabaseServer()
     const { searchParams } = new URL(req.url)
     const code = searchParams.get('code')?.trim()
     if (!code) return NextResponse.json({ error: 'Missing code' }, { status: 400 })
@@ -60,6 +62,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabaseServer = getSupabaseServer()
     const body = await req.json()
     const short_code = typeof body?.short_code === 'string' ? body.short_code.trim() : ''
     const options = body?.options
