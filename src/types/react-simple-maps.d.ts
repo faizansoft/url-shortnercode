@@ -2,9 +2,9 @@ declare module 'react-simple-maps' {
   import * as React from 'react'
 
   export interface GeographyProps {
-    geography: any
+    geography: unknown
     className?: string
-    style?: any
+    style?: Record<string, unknown>
     fill?: string
     stroke?: string
     onClick?: (event: React.MouseEvent<SVGPathElement, MouseEvent>) => void
@@ -14,18 +14,18 @@ declare module 'react-simple-maps' {
   }
 
   export const ComposableMap: React.FC<{
-    projection?: string | any
-    projectionConfig?: any
+    projection?: string | unknown
+    projectionConfig?: unknown
     width?: number
     height?: number
     className?: string
-    style?: any
+    style?: Record<string, unknown>
     children?: React.ReactNode
   }>
 
   export const Geographies: React.FC<{
-    geography: string | any
-    children?: (props: { geographies: any[] }) => React.ReactNode
+    geography: string | unknown
+    children?: (props: { geographies: unknown[] }) => React.ReactNode
   }>
 
   export const Geography: React.FC<GeographyProps>

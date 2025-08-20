@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 
+// Minimal shape for react-simple-maps geography objects we use
+type RSMSimpleGeo = {
+  rsmKey: string;
+  properties: { name?: string } & Record<string, unknown>;
+};
+
 type Summary = { totalClicks: number; totalLinks: number };
 type CountItem<TLabel extends string> = { [K in TLabel]: string } & { count: number };
 type TopLink = { code: string; count: number };
@@ -75,14 +81,15 @@ function WorldMapChoropleth({ items }: { items: Array<{ name: string; value: num
     <div className="mt-3">
       <ComposableMap projectionConfig={{ scale: 130 }}>
         <Geographies geography="https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json">
-          {({ geographies }: { geographies: any[] }) =>
-            geographies.map((geo: any) => {
-              const name = (geo.properties as any).name as string;
+          {({ geographies }: { geographies: unknown[] }) =>
+            geographies.map((geo) => {
+              const g = geo as RSMSimpleGeo;
+              const name = g.properties.name ?? '';
               const v = data.get(name?.toLowerCase?.() || '') || 0;
               return (
                 <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
+                  key={g.rsmKey}
+                  geography={g}
                   fill={v > 0 ? colorFor(v) : 'var(--surface)'}
                   stroke="var(--border)"
                   style={{ default: { outline: 'none' }, hover: { outline: 'none' }, pressed: { outline: 'none' } }}
@@ -401,6 +408,7 @@ function DonutChart({ items, size = 220 }: { items: Array<{ label: string; value
 }
 
 // Horizontal bar chart for ranked lists (e.g., referrers)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function HBarChart({ items }: { items: Array<{ label: string; value: number }> }) {
   const max = Math.max(1, ...items.map(i => i.value));
   return (
@@ -552,6 +560,7 @@ function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: 
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function RankedBars({ items }: { items: Array<{ label: string; count: number }> }) {
   const max = Math.max(1, ...items.map((i) => i.count));
   return (
