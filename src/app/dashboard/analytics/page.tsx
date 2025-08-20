@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 
 type Summary = { totalClicks: number; totalLinks: number };
 type CountItem<TLabel extends string> = { [K in TLabel]: string } & { count: number };
@@ -32,6 +33,71 @@ type AnalyticsData = {
   range?: { days: number };
 };
 
+// Aggregate daily series into weekly/monthly/yearly buckets
+function aggregateSeries(pairs: Array<[string, number]>, granularity: 'daily'|'weekly'|'monthly'|'yearly'): Array<[string, number]> {
+  if (granularity === 'daily') return pairs;
+  const map = new Map<string, number>();
+  for (const [d, v] of pairs) {
+    const date = new Date(d);
+    if (Number.isNaN(date.getTime())) {
+      map.set('Other', (map.get('Other') || 0) + v);
+      continue;
+    }
+    let key = '';
+    if (granularity === 'weekly') {
+      // ISO week key: YYYY-Www
+      const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = tmp.getUTCDay() || 7;
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((tmp as unknown as number) - (yearStart as unknown as number)) / 86400000 + 1) / 7);
+      key = `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
+    } else if (granularity === 'monthly') {
+      key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+    } else {
+      key = String(date.getFullYear());
+    }
+    map.set(key, (map.get(key) || 0) + v);
+  }
+  return Array.from(map.entries()).sort((a,b) => a[0].localeCompare(b[0]));
+}
+
+// Simple world map choropleth using country name counts
+function WorldMapChoropleth({ items }: { items: Array<{ name: string; value: number }> }) {
+  const max = Math.max(1, ...items.map(i => i.value));
+  const data = useMemo(() => new Map(items.map(i => [i.name.toLowerCase(), i.value] as const)), [items]);
+  const colorFor = (val: number) => {
+    const t = val / max; // 0..1
+    const lightness = 92 - t * 52; // 92% -> 40%
+    return `hsl(200 80% ${lightness}%)`;
+  };
+  return (
+    <div className="mt-3">
+      <ComposableMap projectionConfig={{ scale: 130 }}>
+        <Geographies geography="https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json">
+          {({ geographies }: { geographies: any[] }) =>
+            geographies.map((geo: any) => {
+              const name = (geo.properties as any).name as string;
+              const v = data.get(name?.toLowerCase?.() || '') || 0;
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  fill={v > 0 ? colorFor(v) : 'var(--surface)'}
+                  stroke="var(--border)"
+                  style={{ default: { outline: 'none' }, hover: { outline: 'none' }, pressed: { outline: 'none' } }}
+                >
+                  <title>{`${name}: ${v}`}</title>
+                </Geography>
+              );
+            })
+          }
+        </Geographies>
+      </ComposableMap>
+    </div>
+  );
+}
+
  
 
 export default function AnalyticsDashboard() {
@@ -39,6 +105,7 @@ export default function AnalyticsDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [granularity, setGranularity] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
 
   useEffect(() => {
     (async () => {
@@ -63,6 +130,8 @@ export default function AnalyticsDashboard() {
     const entries: Array<[string, number]> = data?.daily ? Object.entries(data.daily) : [];
     return entries.sort((a, b) => a[0].localeCompare(b[0]));
   }, [data]);
+
+  const aggregatedSeries = useMemo(() => aggregateSeries(dailySeries, granularity), [dailySeries, granularity]);
 
   const hourlySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.hourly ? Object.entries(data.hourly) : [];
@@ -124,7 +193,7 @@ export default function AnalyticsDashboard() {
                 <div className="text-xs text-[var(--muted)]">{days}d</div>
               </div>
               {dailyTotal > 0 ? (
-                <LineChart labels={dailySeries.map(([d]) => d)} values={dailySeries.map(([, v]) => v)} height={220} />
+                <LineChart labels={aggregatedSeries.map(([d]) => d)} values={aggregatedSeries.map(([, v]) => v)} height={220} />
               ) : (
                 <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No data</div>
               )}
@@ -164,6 +233,21 @@ export default function AnalyticsDashboard() {
                 <RangeBtn current={days} value={90} onClick={() => setDays(90)} label="90d" />
               </div>
               <div className="mt-3 text-xs text-[var(--muted)]">Daily range applies to charts.</div>
+              <div className="mt-4">
+                <div className="p-0 pb-2 font-medium text-sm">Granularity</div>
+                <div className="inline-flex items-center rounded border p-1 gap-1 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)] text-sm">
+                  {(['daily','weekly','monthly','yearly'] as const).map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setGranularity(g)}
+                      className={`px-3 py-1 rounded ${granularity===g? 'bg-[var(--surface)] border' : ''}`}
+                      title={`Aggregate data ${g}`}
+                    >
+                      {g[0].toUpperCase()+g.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </aside>
           </div>
 
@@ -172,11 +256,9 @@ export default function AnalyticsDashboard() {
             <section className="rounded-xl glass p-5">
               <div className="flex items-center justify-between">
                 <div className="font-medium">Total engagements by location</div>
-                <div className="text-xs text-[var(--muted)]">Map</div>
+                <div className="text-xs text-[var(--muted)]">World Map</div>
               </div>
-              <div className="mt-3 rounded border h-[320px] grid place-items-center text-sm text-[var(--muted)]">
-                World map visualization coming soon
-              </div>
+              <WorldMapChoropleth items={(data?.countries ?? []).map(c => ({ name: c.country, value: c.count }))} />
             </section>
             <section className="rounded-xl glass p-5">
               <div className="flex items-center justify-between">
@@ -234,6 +316,7 @@ function ColumnChart({ items, height = 240 }: { items: Array<{ label: string; va
           return (
             <g key={i}>
               <rect x={x} y={y} width={barWidth} height={bh} rx={2} fill="var(--accent)" />
+              <title>{`${labels[i]}: ${values[i]}`}</title>
               {/* value label above bar (optional) */}
               {/* <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" className="tabular-nums" fontSize={11} fill="var(--foreground)">{it.value}</text> */}
               <text x={x + barWidth / 2} y={h - 8} textAnchor="middle" fontSize={11} fill="var(--foreground)">{labels[i]}</text>
@@ -259,9 +342,14 @@ function LineChart({ labels, values, height = 200 }: { labels: string[]; values:
     <div className="overflow-x-auto">
       <svg width={w} height={h} className="block">
         <rect x={0} y={0} width={w} height={h} fill="transparent" />
-        <path d={d} fill="none" stroke="var(--accent)" strokeWidth={2} />
+        <path d={d} fill="none" stroke="var(--accent)" strokeWidth={2} >
+          <title>Total engagements over time</title>
+        </path>
         {pts.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={3} fill="var(--accent)" />
+          <g key={i}>
+            <circle cx={x} cy={y} r={3} fill="var(--accent)" />
+            <title>{`${labels[i]}: ${values[i]}`}</title>
+          </g>
         ))}
       </svg>
     </div>
@@ -289,7 +377,11 @@ function DonutChart({ items, size = 220 }: { items: Array<{ label: string; value
           const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
           const large = end - start > Math.PI ? 1 : 0;
           const path = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
-          return <path key={i} d={path} stroke={colors[i % colors.length]} strokeWidth={18} fill="none" />;
+          return (
+            <path key={i} d={path} stroke={colors[i % colors.length]} strokeWidth={18} fill="none">
+              <title>{`${it.label}: ${it.value}`}</title>
+            </path>
+          );
         })}
         <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={18} fill="var(--foreground)">
           {total}
@@ -297,7 +389,7 @@ function DonutChart({ items, size = 220 }: { items: Array<{ label: string; value
       </svg>
       <ul className="text-sm space-y-1">
         {items.map((it, i) => (
-          <li key={i} className="flex items-center gap-2">
+          <li key={i} className="flex items-center gap-2" title={`${it.label}: ${it.value}`}>
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ['#14b8a6','#60a5fa','#f59e0b','#a78bfa','#22c55e','#f97316'][i % 6] }} />
             <span className="min-w-[96px]">{it.label}</span>
             <span className="tabular-nums ml-auto">{it.value}</span>
@@ -314,7 +406,7 @@ function HBarChart({ items }: { items: Array<{ label: string; value: number }> }
   return (
     <ul className="space-y-2">
       {items.map((it, i) => (
-        <li key={i} className="flex items-center gap-3">
+        <li key={i} className="flex items-center gap-3" title={`${it.label}: ${it.value}`}>
           <span className="w-32 truncate" title={it.label}>{it.label}</span>
           <div className="flex-1 h-3 rounded bg-[color-mix(in_oklab,var(--surface)_85%,var(--foreground))]">
             <div className="h-full rounded bg-[var(--accent)]" style={{ width: `${(it.value / max) * 100}%` }} />
@@ -401,7 +493,7 @@ function RangeBtn({ current, value, label, onClick }: { current: 7 | 30 | 90; va
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-xl glass p-5">
+    <div className="rounded-xl glass p-5" title={`${label}: ${value}`}>
       <div className="text-sm text-[var(--muted)]">{label}</div>
       <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
     </div>
