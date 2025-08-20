@@ -29,19 +29,21 @@ type AnalyticsData = {
   referrerDomains: ReferrerDomain[];
   regions: Region[];
   cities: City[];
+  range?: { days: number };
 };
 
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [days, setDays] = useState<7 | 30 | 90>(30);
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
-        const res = await fetch("/api/analytics", {
+        const res = await fetch(`/api/analytics?days=${days}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const payload: unknown = await res.json();
@@ -53,7 +55,7 @@ export default function AnalyticsDashboard() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [days]);
 
   const dailySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.daily ? Object.entries(data.daily) : [];
@@ -79,6 +81,11 @@ export default function AnalyticsDashboard() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Analytics</h1>
+        <div className="flex items-center gap-2">
+          <RangeBtn current={days} value={7} onClick={() => setDays(7)} label="7d" />
+          <RangeBtn current={days} value={30} onClick={() => setDays(30)} label="30d" />
+          <RangeBtn current={days} value={90} onClick={() => setDays(90)} label="90d" />
+        </div>
       </header>
 
       {loading ? (
@@ -94,11 +101,11 @@ export default function AnalyticsDashboard() {
           </div>
 
           <section className="rounded-xl glass p-5">
-            <div className="p-0 pb-3 font-medium">Clicks over time (30 days)</div>
+            <div className="p-0 pb-3 font-medium">Clicks over time ({days} days)</div>
             {dailyTotal > 0 ? (
               <DailyBars fromPairs={dailySeries} height={120} />
             ) : (
-              <div className="text-sm text-[var(--muted)] h-[120px] flex items-center justify-center">No clicks in the last 30 days</div>
+              <div className="text-sm text-[var(--muted)] h-[120px] flex items-center justify-center">No clicks in the selected period</div>
             )}
           </section>
 
@@ -174,6 +181,25 @@ export default function AnalyticsDashboard() {
         </>
       )}
     </div>
+  );
+}
+
+function RangeBtn({ current, value, label, onClick }: { current: 7 | 30 | 90; value: 7 | 30 | 90; label: string; onClick: () => void }) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-3 h-8 rounded-md text-sm border"
+      style={{
+        color: active ? 'var(--background)' : 'var(--foreground)',
+        background: active ? 'var(--accent)' : 'transparent',
+        borderColor: active ? 'transparent' : 'var(--border)'
+      }}
+      aria-pressed={active}
+    >
+      {label}
+    </button>
   );
 }
 

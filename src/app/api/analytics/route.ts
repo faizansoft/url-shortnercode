@@ -34,6 +34,12 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // Read optional range for daily buckets
+    const url = new URL(req.url)
+    const daysParam = url.searchParams.get('days')
+    const allowed = new Set(['7','30','90'])
+    const days = allowed.has(daysParam ?? '') ? Number(daysParam) : 30
+
     // Get user's links
     const { data: links, error: linksErr } = await supabaseServer
       .from('links')
@@ -102,10 +108,10 @@ export async function GET(req: NextRequest) {
     const totalClicks = clicks.length
     const totalLinks = links?.length ?? 0
 
-    // Daily for last 30 days
+    // Daily for last N days (7/30/90)
     const dayKey = (d: Date) => d.toISOString().slice(0, 10)
     const daily: Record<string, number> = {}
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < days; i++) {
       const d = new Date()
       d.setDate(d.getDate() - i)
       daily[dayKey(d)] = 0
@@ -246,6 +252,7 @@ export async function GET(req: NextRequest) {
       referrerDomains: referrerDomains,
       hourly,
       weekdays,
+      range: { days },
       diagnostics: { resolvedUserId: user_id, linkCount: linkIds.length, clickCount: totalClicks },
     })
   } catch (e: unknown) {
