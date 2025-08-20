@@ -86,13 +86,12 @@ export default function LinksIndexPage() {
                   if (!cancelled) setQrDataUrl(pngDataUrl);
                   // Auto-backfill thumbnail in background
                   try {
-                    const resBlob = await fetch(pngDataUrl);
-                    const blob = await resBlob.blob();
+                    const blob = dataUrlToBlob(pngDataUrl);
                     const uid = data.session?.user?.id || '';
                     if (uid) {
                       const bucket = 'qr-thumbs';
                       const path = `thumbs/${uid}/${code}.png`;
-                      const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+                      const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '31536000' });
                       if (!up.error) {
                         const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
                         const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
@@ -135,11 +134,10 @@ export default function LinksIndexPage() {
           const uid = data.session?.user?.id || '';
           if (uid && token) {
             const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
-            const resBlob = await fetch(pngDataUrl);
-            const blob = await resBlob.blob();
+            const blob = dataUrlToBlob(pngDataUrl);
             const bucket = 'qr-thumbs';
             const path = `thumbs/${uid}/${code}.png`;
-            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '31536000' });
             if (!up.error) {
               const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
               const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
@@ -410,6 +408,18 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
   }
 }
 
+// Convert a data URL (e.g., PNG) into a Blob without refetching
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [meta, base64] = dataUrl.split(',');
+  const mimeMatch = /data:([^;]+);/.exec(meta || '');
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64 || '');
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
   async function handleDownloadPngFromPreview() {
     try {
       if (!qrDataUrl || !qrFor) return;
@@ -578,10 +588,10 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
                 <>
                   {/^https?:/i.test(qrDataUrl)
                     ? (
-                        <img src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" loading="lazy" decoding="async" />
+                        <img src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" loading="lazy" decoding="async" fetchPriority="low" sizes="208px" />
                       )
                     : (
-                        <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" />
+                        <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" loading="lazy" />
                       )}
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <div className="flex gap-2">

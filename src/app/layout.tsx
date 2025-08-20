@@ -29,11 +29,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const withProto = /^https?:\/\//i.test(raw) ? raw : (raw ? `https://${raw}` : '');
+  const supabaseOrigin = (() => {
+    try { return withProto ? new URL(withProto).origin : ''; } catch { return ''; }
+  })();
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Performance hints for Supabase assets (thumbnails, logos) */}
+        {supabaseOrigin && (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        )}
         {children}
       </body>
     </html>

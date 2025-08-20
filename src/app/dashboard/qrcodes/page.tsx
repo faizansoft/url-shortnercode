@@ -37,6 +37,7 @@ export default function QRCodesPage() {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
+        const uid = data.session?.user?.id || '';
         const res = await fetch("/api/links", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -56,8 +57,6 @@ export default function QRCodesPage() {
             // Try to fetch saved style for this short_code
             let styledDataUrl: string | null = null;
             try {
-              const { data } = await supabaseClient.auth.getSession();
-              const token = data.session?.access_token;
               if (token) {
                 const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(it.short_code)}` , { headers: { Authorization: `Bearer ${token}` } });
                 if (resStyle.ok) {
@@ -75,14 +74,11 @@ export default function QRCodesPage() {
                         styledDataUrl = pngDataUrl;
                         // Auto-backfill: create/upload PNG thumbnail, then update options
                         try {
-                          const resBlob = await fetch(pngDataUrl);
-                          const blob = await resBlob.blob();
-                          const { data: sess } = await supabaseClient.auth.getSession();
-                          const uid = sess.session?.user?.id || '';
+                          const blob = dataUrlToBlob(pngDataUrl);
                           if (uid) {
                             const bucket = 'qr-thumbs';
                             const path = `thumbs/${uid}/${it.short_code}.png`;
-                            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '3600' });
+                            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '31536000' });
                             if (!up.error) {
                               const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
                               const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
@@ -95,7 +91,7 @@ export default function QRCodesPage() {
                                     method: 'POST',
                                     headers: {
                                       'Content-Type': 'application/json',
-                                      'Authorization': `Bearer ${sess.session?.access_token ?? ''}`,
+                                      'Authorization': `Bearer ${token}`,
                                     },
                                     body: JSON.stringify({ short_code: it.short_code, options: { ...(options as object), thumbnailUrl: thumbUrl } }),
                                   });
@@ -206,10 +202,10 @@ async function handleDownloadPng(shortUrl: string, code: string) {
                 {it.qr_data_url ? (
                   /^https?:/i.test(it.qr_data_url)
                     ? (
-                        <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" loading="lazy" decoding="async" />
+                        <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" loading="lazy" decoding="async" fetchPriority="low" sizes="160px" />
                       )
                     : (
-                        <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" />
+                        <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" loading="lazy" />
                       )
                 ) : (
                   <div className="w-40 h-40 grid place-items-center text-sm text-[var(--muted)]">QR</div>
@@ -577,4 +573,16 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+// Convert a data URL (e.g., PNG) into a Blob without refetching
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [meta, base64] = dataUrl.split(',');
+  const mimeMatch = /data:([^;]+);/.exec(meta || '');
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(base64 || '');
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
