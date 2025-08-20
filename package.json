@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cf:build": "npx @cloudflare/next-on-pages@latest build",
+    "cf:preview": "npx wrangler pages dev .vercel/output/static"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

@@ -1,0 +1,14 @@
+name = "url-shortner"
+compatibility_date = "2024-09-23"
+
+# Next on Pages outputs to .vercel/output. For Cloudflare Pages, serve the static dir below.
+pages_build_output_dir = ".vercel/output/static"
+
+# Enable Node.js compatibility for any libraries that expect Node APIs.
+compatibility_flags = ["nodejs_compat"]
+
+# Define environment bindings here if you want to mirror Pages project vars locally.
+# These are optional; in production set them in the Cloudflare Pages dashboard.
+# [vars]
+# NEXT_PUBLIC_SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+# SUPABASE_SERVICE_ROLE_KEY = "YOUR_SERVICE_ROLE_KEY"

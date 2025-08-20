@@ -20,6 +20,8 @@ export default function QRCodesPage() {
   const [items, setItems] = useState<QRItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 24;
   // Fixed look: no theme-based color changes
   // All customizer state removed in favor of dedicated page
 
@@ -70,7 +72,7 @@ export default function QRCodesPage() {
                       // Fallback: generate styled SVG, rasterize to PNG for immediate UI
                       const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
                       if (svg) {
-                        const pngDataUrl = await rasterizeSvgToPng(svg, 256);
+                        const pngDataUrl = await rasterizeSvgToPng(svg, 128);
                         styledDataUrl = pngDataUrl;
                         // Auto-backfill: create/upload PNG thumbnail, then update options
                         try {
@@ -115,7 +117,7 @@ export default function QRCodesPage() {
                   const opts = JSON.parse(raw);
                   if (opts && typeof opts === 'object') {
                     const svg = await generateStyledSvgString(it.short_url, opts as SavedOptions);
-                    if (svg) styledDataUrl = await rasterizeSvgToPng(svg, 256);
+                    if (svg) styledDataUrl = await rasterizeSvgToPng(svg, 128);
                   }
                 }
               } catch {}
@@ -191,7 +193,7 @@ async function handleDownloadPng(shortUrl: string, code: string) {
         <div className="p-4 text-sm text-[var(--muted)]" aria-live="polite">No links yet. Create your first one to generate a QR code.</div>
       ) : (
         <div className="grid auto-rows-fr gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((it) => (
+          {items.slice((page-1)*pageSize, page*pageSize).map((it) => (
             <div key={it.short_code} className="rounded-xl glass p-5 flex flex-col gap-3 h-full">
               <div className="flex items-center justify-between">
                 <div className="font-mono text-sm">/{it.short_code}</div>
@@ -202,13 +204,13 @@ async function handleDownloadPng(shortUrl: string, code: string) {
                 {it.qr_data_url ? (
                   /^https?:/i.test(it.qr_data_url)
                     ? (
-                        <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" loading="lazy" decoding="async" fetchPriority="low" sizes="160px" />
+                        <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={128} height={128} className="w-32 h-32" loading="lazy" decoding="async" fetchPriority="low" sizes="128px" />
                       )
                     : (
-                        <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={160} height={160} className="w-40 h-40" loading="lazy" />
+                        <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={128} height={128} className="w-32 h-32" loading="lazy" />
                       )
                 ) : (
-                  <div className="w-40 h-40 grid place-items-center text-sm text-[var(--muted)]">QR</div>
+                  <div className="w-32 h-32 grid place-items-center text-sm text-[var(--muted)]">QR</div>
                 )}
               </div>
               <div className="mt-auto pt-1 grid grid-cols-3 gap-2">
@@ -257,6 +259,14 @@ async function handleDownloadPng(shortUrl: string, code: string) {
         </div>
       )}
 
+      {/* Simple Pagination Controls */}
+      {!loading && !error && items.length > pageSize && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button className="btn btn-secondary h-9" onClick={() => setPage((p) => Math.max(1, p-1))} disabled={page === 1}>Prev</button>
+          <div className="text-sm">Page {page} of {Math.max(1, Math.ceil(items.length / pageSize))}</div>
+          <button className="btn btn-secondary h-9" onClick={() => setPage((p) => Math.min(Math.ceil(items.length / pageSize), p+1))} disabled={page >= Math.ceil(items.length / pageSize)}>Next</button>
+        </div>
+      )}
     </div>
   );
 }

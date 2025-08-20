@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { generateShortCode, isValidUrl } from '@/lib/shortCode'
 
+export const runtime = 'edge'
+
 export async function POST(req: NextRequest) {
   try {
     const { target_url, code } = await req.json()
@@ -147,7 +149,10 @@ export async function GET(req: NextRequest) {
         .slice(0, 10)
         .map(([referrer, count]) => ({ referrer, count }))
 
-      return NextResponse.json({ link, clicks: clicks.slice(0, 20), daily, topReferrers })
+      return NextResponse.json(
+        { link, clicks: clicks.slice(0, 20), daily, topReferrers },
+        { headers: { 'Cache-Control': 'no-store' } }
+      )
     }
 
     // list recent links for the authenticated user, else public (none)
@@ -159,9 +164,12 @@ export async function GET(req: NextRequest) {
       .select('short_code, target_url, created_at')
       .eq('user_id', user_id)
       .order('created_at', { ascending: false })
-      .limit(20)
+      .limit(120)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ links: links ?? [] })
+    return NextResponse.json(
+      { links: links ?? [] },
+      { headers: { 'Cache-Control': 'private, max-age=15' } }
+    )
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

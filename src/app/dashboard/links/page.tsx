@@ -82,7 +82,7 @@ export default function LinksIndexPage() {
               const svgText = await generateStyledSvgString(qrFor, (options || {} as SavedOptions));
               if (svgText) {
                 try {
-                  const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
+                  const pngDataUrl = await rasterizeSvgToPng(svgText, 128);
                   if (!cancelled) setQrDataUrl(pngDataUrl);
                   // Auto-backfill thumbnail in background
                   try {
@@ -588,10 +588,10 @@ function dataUrlToBlob(dataUrl: string): Blob {
                 <>
                   {/^https?:/i.test(qrDataUrl)
                     ? (
-                        <img src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" loading="lazy" decoding="async" fetchPriority="low" sizes="208px" />
+                        <img src={qrDataUrl} alt="QR" width={128} height={128} className="w-32 h-32" loading="lazy" decoding="async" fetchPriority="low" sizes="128px" />
                       )
                     : (
-                        <Image src={qrDataUrl} alt="QR" width={200} height={200} className="w-52 h-52" loading="lazy" />
+                        <Image src={qrDataUrl} alt="QR" width={128} height={128} className="w-32 h-32" loading="lazy" />
                       )}
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <div className="flex gap-2">

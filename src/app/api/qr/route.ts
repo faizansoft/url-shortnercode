@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 
+export const runtime = 'edge'
+
 // Table expected:
 // create table qr_styles (
 //   id uuid primary key default gen_random_uuid(),
@@ -22,11 +24,11 @@ export async function GET(req: NextRequest) {
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.slice('Bearer '.length)
       : undefined
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
 
     const { data: authData } = await supabaseServer.auth.getUser(token)
     const user_id = authData?.user?.id
-    if (!user_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
 
     const { data, error } = await supabaseServer
       .from('qr_styles')
@@ -38,12 +40,18 @@ export async function GET(req: NextRequest) {
     if (error) {
       // If table missing, respond with empty options but note
       if (error.message?.toLowerCase().includes('relation') && error.message?.toLowerCase().includes('does not exist')) {
-        return NextResponse.json({ options: null, warning: 'qr_styles table not configured' }, { status: 200 })
+        return NextResponse.json(
+          { options: null, warning: 'qr_styles table not configured' },
+          { status: 200, headers: { 'Cache-Control': 'private, max-age=30' } }
+        )
       }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ options: data?.options ?? null })
+    return NextResponse.json(
+      { options: data?.options ?? null },
+      { headers: { 'Cache-Control': 'private, max-age=30' } }
+    )
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
     const short_code = typeof body?.short_code === 'string' ? body.short_code.trim() : ''
     const options = body?.options
     if (!short_code || typeof options !== 'object') {
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
     }
 
     // Auth
@@ -77,14 +85,14 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       if (error.message?.toLowerCase().includes('relation') && error.message?.toLowerCase().includes('does not exist')) {
-        return NextResponse.json({ ok: false, warning: 'qr_styles table not configured' })
+        return NextResponse.json({ ok: false, warning: 'qr_styles table not configured' }, { headers: { 'Cache-Control': 'no-store' } })
       }
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: error.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
   }
 }
