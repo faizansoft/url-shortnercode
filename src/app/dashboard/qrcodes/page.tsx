@@ -343,8 +343,21 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     const perfMode = !!saved?.perfMode;
     const dotsType: DotsType | undefined = saved?.dotsType;
     const normHex = (c: string) => c.trim().toLowerCase();
+    const hexToRgb = (hex: string) => {
+      const h = hex.replace('#','');
+      const bigint = parseInt(h.length === 3 ? h.split('').map(x=>x+x).join('') : h, 16);
+      return { r: (bigint>>16)&255, g: (bigint>>8)&255, b: bigint&255 };
+    }
+    const luminance = (hex: string) => {
+      const {r,g,b} = hexToRgb(hex);
+      const a = [r,g,b].map(v=>{ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055, 2.4) }) as [number, number, number];
+      return 0.2126*a[0] + 0.7152*a[1] + 0.0722*a[2];
+    }
     const baseDotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
-    const safeDotsColor = normHex(baseDotsColor) === normHex(saved?.bgColor ?? '') ? '#0b1220' : baseDotsColor;
+    const rawBgColor = typeof saved?.bgColor === 'string' ? saved.bgColor : '#ffffff';
+    const same = normHex(baseDotsColor) === normHex(rawBgColor);
+    const contrastDots = luminance(rawBgColor) > 0.5 ? '#000000' : '#ffffff';
+    const safeDotsColor = same ? contrastDots : baseDotsColor;
     const dotsGradientOn = !!saved?.dotsGradientOn;
     const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
     const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
@@ -355,7 +368,7 @@ async function generateStyledSvgDataUrl(data: string, saved: SavedOptions): Prom
     const cornerDotType = saved?.cornerDotType ?? 'dot';
     const cornerDotColor = typeof saved?.cornerDotColor === 'string' ? saved.cornerDotColor : '#0b1220';
 
-    const bgColor = typeof saved?.bgColor === 'string' ? saved.bgColor : '#ffffff';
+    const bgColor = rawBgColor;
     const bgGradientOn = !!saved?.bgGradientOn;
     const bgGradA = typeof saved?.bgGradA === 'string' ? saved.bgGradA : '#ffffff';
     const bgGradB = typeof saved?.bgGradB === 'string' ? saved.bgGradB : '#e2e8f0';
