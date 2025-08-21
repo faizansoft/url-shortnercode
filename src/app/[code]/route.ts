@@ -33,7 +33,7 @@ export async function GET(
   // Fire-and-forget click log (don’t block redirect)
   const ua = _req.headers.get('user-agent') ?? null
   const ref = _req.headers.get('referer') ?? null
-  const ip = _req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+  const ip = getClientIp(_req)
 
   const refDomain = (() => {
     if (!ref) return null
@@ -110,6 +110,35 @@ function parseUA(ua: string | null): { device: string | null; os: string | null;
   return { device, os, browser }
 }
 
+// Extract best-effort client IP from common proxy/CDN headers
+function getClientIp(req: NextRequest): string | null {
+  const hdr = (k: string) => req.headers.get(k) || req.headers.get(k.toLowerCase())
+  const first = (v: string | null) => v?.split(',')[0]?.trim() || null
+  const parseForwarded = (v: string | null) => {
+    if (!v) return null
+    // Example: for="203.0.113.43:47062";proto=https;by="203.0.113.43"
+    // We extract the first for= token's IP
+    const m = v.match(/for=\"?\[?([^\];\"]+)/i)
+    if (!m) return null
+    const candidate = m[1].split(':')[0]
+    return candidate || null
+  }
+  // Priority: CF-Connecting-IP, True-Client-IP, X-Real-IP, X-Forwarded-For
+  const candidates = [
+    hdr('CF-Connecting-IP'),
+    hdr('True-Client-IP'),
+    hdr('X-Client-IP'),
+    hdr('X-Real-IP'),
+    first(hdr('X-Forwarded-For')),
+    parseForwarded(hdr('Forwarded')),
+  ].filter(Boolean) as string[]
+  const ip = candidates[0] || null
+  if (!ip) return null
+  // Ignore obvious private/local addresses to avoid resolving server location
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|127\.|::1|fc00:|fe80:)/i.test(ip)) return null
+  return ip
+}
+
 // Resolve geo using a single provider (ipapi.co) for consistency
 async function resolveGeo(
   ip: string | null,
@@ -122,7 +151,10 @@ async function resolveGeo(
       clearTimeout(t)
       return { country: null, region: null, city: null }
     }
-    const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store', signal: controller.signal })
+    const key = (typeof process !== 'undefined' ? process.env.IPAPI_KEY : undefined) || undefined
+    const url = new URL(`https://ipapi.co/${encodeURIComponent(ip)}/json/`)
+    if (key) url.searchParams.set('key', key)
+    const resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
     clearTimeout(t)
     if (!resp.ok) return { country: null, region: null, city: null }
     const j: unknown = await resp.json()
