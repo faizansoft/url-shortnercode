@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabaseServer'
 import type { User } from '@supabase/supabase-js'
 
-// Use Node.js runtime for admin operations (auth.admin, etc.)
-export const runtime = 'nodejs'
+// Run on Edge runtime for Cloudflare Pages
+export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
 // Simple guard: only allow a single operator account (ADMIN_EMAIL)
