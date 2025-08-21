@@ -51,7 +51,24 @@ export async function GET(
 
   const parsedUA = parseUA(ua)
   const cfGeo = getCloudflareGeo(_req)
-  const geo = cfGeo ?? (await resolveGeo(ip))
+  // Start with Cloudflare geo; if region/city missing and token available, merge ipinfo fallback
+  let geo = cfGeo as { country: string | null; region: string | null; city: string | null } | null
+  let mergedFrom: 'ipinfo' | null = null
+  const hasMissingRC = !cfGeo || cfGeo.region == null || cfGeo.city == null
+  const tokenForMerge = (typeof process !== 'undefined' ? process.env.IPINFO_TOKEN : undefined) || undefined
+  if (hasMissingRC && tokenForMerge) {
+    const ipinfo = await resolveGeo(ip)
+    if (!geo) geo = ipinfo
+    else {
+      geo = {
+        country: geo.country ?? ipinfo.country,
+        region: geo.region ?? ipinfo.region,
+        city: geo.city ?? ipinfo.city,
+      }
+    }
+    mergedFrom = 'ipinfo'
+  }
+  if (!geo) geo = { country: null, region: null, city: null }
 
   if (geoDebug) {
     const hdr = (k: string) => _req.headers.get(k) || _req.headers.get(k.toLowerCase())
@@ -63,8 +80,8 @@ export async function GET(
     const t = setTimeout(() => controller.abort(), 4500)
     let resp: Response | null = null
     let fetchError: { name: string; message: string } | null = null
-    // Only attempt ipinfo fetch in debug when Cloudflare geo is missing and token exists
-    if (!cfGeo && token) {
+    // Attempt ipinfo fetch in debug when region/city missing and token exists
+    if ((!(cfGeo && cfGeo.region && cfGeo.city)) && token) {
       try {
         // Cloudflare Edge does not implement RequestInit.cache; omit it
         resp = await fetch(url.toString(), { signal: controller.signal })
@@ -82,7 +99,7 @@ export async function GET(
     }
     return NextResponse.json({
       debug: true,
-      provider: cfGeo ? 'cloudflare' : 'ipinfo.io',
+      provider: cfGeo ? (mergedFrom ? 'cloudflare+ipinfo' : 'cloudflare') : 'ipinfo.io',
       extractedIp: ip,
       headers: {
         'CF-Connecting-IP': hdr('CF-Connecting-IP'),
@@ -95,6 +112,7 @@ export async function GET(
       ua,
       geo,
       cfGeo,
+      mergedFrom,
       providerStatus,
       providerJson,
       fetchError,
