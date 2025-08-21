@@ -50,13 +50,18 @@ export async function GET(
   })()
 
   const parsedUA = parseUA(ua)
-  const geo = await getCloudflareGeo(_req)
+  let geo = await getCloudflareGeo(_req)
+  // Optional enrichment via external API on Edge when Cloudflare data is incomplete
+  if (!geo || !(geo.country && geo.region && geo.city)) {
+    const enriched = await enrichGeoViaApi(ip, geo)
+    if (enriched) geo = enriched
+  }
 
   if (geoDebug) {
     const hdr = (k: string) => _req.headers.get(k) || _req.headers.get(k.toLowerCase())
     return NextResponse.json({
       debug: true,
-      provider: 'cloudflare',
+      provider: 'cloudflare+api',
       extractedIp: ip,
       headers: {
         'CF-Connecting-IP': hdr('CF-Connecting-IP'),
@@ -197,6 +202,42 @@ async function getCloudflareGeo(
   // Return whatever we have from Cloudflare headers/context
   if (country || region || city) return { country, region, city }
   return null
+}
+
+// Edge-safe enrichment using ip2location.io API (only if IP2LOCATION_API_KEY is present)
+async function enrichGeoViaApi(
+  ip: string | null,
+  base: { country: string | null; region: string | null; city: string | null } | null,
+): Promise<{ country: string | null; region: string | null; city: string | null } | null> {
+  try {
+    const apiKey = process.env.IP2LOCATION_API_KEY
+    if (!apiKey || !ip) return base
+    const needs = !base || !(base.country && base.region && base.city)
+    if (!needs) return base
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 1500)
+    try {
+      const url = `https://api.ip2location.io/?key=${encodeURIComponent(apiKey)}&ip=${encodeURIComponent(ip)}&format=json`
+      const res = await fetch(url, { signal: controller.signal, headers: { 'accept': 'application/json' } })
+      if (!res.ok) return base
+      const j = await res.json() as Record<string, unknown>
+      const country = typeof j['country_code'] === 'string' ? (j['country_code'] as string) : null
+      const region = typeof j['region_name'] === 'string' ? (j['region_name'] as string) : null
+      const city = typeof j['city_name'] === 'string' ? (j['city_name'] as string) : null
+      clearTimeout(timeout)
+      return {
+        country: base?.country || country,
+        region: base?.region || region,
+        city: base?.city || city,
+      }
+    } catch {
+      clearTimeout(timeout)
+      return base
+    }
+  } catch {
+    return base
+  }
 }
 
 // Parse user agent string into { browser, os, device }
