@@ -63,11 +63,15 @@ export async function GET(
     const t = setTimeout(() => controller.abort(), 4500)
     let resp: Response | null = null
     let fetchError: { name: string; message: string } | null = null
-    try {
-      resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
-    } catch (e) {
-      const err = e as Error
-      fetchError = { name: err.name || 'Error', message: err.message || 'unknown error' }
+    // Only attempt ipinfo fetch in debug when Cloudflare geo is missing and token exists
+    if (!cfGeo && token) {
+      try {
+        // Cloudflare Edge does not implement RequestInit.cache; omit it
+        resp = await fetch(url.toString(), { signal: controller.signal })
+      } catch (e) {
+        const err = e as Error
+        fetchError = { name: err.name || 'Error', message: err.message || 'unknown error' }
+      }
     }
     clearTimeout(t)
     let providerStatus: number | null = null
@@ -230,7 +234,12 @@ async function resolveGeo(
     if (token) url.searchParams.set('token', token)
     // If IP is null, ipinfo will resolve the caller (server/CDN POP). This keeps a single provider and avoids nulls.
     if (!ip) console.debug('[geo] client IP missing; using server POP geo (ipinfo)')
-    const resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
+    // If no token, avoid attempting external call on Edge to reduce failures
+    if (!token) {
+      clearTimeout(t)
+      return { country: null, region: null, city: null }
+    }
+    const resp = await fetch(url.toString(), { signal: controller.signal })
     clearTimeout(t)
     if (!resp.ok) {
       console.debug('[geo] ipinfo status', resp.status)
