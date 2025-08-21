@@ -23,8 +23,13 @@ function findDbPath(): { dbPath: string | null; zipFound: string | null } {
   return { dbPath: null, zipFound: null }
 }
 
+// Minimal types for the IP2Location library to avoid explicit any
+type IP2LRecord = { countryShort?: string; region?: string; city?: string }
+interface IP2L { open: (path: string) => void; getAll: (ip: string) => IP2LRecord }
+type IP2LClass = new () => IP2L
+
 // Cache the IP2Location instance
-let ip2l: any | null = null
+let ip2l: IP2L | null = null
 let triedInit = false
 
 // Simple function to get geo data from IP
@@ -50,7 +55,8 @@ export async function getGeoFromIP(ip: string | null): Promise<GeoData> {
             console.warn('[ip2location] No IP2Location .BIN database found in data/. Skipping lookup.')
           }
         } else {
-          ip2l = new (ip2location as any).IP2Location()
+          const IP2LocationCtor = (ip2location as unknown as { IP2Location: IP2LClass }).IP2Location
+          ip2l = new IP2LocationCtor()
           ip2l.open(dbPath)
         }
       } catch (error) {
