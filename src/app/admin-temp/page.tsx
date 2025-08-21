@@ -33,6 +33,12 @@ type Bootstrap = {
   qr_styles: QrStyle[]
 }
 
+type UpdateLinkAction = { action: 'update_link'; id?: string; short_code?: string; target_url?: string }
+type DeleteLinkAction = { action: 'delete_link'; id?: string; short_code?: string }
+type DeleteQrStyleAction = { action: 'delete_qr_style'; user_id: string; short_code: string }
+type ResetPasswordAction = { action: 'reset_password'; user_id: string; new_password: string }
+type AdminAction = UpdateLinkAction | DeleteLinkAction | DeleteQrStyleAction | ResetPasswordAction
+
 export default function AdminTempPage() {
   const supabase = useMemo(() => getSupabaseClient(), [])
   const [loading, setLoading] = useState(true)
@@ -55,8 +61,9 @@ export default function AdminTempPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to load')
       setData(json as Bootstrap)
-    } catch (e: any) {
-      setError(e?.message || 'Error')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -66,7 +73,7 @@ export default function AdminTempPage() {
     fetchAll()
   }, [fetchAll])
 
-  const act = useCallback(async (payload: any) => {
+  const act = useCallback(async (payload: AdminAction) => {
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
@@ -83,8 +90,9 @@ export default function AdminTempPage() {
       if (!res.ok) throw new Error(json?.error || 'Action failed')
       await fetchAll()
       alert('Done')
-    } catch (e: any) {
-      alert(e?.message || 'Error')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error'
+      alert(msg)
     }
   }, [supabase, fetchAll])
 
