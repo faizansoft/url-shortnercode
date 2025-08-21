@@ -189,13 +189,13 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
             <div className="overflow-auto border rounded">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Email</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">ID</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Created</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Last Sign-in</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Reset Password</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Actions</th>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Email</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">ID</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Created</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Last Sign-in</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Reset Password</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -243,12 +243,12 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
             <div className="overflow-auto border rounded">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Short</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Target</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">User</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Created</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Actions</th>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Short</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Target</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">User</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Created</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -310,11 +310,11 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
             <div className="overflow-auto border rounded">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Short</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">User</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Updated</th>
-                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Actions</th>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Short</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">User</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Updated</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -84,8 +84,16 @@ export async function GET(req: NextRequest) {
       .range(qrFrom, qrTo)
     const qr_styles = qrErr ? [] : (qrData ?? [])
 
+    // Strongly type rows to avoid `any` usage
+    type LinkRow = { id: string; short_code: string; target_url: string; user_id: string; created_at: string }
+    type QrRow = { user_id: string; short_code: string; updated_at: string | null }
+    const linksArr: LinkRow[] = (links ?? []) as LinkRow[]
+    const qrArr: QrRow[] = (qr_styles ?? []) as QrRow[]
+
     // Build user email map for displayed items
-    const userIds = Array.from(new Set([...(links ?? []).map(l => l.user_id), ...qr_styles.map(q => q.user_id)].filter(Boolean))) as string[]
+    const userIds = Array.from(new Set([...
+      linksArr.map(l => l.user_id), ...qrArr.map(q => q.user_id)
+    ].filter(Boolean))) as string[]
     const userMap: Record<string, string | null> = {}
     await Promise.all(userIds.map(async (uid) => {
       try {
@@ -96,20 +104,14 @@ export async function GET(req: NextRequest) {
       }
     }))
 
-    const linksOut = (links ?? []).map((l) => {
-      const uid = String((l as any).user_id || '')
-      return {
-        ...l,
-        user_email: uid ? userMap[uid] ?? null : null,
-      }
-    })
-    const qrOut = (qr_styles ?? []).map((q) => {
-      const uid = String((q as any).user_id || '')
-      return {
-        ...q,
-        user_email: uid ? userMap[uid] ?? null : null,
-      }
-    })
+    const linksOut = linksArr.map((l) => ({
+      ...l,
+      user_email: l.user_id ? userMap[l.user_id] ?? null : null,
+    }))
+    const qrOut = qrArr.map((q) => ({
+      ...q,
+      user_email: q.user_id ? userMap[q.user_id] ?? null : null,
+    }))
 
     return NextResponse.json({
       operator: { id: user.id, email: user.email },
