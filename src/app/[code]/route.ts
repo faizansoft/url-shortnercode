@@ -54,9 +54,23 @@ export async function GET(
 
   if (geoDebug) {
     const hdr = (k: string) => _req.headers.get(k) || _req.headers.get(k.toLowerCase())
+    // Also include provider status and raw JSON to diagnose nulls
+    const token = (typeof process !== 'undefined' ? process.env.IPINFO_TOKEN : undefined) || undefined
+    const url = new URL(`https://ipinfo.io/${ip || ''}/json`)
+    if (token) url.searchParams.set('token', token)
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 1200)
+    const resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal }).catch(() => null)
+    clearTimeout(t)
+    let providerStatus: number | null = null
+    let providerJson: unknown = null
+    if (resp) {
+      providerStatus = resp.status
+      try { providerJson = await resp.json() } catch { providerJson = null }
+    }
     return NextResponse.json({
       debug: true,
-      provider: 'ipapi.co',
+      provider: 'ipinfo.io',
       extractedIp: ip,
       headers: {
         'CF-Connecting-IP': hdr('CF-Connecting-IP'),
@@ -68,6 +82,8 @@ export async function GET(
       },
       ua,
       geo,
+      providerStatus,
+      providerJson,
     })
   }
 
@@ -162,30 +178,30 @@ function getClientIp(req: NextRequest): string | null {
   return ip
 }
 
-// Resolve geo using a single provider (ipapi.co) for consistency
+// Resolve geo using a single provider (ipinfo.io) for consistency
 async function resolveGeo(
   ip: string | null,
 ): Promise<{ country: string | null; region: string | null; city: string | null }> {
   try {
     const controller = new AbortController()
     const t = setTimeout(() => controller.abort(), 1200)
-    const key = (typeof process !== 'undefined' ? process.env.IPAPI_KEY : undefined) || undefined
-    const url = new URL(`https://ipapi.co/${encodeURIComponent(ip || '')}/json/`)
-    if (key) url.searchParams.set('key', key)
-    // If IP is null, ipapi will resolve the caller (server/CDN POP). This keeps a single provider and avoids nulls.
-    if (!ip) console.debug('[geo] client IP missing; using server POP geo')
-    const resp = await fetch(ip ? url.toString() : 'https://ipapi.co/json/', { cache: 'no-store', signal: controller.signal })
+    const token = (typeof process !== 'undefined' ? process.env.IPINFO_TOKEN : undefined) || undefined
+    const url = new URL(`https://ipinfo.io/${ip || ''}/json`)
+    if (token) url.searchParams.set('token', token)
+    // If IP is null, ipinfo will resolve the caller (server/CDN POP). This keeps a single provider and avoids nulls.
+    if (!ip) console.debug('[geo] client IP missing; using server POP geo (ipinfo)')
+    const resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
     clearTimeout(t)
     if (!resp.ok) {
-      console.debug('[geo] ipapi status', resp.status)
+      console.debug('[geo] ipinfo status', resp.status)
       return { country: null, region: null, city: null }
     }
     const j: unknown = await resp.json()
     const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
     const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
-    // Use 2-letter code where available for country
-    const country = getStr('country_code') ?? getStr('country') ?? getStr('country_name')
-    const region = getStr('region') ?? getStr('region_code') ?? getStr('region_name')
+    // ipinfo fields: country (ISO2), region (name), city (name)
+    const country = getStr('country')
+    const region = getStr('region')
     const city = getStr('city')
     return { country, region, city }
   } catch {
