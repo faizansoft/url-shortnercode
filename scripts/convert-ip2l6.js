@@ -3,7 +3,7 @@ Usage:
   node scripts/convert-ip2l6.js data/IP2LOCATION-LITE-DB3.IPV6.CSV
 
 Reads IP2Location LITE DB3 IPv6 CSV ("ip_from","ip_to","country_code","country_name","region_name","city_name")
-and writes sharded JSON ranges to public/ip2l6/<b0>/<b1>.json where b0/b1 are the top 16 bits of ip_from.
+and writes sharded JSON ranges to public/ip2l6/<b0>/<b1>/<b2>.json where b0/b1/b2 are the top 24 bits of ip_from.
 Each record is { s: string, e: string, c: string|null, r: string|null, ci: string|null }
 */
 
@@ -44,7 +44,7 @@ function parseCsvLine(line) {
   return res
 }
 
-// Shards map: b0 -> Map(b1 -> Array(records))
+// Shards map: b0 -> Map(b1 -> Map(b2 -> Array(records)))
 const shards = new Map()
 
 async function main() {
@@ -85,24 +85,31 @@ async function main() {
 
     const b0 = Number((s >> 120n) & 0xffn)
     const b1 = Number((s >> 112n) & 0xffn)
+    const b2 = Number((s >> 104n) & 0xffn)
     if (!shards.has(b0)) shards.set(b0, new Map())
-    const m = shards.get(b0)
-    if (!m.has(b1)) m.set(b1, [])
-    m.get(b1).push({ s: s.toString(), e: e.toString(), c: country || null, r: region || null, ci: city || null })
+    const m1 = shards.get(b0)
+    if (!m1.has(b1)) m1.set(b1, new Map())
+    const m2 = m1.get(b1)
+    if (!m2.has(b2)) m2.set(b2, [])
+    m2.get(b2).push({ s: s.toString(), e: e.toString(), c: country || null, r: region || null, ci: city || null })
   }
 
-  for (const [b0, map2] of shards.entries()) {
-    const dir = path.join(outRoot, String(b0))
-    fs.mkdirSync(dir, { recursive: true })
-    for (const [b1, arr] of map2.entries()) {
-      arr.sort((a, b) => (BigInt(a.s) < BigInt(b.s) ? -1 : 1))
-      const outPath = path.join(dir, `${b1}.json`)
-      fs.writeFileSync(outPath, JSON.stringify(arr))
-      console.log(`Wrote ${outPath} (${arr.length} ranges)`)    
+  for (const [b0, map1] of shards.entries()) {
+    const dir0 = path.join(outRoot, String(b0))
+    fs.mkdirSync(dir0, { recursive: true })
+    for (const [b1, map2] of map1.entries()) {
+      const dir1 = path.join(dir0, String(b1))
+      fs.mkdirSync(dir1, { recursive: true })
+      for (const [b2, arr] of map2.entries()) {
+        arr.sort((a, b) => (BigInt(a.s) < BigInt(b.s) ? -1 : 1))
+        const outPath = path.join(dir1, `${b2}.json`)
+        fs.writeFileSync(outPath, JSON.stringify(arr))
+        console.log(`Wrote ${outPath} (${arr.length} ranges)`)    
+      }
     }
   }
 
-  console.log('Done. Place public/ip2l6/<b0>/<b1>.json on your host (Pages will serve them).')
+  console.log('Done. Place public/ip2l6/<b0>/<b1>/<b2>.json on your host (Pages will serve them).')
 }
 
 main().catch((e) => {
