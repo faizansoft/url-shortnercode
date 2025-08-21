@@ -30,6 +30,10 @@ export async function GET(
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
 
+  // Debug mode: add ?geo=1 to inspect IP/geo resolution
+  const urlObj = new URL(_req.url)
+  const geoDebug = urlObj.searchParams.get('geo') === '1'
+
   // Fire-and-forget click log (don’t block redirect)
   const ua = _req.headers.get('user-agent') ?? null
   const ref = _req.headers.get('referer') ?? null
@@ -47,6 +51,25 @@ export async function GET(
 
   const parsedUA = parseUA(ua)
   const geo = await resolveGeo(ip)
+
+  if (geoDebug) {
+    const hdr = (k: string) => _req.headers.get(k) || _req.headers.get(k.toLowerCase())
+    return NextResponse.json({
+      debug: true,
+      provider: 'ipapi.co',
+      extractedIp: ip,
+      headers: {
+        'CF-Connecting-IP': hdr('CF-Connecting-IP'),
+        'True-Client-IP': hdr('True-Client-IP'),
+        'X-Client-IP': hdr('X-Client-IP'),
+        'X-Real-IP': hdr('X-Real-IP'),
+        'X-Forwarded-For': hdr('X-Forwarded-For'),
+        Forwarded: hdr('Forwarded'),
+      },
+      ua,
+      geo,
+    })
+  }
 
   // Synchronous logging (await) to ensure write happens on Edge before redirect
   const clickPayload = {
