@@ -86,8 +86,15 @@ export async function GET(req: NextRequest) {
     const typedLinks = (links ?? []) as unknown as LinkRow[]
     for (const l of typedLinks) linkMap.set(l.id, { short_code: l.short_code })
 
-    const getRegion = (r: AnyRow): string | null => (r['region'] ?? r['region_name'] ?? r['subdivision'] ?? null) as string | null
-    const getCity = (r: AnyRow): string | null => (r['city'] ?? r['city_name'] ?? null) as string | null
+    const getRegion = (r: AnyRow): string | null => (
+      r['region'] ?? r['region_name'] ?? r['subdivision'] ?? r['subdivision_name'] ??
+      r['state'] ?? r['state_name'] ?? r['state_code'] ??
+      r['province'] ?? r['province_name'] ??
+      r['regionCode'] ?? r['region_code'] ?? null
+    ) as string | null
+    const getCity = (r: AnyRow): string | null => (
+      r['city'] ?? r['city_name'] ?? r['locality'] ?? r['town'] ?? null
+    ) as string | null
     const getBrowser = (r: AnyRow): string | null => (r['browser'] ?? r['ua_browser'] ?? null) as string | null
     const getOS = (r: AnyRow): string | null => (r['os'] ?? r['ua_os'] ?? null) as string | null
     const getRefDomain = (r: AnyRow): string | null => (r['referrer_domain'] ?? (r as Record<string, unknown>)['referer_domain'] ?? null) as string | null
@@ -96,7 +103,10 @@ export async function GET(req: NextRequest) {
     const strip = (s: string | null): string | null => {
       if (!s) return null;
       const t = String(s).trim();
-      return t.length ? t : null;
+      if (!t.length) return null;
+      const low = t.toLowerCase();
+      if (low === 'unknown' || low === 'n/a' || low === '-') return null;
+      return t;
     };
     const parseDomain = (u: string | null): string | null => {
       const v = strip(u);
@@ -172,8 +182,8 @@ export async function GET(req: NextRequest) {
       const browser = strip(getBrowser(r));
       const os = strip(getOS(r));
       if (!country) anomalies.unknown.country++;
-      if (!region) anomalies.unknown.region++;
-      if (!city) anomalies.unknown.city++;
+      if (country && !region) anomalies.unknown.region++;
+      if (country && !city) anomalies.unknown.city++;
       if (!device) anomalies.unknown.device++;
       if (!browser) anomalies.unknown.browser++;
       if (!os) anomalies.unknown.os++;
