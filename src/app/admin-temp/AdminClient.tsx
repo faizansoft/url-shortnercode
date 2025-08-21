@@ -135,6 +135,7 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
   }, [supabase, fetchAll])
 
   const operatorEmail = data?.operator?.email || null
+  const isAllowed = operatorEmail && allowedEmail ? operatorEmail.toLowerCase() === allowedEmail.toLowerCase() : false
 
   return (
     <div className="p-6 space-y-6">
@@ -147,22 +148,25 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
 
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={fetchAll} className="px-3 py-2 bg-black text-white rounded" disabled={!supabase}>Refresh</button>
-        <button
-          onClick={async () => {
-            const email = prompt('Enter new user email')?.trim()
-            if (!email) return
-            const password = prompt('Enter initial password for ' + email)
-            if (!password) return
-            await act({ action: 'create_user', email, password })
-          }}
-          className="px-3 py-2 bg-emerald-600 text-white rounded disabled:opacity-60"
-          disabled={!supabase}
-        >Add User</button>
+        {isAllowed && (
+          <button
+            onClick={async () => {
+              const email = prompt('Enter new user email')?.trim()
+              if (!email) return
+              const password = prompt('Enter initial password for ' + email)
+              if (!password) return
+              await act({ action: 'create_user', email, password })
+            }}
+            className="px-3 py-2 bg-emerald-600 text-white rounded disabled:opacity-60"
+            disabled={!supabase}
+          >Add User</button>
+        )}
         {loading && <span className="text-gray-500">Loading…</span>}
-        {error && <span className="text-red-600">{error}</span>}
+        {!isAllowed && <span className="text-red-600">Restricted page</span>}
+        {error && isAllowed && <span className="text-red-600">{error}</span>}
       </div>
 
-      {data && (
+      {data && isAllowed && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-3 border rounded">
@@ -344,6 +348,11 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
             </div>
           </section>
         </>
+      )}
+      {!isAllowed && (
+        <div className="p-4 border rounded bg-red-50 text-red-700 text-sm">
+          This page is restricted. Only the configured admin can access admin data and actions.
+        </div>
       )}
     </div>
   )
