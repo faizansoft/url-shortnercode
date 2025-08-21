@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabaseServer'
-import { getGeoFromIP } from '@/lib/ip2location'
 
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
 export async function GET(
@@ -163,7 +162,7 @@ function getClientIp(req: NextRequest): string | null {
   return ip
 }
 
-// Get geo data with Cloudflare as primary and IP2Location as fallback
+// Get geo data from Cloudflare only (Edge-compatible)
 async function getCloudflareGeo(
   req: NextRequest,
 ): Promise<{ country: string | null; region: string | null; city: string | null } | null> {
@@ -195,31 +194,8 @@ async function getCloudflareGeo(
   const region = cfRegion || geoRegion || hRegion || null
   const city = cfCity || geoCity || hCity || null
   
-  // If we have complete data from Cloudflare, return it
-  if (country && region && city) {
-    return { country, region, city }
-  }
-  
-  // If we're missing some geo data, try IP2Location as a fallback
-  const ip = getClientIp(req)
-  if (ip) {
-    try {
-      const ip2lGeo = await getGeoFromIP(ip)
-      return {
-        country: country || ip2lGeo.country,
-        region: region || ip2lGeo.region,
-        city: city || ip2lGeo.city
-      }
-    } catch (error) {
-      console.error('IP2Location fallback failed:', error)
-    }
-  }
-  
-  // Return whatever we have, even if some fields are null
-  if (country || region || city) {
-    return { country, region, city }
-  }
-  
+  // Return whatever we have from Cloudflare headers/context
+  if (country || region || city) return { country, region, city }
   return null
 }
 
