@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-<<<<<<< HEAD
 import { getSupabaseServer } from '@/lib/supabaseServer'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
-=======
-import { supabaseServer } from '@/lib/supabaseServer'
-
-export const runtime = 'edge'
->>>>>>> 0e1f9ed (Initial commit)
 
 export async function GET(
   _req: NextRequest,
@@ -16,7 +10,6 @@ export async function GET(
 ) {
   const { code } = await ctx.params
   if (!code || code.length < 3) {
-<<<<<<< HEAD
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
 
@@ -24,13 +17,6 @@ export async function GET(
   const supabaseServer = getSupabaseServer()
   type LinkRow = { id: string; target_url: string }
   const { data: linkRaw, error } = await supabaseServer
-=======
-    return NextResponse.redirect(new URL('/_not-found', _req.url), 302)
-  }
-
-  // Find target URL
-  const { data: link, error } = await supabaseServer
->>>>>>> 0e1f9ed (Initial commit)
     .from('links')
     .select('id, target_url')
     .eq('short_code', code)
@@ -39,7 +25,6 @@ export async function GET(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-<<<<<<< HEAD
   const link = (linkRaw ?? null) as LinkRow | null
   if (!link) {
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
@@ -53,21 +38,6 @@ export async function GET(
   const ua = _req.headers.get('user-agent') ?? null
   const ref = _req.headers.get('referer') ?? null
   const ip = getClientIp(_req)
-=======
-  if (!link) {
-    return NextResponse.redirect(new URL('/_not-found', _req.url), 302)
-  }
-
-  // Fire-and-forget click log (don’t block redirect)
-  const ua = _req.headers.get('user-agent') ?? null
-  const ref = _req.headers.get('referer') ?? null
-  const ip = (_req.headers.get('x-nf-client-connection-ip') || _req.headers.get('x-forwarded-for'))?.split(',')[0]?.trim() ?? null
-  // Prefer generic/Cloudflare headers (no Vercel-specific headers)
-  const countryHeader = _req.headers.get('cf-ipcountry')
-  const cityHeader = _req.headers.get('cf-ipcity')
-  const regionHeader = _req.headers.get('cf-region')
-  const netlifyGeo = _req.headers.get('x-nf-geo')
->>>>>>> 0e1f9ed (Initial commit)
 
   const refDomain = (() => {
     if (!ref) return null
@@ -80,7 +50,6 @@ export async function GET(
   })()
 
   const parsedUA = parseUA(ua)
-<<<<<<< HEAD
   let geo = await getCloudflareGeo(_req)
   // Optional enrichment via local shards on Edge when Cloudflare data is incomplete
   const enrichEnabled = (process.env.ENABLE_GEO_ENRICH ?? '1') !== '0'
@@ -145,45 +114,6 @@ export async function GET(
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
   return NextResponse.redirect(targetUrl, 302)
-=======
-  const geo = await resolveGeo(_req, ip, countryHeader, regionHeader, cityHeader, netlifyGeo)
-
-  // Best-effort logging; ignore response (avoid PromiseLike catch typing issue)
-  ;(async () => {
-    const clickPayload = {
-      link_id: link.id,
-      ua,
-      referrer: ref,
-      referrer_domain: refDomain,
-      ip,
-      country: geo.country,
-      city: geo.city,
-      region: geo.region,
-      device: parsedUA.device,
-      os: parsedUA.os,
-      browser: parsedUA.browser,
-      created_at: new Date().toISOString(),
-    }
-    try {
-      console.log('[redirect] inserting click', clickPayload)
-      const { error } = await supabaseServer
-        .from('clicks')
-        .insert(clickPayload)
-      if (error) {
-        console.error('[redirect] click insert error (enhanced)', error)
-        // Fallback minimal insert to avoid losing data entirely
-        const { error: fbErr } = await supabaseServer
-          .from('clicks')
-          .insert({ link_id: link.id, referrer: ref, ip, created_at: clickPayload.created_at })
-        if (fbErr) console.error('[redirect] click insert error (fallback)', fbErr)
-      }
-    } catch (e) {
-      console.error('[redirect] click insert exception', e)
-    }
-  })()
-
-  return NextResponse.redirect(link.target_url, 302)
->>>>>>> 0e1f9ed (Initial commit)
 }
 
 // Minimal user-agent parser to enrich analytics without extra deps
@@ -210,7 +140,6 @@ function parseUA(ua: string | null): { device: string | null; os: string | null;
   return { device, os, browser }
 }
 
-<<<<<<< HEAD
 // Extract best-effort client IP from common proxy/CDN headers
 function getClientIp(req: NextRequest): string | null {
   const hdr = (k: string) => req.headers.get(k) || req.headers.get(k.toLowerCase())
@@ -303,7 +232,8 @@ async function enrichGeoViaApi(
       const mapped = v4ToV6MappedBigInt(v4)
       const b0m = Number((mapped >> 120n) & 0xffn)
       const b1m = Number((mapped >> 112n) & 0xffn)
-      const shard6m = await loadShard6FromRequest(b0m, b1m, reqUrl)
+      const b2m = Number((mapped >> 104n) & 0xffn)
+      const shard6m = await loadShard6FromRequest(b0m, b1m, b2m, reqUrl)
       if (!shard6m || shard6m.length === 0) { lastEnrichment = { attempted: true, ok: false, status: 404, error: 'no shard (v4-mapped)', provider: 'local' }; return base }
       const rec6m = findInRangesBig(shard6m, mapped)
       if (!rec6m) { lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match (v4-mapped)', provider: 'local' }; return base }
@@ -314,7 +244,8 @@ async function enrichGeoViaApi(
     if (v6 != null) {
       const b0 = Number((v6 >> 120n) & 0xffn)
       const b1 = Number((v6 >> 112n) & 0xffn)
-      const shard6 = await loadShard6FromRequest(b0, b1, reqUrl)
+      const b2 = Number((v6 >> 104n) & 0xffn)
+      const shard6 = await loadShard6FromRequest(b0, b1, b2, reqUrl)
       if (!shard6 || shard6.length === 0) { lastEnrichment = { attempted: true, ok: false, status: 404, error: 'shard6 not found', provider: 'local' }; return base }
       const rec6 = findInRangesBig(shard6, v6)
       if (!rec6) { lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match v6', provider: 'local' }; return base }
@@ -408,12 +339,12 @@ function ip6ToBigInt(ip: string): bigint | null {
   }
 }
 
-async function loadShard6FromRequest(b0: number, b1: number, reqUrl: string): Promise<Shard6Rec[] | null> {
-  const key = (b0 << 8) | b1
+async function loadShard6FromRequest(b0: number, b1: number, b2: number, reqUrl: string): Promise<Shard6Rec[] | null> {
+  const key = (b0 << 16) | (b1 << 8) | b2
   const cached = shard6Cache.get(key)
   if (cached) return cached === 'missing' ? null : cached
   try {
-    const res = await fetch(new URL(`/ip2l6/${b0}/${b1}.json`, reqUrl))
+    const res = await fetch(new URL(`/ip2l6/${b0}/${b1}/${b2}.json`, reqUrl))
     if (!res.ok) { shard6Cache.set(key, 'missing'); return null }
     const data = await res.json() as Shard6Rec[]
     shard6Cache.set(key, data)
@@ -443,47 +374,3 @@ function v4ToV6MappedBigInt(v4: number): bigint {
   // upper 96 bits zero, then 0xffff (16 bits), then 32-bit IPv4
   return (0xffffn << 32n) | BigInt(v4 >>> 0)
 }
-=======
-// Resolve geo from generic headers or public IP geolocation API (no Vercel dependency)
-async function resolveGeo(
-  _req: NextRequest,
-  ip: string | null,
-  countryHeader: string | null,
-  regionHeader: string | null,
-  cityHeader: string | null,
-  netlifyGeoHeader: string | null
-): Promise<{ country: string | null; region: string | null; city: string | null }> {
-  // Prefer already provided headers (e.g., Cloudflare)
-  const country = countryHeader ?? null
-  const region = regionHeader ?? null
-  const city = cityHeader ?? null
-  if (country || region || city) return { country, region, city }
-
-  // Netlify: x-nf-geo is a JSON string like { country: "US", subdivision: "CA", city: "San Francisco" }
-  if (netlifyGeoHeader) {
-    try {
-      const g: any = JSON.parse(netlifyGeoHeader)
-      const country = g?.country || g?.country_code || null
-      const region = g?.subdivision || g?.region || null
-      const city = g?.city || null
-      if (country || region || city) return { country, region, city }
-    } catch {}
-  }
-
-  // Fallback: use a lightweight public IP geolocation API if IP is available
-  if (!ip) return { country: null, region: null, city: null }
-  try {
-    // ipapi.co has a permissive free tier with rate limits; replace with your preferred provider if needed
-    const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store' })
-    if (!resp.ok) return { country: null, region: null, city: null }
-    const j: any = await resp.json()
-    return {
-      country: (j && (j.country_name || j.country)) || null,
-      region: (j && (j.region || j.region_code || j.region_name)) || null,
-      city: (j && j.city) || null,
-    }
-  } catch {
-    return { country: null, region: null, city: null }
-  }
-}
->>>>>>> 0e1f9ed (Initial commit)
