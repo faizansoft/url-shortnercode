@@ -308,7 +308,7 @@ const shard6Cache: Map<number, Shard6Rec[] | 'missing'> = new Map()
 
 function ip6ToBigInt(ip: string): bigint | null {
   try {
-    let [head] = ip.split('%') // strip zone index if present
+    const [head] = ip.split('%') // strip zone index if present
     const parts = head.split('::')
     let hextets: string[]
     if (parts.length === 1) {
