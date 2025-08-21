@@ -54,7 +54,7 @@ export async function GET(
   // Optional enrichment via local shards on Edge when Cloudflare data is incomplete
   const enrichEnabled = (process.env.ENABLE_GEO_ENRICH ?? '1') !== '0'
   if (enrichEnabled && (!geo || !(geo.country && geo.region && geo.city))) {
-    const enriched = await enrichGeoViaApi(ip, geo)
+    const enriched = await enrichGeoViaApi(ip, geo, _req.url)
     if (enriched) geo = enriched
   }
 
@@ -210,30 +210,47 @@ async function getCloudflareGeo(
 async function enrichGeoViaApi(
   ip: string | null,
   base: { country: string | null; region: string | null; city: string | null } | null,
+  reqUrl: string,
 ): Promise<{ country: string | null; region: string | null; city: string | null } | null> {
   try {
     if (!ip) return base
     const needs = !base || !(base.country && base.region && base.city)
     if (!needs) return base
-    const ipNum = ipToInt(ip)
-    if (ipNum == null) return base
-    const firstOctet = (ipNum >>> 24) & 0xff
-    const shard = await loadShard(firstOctet)
-    if (!shard || !Array.isArray(shard) || shard.length === 0) {
-      lastEnrichment = { attempted: true, ok: false, status: 404, error: 'shard not found', provider: 'local' }
-      return base
+    // Decide IPv4 vs IPv6
+    const v4 = ipToInt(ip)
+    if (v4 != null) {
+      const firstOctet = (v4 >>> 24) & 0xff
+      const shard = await loadShardFromRequest(firstOctet, reqUrl)
+      if (shard && shard.length > 0) {
+        const rec = findInRanges(shard, v4)
+        if (rec) {
+          lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: rec.c || null, region: rec.r || null, city: rec.ci || null }, provider: 'local' }
+          return { country: base?.country || (rec.c || null), region: base?.region || (rec.r || null), city: base?.city || (rec.ci || null) }
+        }
+      }
+      // Fallback: use IPv6 shards via IPv4-mapped address ::ffff:a.b.c.d if IPv4 shards missing/no match
+      const mapped = v4ToV6MappedBigInt(v4)
+      const b0m = Number((mapped >> 120n) & 0xffn)
+      const b1m = Number((mapped >> 112n) & 0xffn)
+      const shard6m = await loadShard6FromRequest(b0m, b1m, reqUrl)
+      if (!shard6m || shard6m.length === 0) { lastEnrichment = { attempted: true, ok: false, status: 404, error: 'no shard (v4-mapped)', provider: 'local' }; return base }
+      const rec6m = findInRangesBig(shard6m, mapped)
+      if (!rec6m) { lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match (v4-mapped)', provider: 'local' }; return base }
+      lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: rec6m.c || null, region: rec6m.r || null, city: rec6m.ci || null }, provider: 'local' }
+      return { country: base?.country || (rec6m.c || null), region: base?.region || (rec6m.r || null), city: base?.city || (rec6m.ci || null) }
     }
-    const rec = findInRanges(shard, ipNum)
-    if (!rec) {
-      lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match', provider: 'local' }
-      return base
+    const v6 = ip6ToBigInt(ip)
+    if (v6 != null) {
+      const b0 = Number((v6 >> 120n) & 0xffn)
+      const b1 = Number((v6 >> 112n) & 0xffn)
+      const shard6 = await loadShard6FromRequest(b0, b1, reqUrl)
+      if (!shard6 || shard6.length === 0) { lastEnrichment = { attempted: true, ok: false, status: 404, error: 'shard6 not found', provider: 'local' }; return base }
+      const rec6 = findInRangesBig(shard6, v6)
+      if (!rec6) { lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match v6', provider: 'local' }; return base }
+      lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: rec6.c || null, region: rec6.r || null, city: rec6.ci || null }, provider: 'local' }
+      return { country: base?.country || (rec6.c || null), region: base?.region || (rec6.r || null), city: base?.city || (rec6.ci || null) }
     }
-    lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: rec.c || null, region: rec.r || null, city: rec.ci || null }, provider: 'local' }
-    return {
-      country: base?.country || (rec.c || null),
-      region: base?.region || (rec.r || null),
-      city: base?.city || (rec.ci || null),
-    }
+    return base
   } catch {
     lastEnrichment = { attempted: true, ok: false, status: -1 }
     return base
@@ -254,16 +271,6 @@ function ipToInt(ip: string): number | null {
 
 type ShardRec = { s: number; e: number; c?: string | null; r?: string | null; ci?: string | null }
 const shardCache: Map<number, ShardRec[] | 'missing'> = new Map()
-
-async function loadShard(octet: number): Promise<ShardRec[] | null> {
-  const cached = shardCache.get(octet)
-  if (cached) return cached === 'missing' ? null : cached
-  try {
-    const res = await fetch(new URL(`/ip2l/${octet}.json`, 'http://local'))
-    // Above absolute URL won't work on Edge; use request URL base instead at call-site
-  } catch {}
-  return null
-}
 
 // We need request URL to construct proper absolute URL; provide wrapper used in enrich
 async function loadShardFromRequest(octet: number, reqUrl: string): Promise<ShardRec[] | null> {
@@ -294,3 +301,74 @@ function findInRanges(arr: ShardRec[], x: number): ShardRec | null {
 }
 
 // Parse user agent string into { browser, os, device }
+
+// IPv6 support (BigInt-based)
+type Shard6Rec = { s: string; e: string; c?: string | null; r?: string | null; ci?: string | null }
+const shard6Cache: Map<number, Shard6Rec[] | 'missing'> = new Map()
+
+function ip6ToBigInt(ip: string): bigint | null {
+  try {
+    let [head] = ip.split('%') // strip zone index if present
+    const parts = head.split('::')
+    let hextets: string[]
+    if (parts.length === 1) {
+      hextets = parts[0].split(':')
+      if (hextets.length !== 8) return null
+    } else if (parts.length === 2) {
+      const left = parts[0] ? parts[0].split(':') : []
+      const right = parts[1] ? parts[1].split(':') : []
+      const missing = 8 - (left.length + right.length)
+      if (missing < 1) return null
+      hextets = [...left, ...Array(missing).fill('0'), ...right]
+    } else {
+      return null
+    }
+    const nums = hextets.map(h => {
+      if (!h) return 0n
+      const v = BigInt('0x' + h)
+      if (v < 0n || v > 0xffffn) throw new Error('bad')
+      return v
+    })
+    let res = 0n
+    for (let i = 0; i < 8; i++) res = (res << 16n) | nums[i]
+    return res
+  } catch {
+    return null
+  }
+}
+
+async function loadShard6FromRequest(b0: number, b1: number, reqUrl: string): Promise<Shard6Rec[] | null> {
+  const key = (b0 << 8) | b1
+  const cached = shard6Cache.get(key)
+  if (cached) return cached === 'missing' ? null : cached
+  try {
+    const res = await fetch(new URL(`/ip2l6/${b0}/${b1}.json`, reqUrl))
+    if (!res.ok) { shard6Cache.set(key, 'missing'); return null }
+    const data = await res.json() as Shard6Rec[]
+    shard6Cache.set(key, data)
+    return data
+  } catch {
+    shard6Cache.set(key, 'missing')
+    return null
+  }
+}
+
+function findInRangesBig(arr: Shard6Rec[], x: bigint): Shard6Rec | null {
+  let lo = 0, hi = arr.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1
+    const r = arr[mid]
+    const rs = BigInt(r.s)
+    const re = BigInt(r.e)
+    if (x < rs) hi = mid - 1
+    else if (x > re) lo = mid + 1
+    else return r
+  }
+  return null
+}
+
+// Convert IPv4 integer to IPv6-mapped address BigInt (::ffff:a.b.c.d)
+function v4ToV6MappedBigInt(v4: number): bigint {
+  // upper 96 bits zero, then 0xffff (16 bits), then 32-bit IPv4
+  return (0xffffn << 32n) | BigInt(v4 >>> 0)
+}

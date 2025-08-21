@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "ip2l:convert": "node scripts/convert-ip2l.js",
+    "ip2l6:convert": "node scripts/convert-ip2l6.js",
     "cf:build": "npx @cloudflare/next-on-pages@latest",
     "cf:preview": "npx wrangler pages dev .vercel/output/static"
   },
