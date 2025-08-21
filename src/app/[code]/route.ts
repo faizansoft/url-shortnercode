@@ -233,7 +233,8 @@ async function enrichGeoViaApi(
       const b0m = Number((mapped >> 120n) & 0xffn)
       const b1m = Number((mapped >> 112n) & 0xffn)
       const b2m = Number((mapped >> 104n) & 0xffn)
-      const shard6m = await loadShard6FromRequest(b0m, b1m, b2m, reqUrl)
+      const b3m = Number((mapped >> 96n) & 0xffn)
+      const shard6m = await loadShard6FromRequest(b0m, b1m, b2m, b3m, reqUrl)
       if (!shard6m || shard6m.length === 0) { lastEnrichment = { attempted: true, ok: false, status: 404, error: 'no shard (v4-mapped)', provider: 'local' }; return base }
       const rec6m = findInRangesBig(shard6m, mapped)
       if (!rec6m) { lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match (v4-mapped)', provider: 'local' }; return base }
@@ -245,7 +246,8 @@ async function enrichGeoViaApi(
       const b0 = Number((v6 >> 120n) & 0xffn)
       const b1 = Number((v6 >> 112n) & 0xffn)
       const b2 = Number((v6 >> 104n) & 0xffn)
-      const shard6 = await loadShard6FromRequest(b0, b1, b2, reqUrl)
+      const b3 = Number((v6 >> 96n) & 0xffn)
+      const shard6 = await loadShard6FromRequest(b0, b1, b2, b3, reqUrl)
       if (!shard6 || shard6.length === 0) { lastEnrichment = { attempted: true, ok: false, status: 404, error: 'shard6 not found', provider: 'local' }; return base }
       const rec6 = findInRangesBig(shard6, v6)
       if (!rec6) { lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match v6', provider: 'local' }; return base }
@@ -339,18 +341,31 @@ function ip6ToBigInt(ip: string): bigint | null {
   }
 }
 
-async function loadShard6FromRequest(b0: number, b1: number, b2: number, reqUrl: string): Promise<Shard6Rec[] | null> {
-  const key = (b0 << 16) | (b1 << 8) | b2
-  const cached = shard6Cache.get(key)
-  if (cached) return cached === 'missing' ? null : cached
+async function loadShard6FromRequest(b0: number, b1: number, b2: number, b3: number, reqUrl: string): Promise<Shard6Rec[] | null> {
+  // Try 4-level shard first
+  const key4 = (b0 << 24) | (b1 << 16) | (b2 << 8) | b3
+  const cached4 = shard6Cache.get(key4)
+  if (cached4) return cached4 === 'missing' ? null : cached4
   try {
-    const res = await fetch(new URL(`/ip2l6/${b0}/${b1}/${b2}.json`, reqUrl))
-    if (!res.ok) { shard6Cache.set(key, 'missing'); return null }
-    const data = await res.json() as Shard6Rec[]
-    shard6Cache.set(key, data)
-    return data
+    const res4 = await fetch(new URL(`/ip2l6/${b0}/${b1}/${b2}/${b3}.json`, reqUrl))
+    if (res4.ok) {
+      const data4 = await res4.json() as Shard6Rec[]
+      shard6Cache.set(key4, data4)
+      return data4
+    }
+  } catch {}
+  // Fallback to 3-level shard
+  const key3 = (b0 << 16) | (b1 << 8) | b2
+  const cached3 = shard6Cache.get(key3)
+  if (cached3) return cached3 === 'missing' ? null : cached3
+  try {
+    const res3 = await fetch(new URL(`/ip2l6/${b0}/${b1}/${b2}.json`, reqUrl))
+    if (!res3.ok) { shard6Cache.set(key3, 'missing'); return null }
+    const data3 = await res3.json() as Shard6Rec[]
+    shard6Cache.set(key3, data3)
+    return data3
   } catch {
-    shard6Cache.set(key, 'missing')
+    shard6Cache.set(key3, 'missing')
     return null
   }
 }
