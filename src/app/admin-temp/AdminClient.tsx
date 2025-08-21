@@ -17,12 +17,14 @@ type LinkRow = {
   short_code: string
   target_url: string
   user_id: string
+  user_email?: string | null
   created_at: string
 }
 
 type QrStyle = {
   user_id: string
   short_code: string
+  user_email?: string | null
   updated_at?: string | null
 }
 
@@ -142,7 +144,6 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
       <h1 className="text-2xl font-semibold">Temporary Admin Page</h1>
       <div className="text-sm text-gray-600">
         <div>Signed in as: <b>{operatorEmail ?? '—'}</b></div>
-        {allowedEmail ? <div>Allowed admin: <b>{allowedEmail}</b></div> : <div>Allowed admin not configured</div>}
         <div className="mt-2">If you cannot see data, ensure your email matches server-side ADMIN_EMAIL env var.</div>
       </div>
 
@@ -278,7 +279,7 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
                         </div>
                       </td>
                       <td className="p-2">
-                        <div className="font-mono text-xs">{l.user_id}</div>
+                        <div className="text-xs">{l.user_email ?? <span className="font-mono">{l.user_id}</span>}</div>
                       </td>
                       <td className="p-2">{l.created_at?.slice(0, 19).replace('T', ' ')}</td>
                       <td className="p-2">
@@ -320,7 +321,9 @@ export default function AdminClientPage({ allowedEmail }: { allowedEmail: string
                   {data.qr_styles.map((q) => (
                     <tr key={`${q.user_id}-${q.short_code}`} className="border-t">
                       <td className="p-2 font-mono text-xs">{q.short_code}</td>
-                      <td className="p-2 font-mono text-xs">{q.user_id}</td>
+                      <td className="p-2 text-xs">{q.user_email ?? <span className="font-mono">{q.user_id}</span>}</td>
+                      
+                      
                       <td className="p-2">{q.updated_at?.slice(0, 19).replace('T', ' ')}</td>
                       <td className="p-2">
                         <button className="px-2 py-1 text-xs bg-rose-600 text-white rounded" onClick={async () => {

@@ -84,12 +84,39 @@ export async function GET(req: NextRequest) {
       .range(qrFrom, qrTo)
     const qr_styles = qrErr ? [] : (qrData ?? [])
 
+    // Build user email map for displayed items
+    const userIds = Array.from(new Set([...(links ?? []).map(l => l.user_id), ...qr_styles.map(q => q.user_id)].filter(Boolean))) as string[]
+    const userMap: Record<string, string | null> = {}
+    await Promise.all(userIds.map(async (uid) => {
+      try {
+        const res = await supabase.auth.admin.getUserById(uid)
+        userMap[uid] = res.data?.user?.email ?? null
+      } catch {
+        userMap[uid] = null
+      }
+    }))
+
+    const linksOut = (links ?? []).map((l) => {
+      const uid = String((l as any).user_id || '')
+      return {
+        ...l,
+        user_email: uid ? userMap[uid] ?? null : null,
+      }
+    })
+    const qrOut = (qr_styles ?? []).map((q) => {
+      const uid = String((q as any).user_id || '')
+      return {
+        ...q,
+        user_email: uid ? userMap[uid] ?? null : null,
+      }
+    })
+
     return NextResponse.json({
       operator: { id: user.id, email: user.email },
       counts: { users: users.length, links: (linksTotal ?? 0), qr_styles: (qrTotal ?? 0) },
       users: users.map((u: User) => ({ id: u.id, email: u.email, created_at: u.created_at ?? null, last_sign_in_at: u.last_sign_in_at ?? null })),
-      links: links ?? [],
-      qr_styles: qr_styles ?? [],
+      links: linksOut,
+      qr_styles: qrOut,
       pagination: {
         users: { page: usersPage, perPage: usersPerPage, hasMore: usersHasMore },
         links: { page: linksPage, perPage: linksPerPage, total: linksTotal ?? 0 },
