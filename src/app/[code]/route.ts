@@ -63,6 +63,7 @@ export async function GET(
       debug: true,
       provider: 'cloudflare+api',
       extractedIp: ip,
+      enrichment: lastEnrichment, // shows attempted/ok and partial data
       headers: {
         'CF-Connecting-IP': hdr('CF-Connecting-IP'),
         'True-Client-IP': hdr('True-Client-IP'),
@@ -220,12 +221,16 @@ async function enrichGeoViaApi(
     try {
       const url = `https://api.ip2location.io/?key=${encodeURIComponent(apiKey)}&ip=${encodeURIComponent(ip)}&format=json`
       const res = await fetch(url, { signal: controller.signal, headers: { 'accept': 'application/json' } })
-      if (!res.ok) return base
+      if (!res.ok) { 
+        lastEnrichment = { attempted: true, ok: false, status: res.status }
+        return base 
+      }
       const j = await res.json() as Record<string, unknown>
       const country = typeof j['country_code'] === 'string' ? (j['country_code'] as string) : null
       const region = typeof j['region_name'] === 'string' ? (j['region_name'] as string) : null
       const city = typeof j['city_name'] === 'string' ? (j['city_name'] as string) : null
       clearTimeout(timeout)
+      lastEnrichment = { attempted: true, ok: true, status: 200, data: { country, region, city } }
       return {
         country: base?.country || country,
         region: base?.region || region,
@@ -233,11 +238,16 @@ async function enrichGeoViaApi(
       }
     } catch {
       clearTimeout(timeout)
+      lastEnrichment = { attempted: true, ok: false, status: 0 }
       return base
     }
   } catch {
+    lastEnrichment = { attempted: true, ok: false, status: -1 }
     return base
   }
 }
+
+// capture latest enrichment attempt for debug endpoint
+let lastEnrichment: { attempted: boolean; ok: boolean; status: number; data?: { country: string | null; region: string | null; city: string | null } } | null = null
 
 // Parse user agent string into { browser, os, device }
