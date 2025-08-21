@@ -59,8 +59,15 @@ export async function GET(
     const url = new URL(`https://ipinfo.io/${ip || ''}/json`)
     if (token) url.searchParams.set('token', token)
     const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 1200)
-    const resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal }).catch(() => null)
+    const t = setTimeout(() => controller.abort(), 4500)
+    let resp: Response | null = null
+    let fetchError: { name: string; message: string } | null = null
+    try {
+      resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
+    } catch (e) {
+      const err = e as Error
+      fetchError = { name: err.name || 'Error', message: err.message || 'unknown error' }
+    }
     clearTimeout(t)
     let providerStatus: number | null = null
     let providerJson: unknown = null
@@ -84,6 +91,7 @@ export async function GET(
       geo,
       providerStatus,
       providerJson,
+      fetchError,
     })
   }
 
@@ -184,7 +192,7 @@ async function resolveGeo(
 ): Promise<{ country: string | null; region: string | null; city: string | null }> {
   try {
     const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 1200)
+    const t = setTimeout(() => controller.abort(), 4500)
     const token = (typeof process !== 'undefined' ? process.env.IPINFO_TOKEN : undefined) || undefined
     const url = new URL(`https://ipinfo.io/${ip || ''}/json`)
     if (token) url.searchParams.set('token', token)
