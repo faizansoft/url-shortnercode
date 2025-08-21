@@ -56,15 +56,6 @@ export async function GET(
 
   if (geoDebug) {
     const hdr = (k: string) => _req.headers.get(k) || _req.headers.get(k.toLowerCase())
-    // Also include provider status and raw JSON to diagnose nulls
-    const token = (typeof process !== 'undefined' ? process.env.IPINFO_TOKEN : undefined) || undefined
-    const url = new URL(`https://ipinfo.io/${ip || ''}/json`)
-    if (token) url.searchParams.set('token', token)
-    const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 4500)
-    let resp: Response | null = null
-    let fetchError: { name: string; message: string } | null = null
-    clearTimeout(t)
     return NextResponse.json({
       debug: true,
       provider: 'cloudflare',
@@ -204,38 +195,4 @@ function getCloudflareGeo(
   return null
 }
 
-// Fallback geo using ipinfo.io only if Cloudflare geo not present
-async function resolveGeo(
-  ip: string | null,
-): Promise<{ country: string | null; region: string | null; city: string | null }> {
-  try {
-    const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 4500)
-    const token = (typeof process !== 'undefined' ? process.env.IPINFO_TOKEN : undefined) || undefined
-    const url = new URL(`https://ipinfo.io/${ip || ''}/json`)
-    if (token) url.searchParams.set('token', token)
-    // If IP is null, ipinfo will resolve the caller (server/CDN POP). This keeps a single provider and avoids nulls.
-    if (!ip) console.debug('[geo] client IP missing; using server POP geo (ipinfo)')
-    // If no token, avoid attempting external call on Edge to reduce failures
-    if (!token) {
-      clearTimeout(t)
-      return { country: null, region: null, city: null }
-    }
-    const resp = await fetch(url.toString(), { signal: controller.signal })
-    clearTimeout(t)
-    if (!resp.ok) {
-      console.debug('[geo] ipinfo status', resp.status)
-      return { country: null, region: null, city: null }
-    }
-    const j: unknown = await resp.json()
-    const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
-    const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
-    // ipinfo fields: country (ISO2), region (name), city (name)
-    const country = getStr('country')
-    const region = getStr('region')
-    const city = getStr('city')
-    return { country, region, city }
-  } catch {
-    return { country: null, region: null, city: null }
-  }
-}
+// Parse user agent string into { browser, os, device }
