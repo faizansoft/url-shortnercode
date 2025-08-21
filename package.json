@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.55.0",
+    "ip2location-nodejs": "^9.6.3",
     "next": "15.4.6",
     "qr-code-styling": "^1.8.4",
     "qrcode": "^1.5.3",
