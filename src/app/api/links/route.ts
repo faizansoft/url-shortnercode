@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
     }
-    const target_url = typeof (payload as any)?.target_url === 'string' ? (payload as any).target_url.trim() : ''
-    const code = typeof (payload as any)?.code === 'string' ? (payload as any).code.trim() : undefined
+    const obj = (payload ?? {}) as Record<string, unknown>
+    const target_url = typeof obj.target_url === 'string' ? obj.target_url.trim() : ''
+    const code = typeof obj.code === 'string' ? obj.code.trim() : undefined
 
     if (!target_url || !isValidUrl(target_url)) {
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
