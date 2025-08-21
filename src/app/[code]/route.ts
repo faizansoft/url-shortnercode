@@ -146,17 +146,17 @@ async function resolveGeo(
   try {
     const controller = new AbortController()
     const t = setTimeout(() => controller.abort(), 1200)
-    // If IP is missing, calling /json/ without IP would resolve server location; avoid that and return nulls
-    if (!ip) {
-      clearTimeout(t)
+    const key = (typeof process !== 'undefined' ? process.env.IPAPI_KEY : undefined) || undefined
+    const url = new URL(`https://ipapi.co/${encodeURIComponent(ip || '')}/json/`)
+    if (key) url.searchParams.set('key', key)
+    // If IP is null, ipapi will resolve the caller (server/CDN POP). This keeps a single provider and avoids nulls.
+    if (!ip) console.debug('[geo] client IP missing; using server POP geo')
+    const resp = await fetch(ip ? url.toString() : 'https://ipapi.co/json/', { cache: 'no-store', signal: controller.signal })
+    clearTimeout(t)
+    if (!resp.ok) {
+      console.debug('[geo] ipapi status', resp.status)
       return { country: null, region: null, city: null }
     }
-    const key = (typeof process !== 'undefined' ? process.env.IPAPI_KEY : undefined) || undefined
-    const url = new URL(`https://ipapi.co/${encodeURIComponent(ip)}/json/`)
-    if (key) url.searchParams.set('key', key)
-    const resp = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
-    clearTimeout(t)
-    if (!resp.ok) return { country: null, region: null, city: null }
     const j: unknown = await resp.json()
     const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
     const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
