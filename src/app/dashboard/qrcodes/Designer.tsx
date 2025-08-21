@@ -107,8 +107,10 @@ export default function Designer({ value }: DesignerProps) {
   const [logoSize, setLogoSize] = useState<number>(0.25); // 0..1
   const [hideBgDots, setHideBgDots] = useState<boolean>(true);
   // crossOrigin is locked to 'anonymous' internally for safe exports; no UI
-  const [hasSaved, setHasSaved] = useState<boolean>(false);
-  const savedSnapshotRef = useRef<SavedOptions | null>(null);
+  
+  // Save status UI
+  const [saveState, setSaveState] = useState<'idle'|'saving'|'success'|'error'>('idle');
+  const [saveNote, setSaveNote] = useState<string>('');
 
   // (removed) frame/border feature
   const [perfMode, setPerfMode] = useState<boolean>(false);
@@ -315,8 +317,6 @@ export default function Designer({ value }: DesignerProps) {
           } catch {}
         }
         if (!isSavedOptions(o)) return;
-        setHasSaved(true);
-        savedSnapshotRef.current = o;
         // Apply all saved values safely, suppressing intermediate updates
         suppressUpdateRef.current = true;
         try {
@@ -487,6 +487,8 @@ export default function Designer({ value }: DesignerProps) {
 
   const saveChanges = async () => {
     if (typeof window === 'undefined') return;
+    setSaveState('saving');
+    setSaveNote('');
     // Resolve short_code from value (robust)
     let short_code = '';
     try {
@@ -574,7 +576,7 @@ export default function Designer({ value }: DesignerProps) {
       const { data } = await supabaseClient.auth.getSession();
       const token = data.session?.access_token;
       if (!token) return;
-      await fetch('/api/qr', {
+      const res = await fetch('/api/qr', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -582,9 +584,20 @@ export default function Designer({ value }: DesignerProps) {
         },
         body: JSON.stringify({ short_code, options: payload }),
       });
+      if (res.ok) {
+        setSaveState('success');
+        setSaveNote('QR design saved successfully.');
+        // Auto-hide success message after a short delay
+        window.setTimeout(() => { setSaveState('idle'); setSaveNote(''); }, 2000);
+      } else {
+        setSaveState('error');
+        setSaveNote('Failed to save changes.');
+      }
     } catch (e) {
       // silent fail; could show toast
       console.error('Failed to save QR style', e);
+      setSaveState('error');
+      setSaveNote('Failed to save changes.');
     }
   };
 
@@ -600,88 +613,7 @@ export default function Designer({ value }: DesignerProps) {
           {/* Removed 'Reset all' button as per request */}
         </div>
 
-        {/* Presets */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs font-medium text-[var(--muted)]">Presets</div>
-          <div className="flex flex-wrap gap-2">
-            {(hasSaved
-              ? ([{
-                  name: "Saved",
-                  apply: () => {
-                    const o = savedSnapshotRef.current;
-                    if (!o) return;
-                    suppressUpdateRef.current = true;
-                    try {
-                      if (typeof o.dotsType === 'string') setDotsType(o.dotsType);
-                      if (typeof o.dotsColor === 'string') setDotsColor(o.dotsColor);
-                      if (typeof o.cornerSquareType === 'string') setCornerSquareType(o.cornerSquareType);
-                      if (typeof o.cornerSquareColor === 'string') setCornerSquareColor(o.cornerSquareColor);
-                      if (typeof o.cornerDotType === 'string') setCornerDotType(o.cornerDotType);
-                      if (typeof o.cornerDotColor === 'string') setCornerDotColor(o.cornerDotColor);
-                      if (typeof o.bgColor === 'string') setBgColor(o.bgColor);
-                      if (typeof o.logoUrl === 'string') setLogoUrl(o.logoUrl);
-                    } finally {
-                      requestAnimationFrame(() => { suppressUpdateRef.current = false; });
-                    }
-                  },
-                }] as const)
-              : ([
-                  {
-                    name: "Classic",
-                    apply: () => {
-                      setDotsType("square");
-                      setDotsColor("#0b1220");
-                      setDotsGradientOn(false);
-                      setBgColor("#ffffff");
-                      setBgGradientOn(false);
-                      setCornerSquareType("square");
-                      setCornerSquareColor("#0b1220");
-                      setCornerDotType("dot");
-                      setCornerDotColor("#0b1220");
-                      setEcLevel("M");
-                    },
-                  },
-                  {
-                    name: "Brand Blue",
-                    apply: () => {
-                      setDotsType("rounded");
-                      setDotsColor("#2563eb");
-                      setDotsGradientOn(false);
-                      setBgColor("#ffffff");
-                      setBgGradientOn(false);
-                      setCornerSquareType("dot");
-                      setCornerSquareColor("#2563eb");
-                      setCornerDotType("square");
-                      setCornerDotColor("#2563eb");
-                      setEcLevel("Q");
-                    },
-                  },
-                  {
-                    name: "Sunset Gradient",
-                    apply: () => {
-                      setDotsType("rounded");
-                      setDotsGradientOn(true);
-                      setDotsGradA("#db2777");
-                      setDotsGradB("#ea580c");
-                      setDotsColor("#db2777");
-                      setBgGradientOn(true);
-                      setBgGradType("linear");
-                      setBgGradA("#ffffff");
-                      setBgGradB("#fde68a");
-                      setBgColor("#ffffff");
-                      setCornerSquareType("extra-rounded");
-                      setCornerSquareColor("#db2777");
-                      setCornerDotType("dot");
-                      setCornerDotColor("#ea580c");
-                      setEcLevel("H");
-                    },
-                  },
-                ] as const)
-            ).map((p) => (
-              <button key={p.name} className="btn btn-secondary h-8" onClick={p.apply}>{p.name}</button>
-            ))}
-          </div>
-        </div>
+        
 
         {/* Select styles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -990,8 +922,12 @@ export default function Designer({ value }: DesignerProps) {
         </div>
         {/* (removed) export notice UI */}
         <div className="pt-2 flex flex-wrap gap-3 items-center justify-center w-full">
-          <button className="btn btn-secondary h-10 px-4" onClick={() => handleDownload("png")}>Download PNG</button>
-          <button className="btn btn-secondary h-10 px-4" onClick={() => handleDownload("svg")}>Download SVG</button>
+          <button className="btn btn-secondary h-10 px-4" onClick={() => handleDownload("png")}>
+            Download PNG
+          </button>
+          <button className="btn btn-secondary h-10 px-4" onClick={() => handleDownload("svg")}>
+            Download SVG
+          </button>
           <button
             className="btn btn-outline h-10 px-4 flex items-center gap-2"
             onClick={() => {
@@ -1022,13 +958,22 @@ export default function Designer({ value }: DesignerProps) {
             </svg>
             <span>Reset to Default</span>
           </button>
-          <button
-            className="btn btn-primary h-10 px-4 tip"
-            data-tip="Save current configuration"
-            onClick={saveChanges}
-          >
-            Save changes
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="btn btn-primary h-10 px-4 tip disabled:opacity-60 disabled:cursor-not-allowed"
+              data-tip="Save current configuration"
+              onClick={saveChanges}
+              disabled={saveState==='saving'}
+            >
+              {saveState==='saving' ? 'Saving…' : 'Save changes'}
+            </button>
+            {saveState==='success' && (
+              <span className="text-xs text-green-600">{saveNote}</span>
+            )}
+            {saveState==='error' && (
+              <span className="text-xs text-red-600">{saveNote}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

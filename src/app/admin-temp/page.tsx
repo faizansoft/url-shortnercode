@@ -1,7 +1,12 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+// Ensure this page is not statically prerendered
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import React, { useCallback, useEffect, useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabaseClient'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
 type AdminUser = {
@@ -40,16 +45,28 @@ type ResetPasswordAction = { action: 'reset_password'; user_id: string; new_pass
 type AdminAction = UpdateLinkAction | DeleteLinkAction | DeleteQrStyleAction | ResetPasswordAction
 
 export default function AdminTempPage() {
-  const supabase = useMemo(() => getSupabaseClient(), [])
+  // Initialize Supabase only on the client after mount to avoid SSR errors
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<Bootstrap | null>(null)
   const [adminEmail] = useState<string | null>(typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_ADMIN_EMAIL as string) || null : null)
 
+  useEffect(() => {
+    try {
+      const c = getSupabaseClient()
+      setSupabase(c)
+    } catch (e) {
+      // In case env is missing or other issues
+      setError(e instanceof Error ? e.message : 'Failed to init client')
+    }
+  }, [])
+
   const fetchAll = useCallback(async () => {
     setError(null)
     setLoading(true)
     try {
+      if (!supabase) throw new Error('Client not ready')
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
       if (!token) throw new Error('Not authenticated')
@@ -70,11 +87,12 @@ export default function AdminTempPage() {
   }, [supabase])
 
   useEffect(() => {
-    fetchAll()
-  }, [fetchAll])
+    if (supabase) fetchAll()
+  }, [supabase, fetchAll])
 
   const act = useCallback(async (payload: AdminAction) => {
     try {
+      if (!supabase) throw new Error('Client not ready')
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
       if (!token) throw new Error('Not authenticated')
