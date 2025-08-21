@@ -122,26 +122,34 @@ async function resolveGeo(
   regionHeader: string | null,
   cityHeader: string | null
 ): Promise<{ country: string | null; region: string | null; city: string | null }> {
-  // Prefer already provided headers (e.g., Cloudflare)
-  const country = countryHeader ?? null
-  const region = regionHeader ?? null
-  const city = cityHeader ?? null
-  if (country || region || city) return { country, region, city }
+  // Prefer already provided headers (e.g., Cloudflare). If some are missing, attempt to backfill via IP lookup.
+  let country = countryHeader ?? null
+  let region = regionHeader ?? null
+  let city = cityHeader ?? null
 
-  // Fallback: use a lightweight public IP geolocation API if IP is available
-  if (!ip) return { country: null, region: null, city: null }
-  try {
-    // ipapi.co has a permissive free tier with rate limits; replace with your preferred provider if needed
-    const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store' })
-    if (!resp.ok) return { country: null, region: null, city: null }
-    const j: unknown = await resp.json()
-    const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
-    const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
-    const country = getStr('country_name') ?? getStr('country')
-    const region = getStr('region') ?? getStr('region_code') ?? getStr('region_name')
-    const city = getStr('city')
-    return { country, region, city }
-  } catch {
-    return { country: null, region: null, city: null }
+  // If we already have all three, return immediately
+  if (country && region && city) return { country, region, city }
+
+  // Try to backfill missing fields via a lightweight public IP geolocation API if IP is available
+  if (ip) {
+    try {
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 1200)
+      const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store', signal: controller.signal })
+      clearTimeout(t)
+      if (resp.ok) {
+        const j: unknown = await resp.json()
+        const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
+        const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
+        // Only fill values that are currently null
+        country = country ?? (getStr('country_code') ?? getStr('country') ?? getStr('country_name'))
+        region = region ?? (getStr('region') ?? getStr('region_code') ?? getStr('region_name'))
+        city = city ?? getStr('city')
+      }
+    } catch {
+      // Ignore lookup failures; fall through with whatever we have
+    }
   }
+
+  return { country, region, city }
 }
