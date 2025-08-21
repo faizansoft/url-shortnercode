@@ -51,7 +51,7 @@ export async function GET(
 
   const parsedUA = parseUA(ua)
   let geo = await getCloudflareGeo(_req)
-  // Optional enrichment via external API on Edge when Cloudflare data is incomplete
+  // Optional enrichment via local shards on Edge when Cloudflare data is incomplete
   const enrichEnabled = (process.env.ENABLE_GEO_ENRICH ?? '1') !== '0'
   if (enrichEnabled && (!geo || !(geo.country && geo.region && geo.city))) {
     const enriched = await enrichGeoViaApi(ip, geo)
@@ -206,70 +206,33 @@ async function getCloudflareGeo(
   return null
 }
 
-// Edge-safe enrichment using ip2location.io API (only if IP2LOCATION_API_KEY is present)
+// Edge-safe enrichment using local JSON shards generated from IP2Location DB3 CSV
 async function enrichGeoViaApi(
   ip: string | null,
   base: { country: string | null; region: string | null; city: string | null } | null,
 ): Promise<{ country: string | null; region: string | null; city: string | null } | null> {
   try {
-    const apiKey = process.env.IP2LOCATION_API_KEY
     if (!ip) return base
     const needs = !base || !(base.country && base.region && base.city)
     if (!needs) return base
-
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
-    try {
-      // Try ip2location.io if API key present
-      if (apiKey) {
-        const url = `https://api.ip2location.io/?key=${encodeURIComponent(apiKey)}&ip=${encodeURIComponent(ip)}&format=json`
-        const res = await fetch(url, { signal: controller.signal, headers: { 'accept': 'application/json' } })
-        if (res.ok) {
-          const j = await res.json() as Record<string, unknown>
-          const country = typeof j['country_code'] === 'string' ? (j['country_code'] as string) : null
-          const region = typeof j['region_name'] === 'string' ? (j['region_name'] as string) : null
-          const city = typeof j['city_name'] === 'string' ? (j['city_name'] as string) : null
-          clearTimeout(timeout)
-          lastEnrichment = { attempted: true, ok: true, status: 200, data: { country, region, city }, provider: 'ip2location.io' }
-          return {
-            country: base?.country || country,
-            region: base?.region || region,
-            city: base?.city || city,
-          }
-        } else {
-          let body: string | undefined
-          try { body = (await res.text()).slice(0, 256) } catch {}
-          // Fall through to ipapi.co after recording the failure
-          lastEnrichment = { attempted: true, ok: false, status: res.status, error: body, provider: 'ip2location.io' }
-        }
-      }
-
-      // Free fallback: ipapi.co (no API key)
-      {
-        const url2 = `https://ipapi.co/${encodeURIComponent(ip)}/json/`
-        const res2 = await fetch(url2, { signal: controller.signal, headers: { 'accept': 'application/json' } })
-        if (!res2.ok) {
-          let body2: string | undefined
-          try { body2 = (await res2.text()).slice(0, 256) } catch {}
-          lastEnrichment = { attempted: true, ok: false, status: res2.status, error: body2, provider: 'ipapi.co' }
-          return base
-        }
-        const j2 = await res2.json() as Record<string, unknown>
-        const country2 = typeof j2['country'] === 'string' ? (j2['country'] as string) : null // e.g., PK
-        const region2 = typeof j2['region'] === 'string' ? (j2['region'] as string) : null
-        const city2 = typeof j2['city'] === 'string' ? (j2['city'] as string) : null
-        clearTimeout(timeout)
-        lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: country2, region: region2, city: city2 }, provider: 'ipapi.co' }
-        return {
-          country: base?.country || country2,
-          region: base?.region || region2,
-          city: base?.city || city2,
-        }
-      }
-    } catch {
-      clearTimeout(timeout)
-      lastEnrichment = { attempted: true, ok: false, status: 0 }
+    const ipNum = ipToInt(ip)
+    if (ipNum == null) return base
+    const firstOctet = (ipNum >>> 24) & 0xff
+    const shard = await loadShard(firstOctet)
+    if (!shard || !Array.isArray(shard) || shard.length === 0) {
+      lastEnrichment = { attempted: true, ok: false, status: 404, error: 'shard not found', provider: 'local' }
       return base
+    }
+    const rec = findInRanges(shard, ipNum)
+    if (!rec) {
+      lastEnrichment = { attempted: true, ok: false, status: 204, error: 'no match', provider: 'local' }
+      return base
+    }
+    lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: rec.c || null, region: rec.r || null, city: rec.ci || null }, provider: 'local' }
+    return {
+      country: base?.country || (rec.c || null),
+      region: base?.region || (rec.r || null),
+      city: base?.city || (rec.ci || null),
     }
   } catch {
     lastEnrichment = { attempted: true, ok: false, status: -1 }
@@ -278,6 +241,56 @@ async function enrichGeoViaApi(
 }
 
 // capture latest enrichment attempt for debug endpoint
-let lastEnrichment: { attempted: boolean; ok: boolean; status: number; provider?: 'ip2location.io' | 'ipapi.co'; data?: { country: string | null; region: string | null; city: string | null }; error?: string } | null = null
+let lastEnrichment: { attempted: boolean; ok: boolean; status: number; provider?: 'local'; data?: { country: string | null; region: string | null; city: string | null }; error?: string } | null = null
+
+// Utilities for local shard lookup
+function ipToInt(ip: string): number | null {
+  const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (!m) return null
+  const a = [1,2,3,4].map(i => Number(m[i]))
+  if (a.some(n => n < 0 || n > 255 || !Number.isInteger(n))) return null
+  return ((a[0] << 24) | (a[1] << 16) | (a[2] << 8) | a[3]) >>> 0
+}
+
+type ShardRec = { s: number; e: number; c?: string | null; r?: string | null; ci?: string | null }
+const shardCache: Map<number, ShardRec[] | 'missing'> = new Map()
+
+async function loadShard(octet: number): Promise<ShardRec[] | null> {
+  const cached = shardCache.get(octet)
+  if (cached) return cached === 'missing' ? null : cached
+  try {
+    const res = await fetch(new URL(`/ip2l/${octet}.json`, 'http://local'))
+    // Above absolute URL won't work on Edge; use request URL base instead at call-site
+  } catch {}
+  return null
+}
+
+// We need request URL to construct proper absolute URL; provide wrapper used in enrich
+async function loadShardFromRequest(octet: number, reqUrl: string): Promise<ShardRec[] | null> {
+  const cached = shardCache.get(octet)
+  if (cached) return cached === 'missing' ? null : cached
+  try {
+    const res = await fetch(new URL(`/ip2l/${octet}.json`, reqUrl))
+    if (!res.ok) { shardCache.set(octet, 'missing'); return null }
+    const data = await res.json() as ShardRec[]
+    shardCache.set(octet, data)
+    return data
+  } catch {
+    shardCache.set(octet, 'missing')
+    return null
+  }
+}
+
+function findInRanges(arr: ShardRec[], x: number): ShardRec | null {
+  let lo = 0, hi = arr.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1
+    const r = arr[mid]
+    if (x < r.s) hi = mid - 1
+    else if (x > r.e) lo = mid + 1
+    else return r
+  }
+  return null
+}
 
 // Parse user agent string into { browser, os, device }
