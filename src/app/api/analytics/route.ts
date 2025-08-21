@@ -87,13 +87,14 @@ export async function GET(req: NextRequest) {
     for (const l of typedLinks) linkMap.set(l.id, { short_code: l.short_code })
 
     const getRegion = (r: AnyRow): string | null => (
-      r['region'] ?? r['region_name'] ?? r['subdivision'] ?? r['subdivision_name'] ??
+      r['region'] ?? r['region_name'] ?? r['regionName'] ??
+      r['subdivision'] ?? r['subdivision_name'] ?? r['subdivision1'] ?? r['subdivision_1'] ?? r['subdivision_name_1'] ??
       r['state'] ?? r['state_name'] ?? r['state_code'] ??
       r['province'] ?? r['province_name'] ??
       r['regionCode'] ?? r['region_code'] ?? null
     ) as string | null
     const getCity = (r: AnyRow): string | null => (
-      r['city'] ?? r['city_name'] ?? r['locality'] ?? r['town'] ?? null
+      r['city'] ?? r['city_name'] ?? r['cityName'] ?? r['locality'] ?? r['town'] ?? r['municipality'] ?? r['village'] ?? null
     ) as string | null
     const getBrowser = (r: AnyRow): string | null => (r['browser'] ?? r['ua_browser'] ?? null) as string | null
     const getOS = (r: AnyRow): string | null => (r['os'] ?? r['ua_os'] ?? null) as string | null
@@ -370,7 +371,12 @@ export async function GET(req: NextRequest) {
         linkCount: linkIds.length,
         clickCount: totalClicks,
         anomalies,
-        ...(debug ? { sample: clicks.slice(0, 20) } : {}),
+        ...(debug ? { sample: clicks.slice(0, 20).map(c => ({
+          ...c,
+          // Show friendly placeholders in debug sample while keeping internal normalization nulls
+          region: c.region ?? 'Unknown',
+          city: c.city ?? 'Unknown',
+        })) } : {}),
       },
     })
   } catch (e: unknown) {
