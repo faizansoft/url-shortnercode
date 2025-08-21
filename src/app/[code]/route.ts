@@ -52,7 +52,8 @@ export async function GET(
   const parsedUA = parseUA(ua)
   let geo = await getCloudflareGeo(_req)
   // Optional enrichment via external API on Edge when Cloudflare data is incomplete
-  if (!geo || !(geo.country && geo.region && geo.city)) {
+  const enrichEnabled = (process.env.ENABLE_GEO_ENRICH ?? '1') !== '0'
+  if (enrichEnabled && (!geo || !(geo.country && geo.region && geo.city))) {
     const enriched = await enrichGeoViaApi(ip, geo)
     if (enriched) geo = enriched
   }
@@ -63,7 +64,7 @@ export async function GET(
       debug: true,
       provider: 'cloudflare+api',
       extractedIp: ip,
-      enrichment: lastEnrichment, // shows attempted/ok and partial data
+      enrichment: lastEnrichment, // shows attempted/ok/provider and partial data
       headers: {
         'CF-Connecting-IP': hdr('CF-Connecting-IP'),
         'True-Client-IP': hdr('True-Client-IP'),
@@ -212,29 +213,58 @@ async function enrichGeoViaApi(
 ): Promise<{ country: string | null; region: string | null; city: string | null } | null> {
   try {
     const apiKey = process.env.IP2LOCATION_API_KEY
-    if (!apiKey || !ip) return base
+    if (!ip) return base
     const needs = !base || !(base.country && base.region && base.city)
     if (!needs) return base
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 1500)
+    const timeout = setTimeout(() => controller.abort(), 3000)
     try {
-      const url = `https://api.ip2location.io/?key=${encodeURIComponent(apiKey)}&ip=${encodeURIComponent(ip)}&format=json`
-      const res = await fetch(url, { signal: controller.signal, headers: { 'accept': 'application/json' } })
-      if (!res.ok) { 
-        lastEnrichment = { attempted: true, ok: false, status: res.status }
-        return base 
+      // Try ip2location.io if API key present
+      if (apiKey) {
+        const url = `https://api.ip2location.io/?key=${encodeURIComponent(apiKey)}&ip=${encodeURIComponent(ip)}&format=json`
+        const res = await fetch(url, { signal: controller.signal, headers: { 'accept': 'application/json' } })
+        if (res.ok) {
+          const j = await res.json() as Record<string, unknown>
+          const country = typeof j['country_code'] === 'string' ? (j['country_code'] as string) : null
+          const region = typeof j['region_name'] === 'string' ? (j['region_name'] as string) : null
+          const city = typeof j['city_name'] === 'string' ? (j['city_name'] as string) : null
+          clearTimeout(timeout)
+          lastEnrichment = { attempted: true, ok: true, status: 200, data: { country, region, city }, provider: 'ip2location.io' }
+          return {
+            country: base?.country || country,
+            region: base?.region || region,
+            city: base?.city || city,
+          }
+        } else {
+          let body: string | undefined
+          try { body = (await res.text()).slice(0, 256) } catch {}
+          // Fall through to ipapi.co after recording the failure
+          lastEnrichment = { attempted: true, ok: false, status: res.status, error: body, provider: 'ip2location.io' }
+        }
       }
-      const j = await res.json() as Record<string, unknown>
-      const country = typeof j['country_code'] === 'string' ? (j['country_code'] as string) : null
-      const region = typeof j['region_name'] === 'string' ? (j['region_name'] as string) : null
-      const city = typeof j['city_name'] === 'string' ? (j['city_name'] as string) : null
-      clearTimeout(timeout)
-      lastEnrichment = { attempted: true, ok: true, status: 200, data: { country, region, city } }
-      return {
-        country: base?.country || country,
-        region: base?.region || region,
-        city: base?.city || city,
+
+      // Free fallback: ipapi.co (no API key)
+      {
+        const url2 = `https://ipapi.co/${encodeURIComponent(ip)}/json/`
+        const res2 = await fetch(url2, { signal: controller.signal, headers: { 'accept': 'application/json' } })
+        if (!res2.ok) {
+          let body2: string | undefined
+          try { body2 = (await res2.text()).slice(0, 256) } catch {}
+          lastEnrichment = { attempted: true, ok: false, status: res2.status, error: body2, provider: 'ipapi.co' }
+          return base
+        }
+        const j2 = await res2.json() as Record<string, unknown>
+        const country2 = typeof j2['country'] === 'string' ? (j2['country'] as string) : null // e.g., PK
+        const region2 = typeof j2['region'] === 'string' ? (j2['region'] as string) : null
+        const city2 = typeof j2['city'] === 'string' ? (j2['city'] as string) : null
+        clearTimeout(timeout)
+        lastEnrichment = { attempted: true, ok: true, status: 200, data: { country: country2, region: region2, city: city2 }, provider: 'ipapi.co' }
+        return {
+          country: base?.country || country2,
+          region: base?.region || region2,
+          city: base?.city || city2,
+        }
       }
     } catch {
       clearTimeout(timeout)
@@ -248,6 +278,6 @@ async function enrichGeoViaApi(
 }
 
 // capture latest enrichment attempt for debug endpoint
-let lastEnrichment: { attempted: boolean; ok: boolean; status: number; data?: { country: string | null; region: string | null; city: string | null } } | null = null
+let lastEnrichment: { attempted: boolean; ok: boolean; status: number; provider?: 'ip2location.io' | 'ipapi.co'; data?: { country: string | null; region: string | null; city: string | null }; error?: string } | null = null
 
 // Parse user agent string into { browser, os, device }
