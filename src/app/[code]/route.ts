@@ -34,10 +34,6 @@ export async function GET(
   const ua = _req.headers.get('user-agent') ?? null
   const ref = _req.headers.get('referer') ?? null
   const ip = _req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
-  // Prefer generic/Cloudflare headers (no Vercel-specific headers)
-  const countryHeader = _req.headers.get('cf-ipcountry')
-  const cityHeader = _req.headers.get('cf-ipcity')
-  const regionHeader = _req.headers.get('cf-region')
 
   const refDomain = (() => {
     if (!ref) return null
@@ -50,7 +46,7 @@ export async function GET(
   })()
 
   const parsedUA = parseUA(ua)
-  const geo = await resolveGeo(_req, ip, countryHeader, regionHeader, cityHeader)
+  const geo = await resolveGeo(ip)
 
   // Synchronous logging (await) to ensure write happens on Edge before redirect
   const clickPayload = {
@@ -114,42 +110,30 @@ function parseUA(ua: string | null): { device: string | null; os: string | null;
   return { device, os, browser }
 }
 
-// Resolve geo from generic headers or public IP geolocation API (no Vercel dependency)
+// Resolve geo using a single provider (ipapi.co) for consistency
 async function resolveGeo(
-  _req: NextRequest,
   ip: string | null,
-  countryHeader: string | null,
-  regionHeader: string | null,
-  cityHeader: string | null
 ): Promise<{ country: string | null; region: string | null; city: string | null }> {
-  // Prefer already provided headers (e.g., Cloudflare). If some are missing, attempt to backfill via IP lookup.
-  let country = countryHeader ?? null
-  let region = regionHeader ?? null
-  let city = cityHeader ?? null
-
-  // If we already have all three, return immediately
-  if (country && region && city) return { country, region, city }
-
-  // Try to backfill missing fields via a lightweight public IP geolocation API if IP is available
-  if (ip) {
-    try {
-      const controller = new AbortController()
-      const t = setTimeout(() => controller.abort(), 1200)
-      const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store', signal: controller.signal })
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 1200)
+    // If IP is missing, calling /json/ without IP would resolve server location; avoid that and return nulls
+    if (!ip) {
       clearTimeout(t)
-      if (resp.ok) {
-        const j: unknown = await resp.json()
-        const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
-        const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
-        // Only fill values that are currently null
-        country = country ?? (getStr('country_code') ?? getStr('country') ?? getStr('country_name'))
-        region = region ?? (getStr('region') ?? getStr('region_code') ?? getStr('region_name'))
-        city = city ?? getStr('city')
-      }
-    } catch {
-      // Ignore lookup failures; fall through with whatever we have
+      return { country: null, region: null, city: null }
     }
+    const resp = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { cache: 'no-store', signal: controller.signal })
+    clearTimeout(t)
+    if (!resp.ok) return { country: null, region: null, city: null }
+    const j: unknown = await resp.json()
+    const obj = j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
+    const getStr = (k: string) => (typeof obj[k] === 'string' ? (obj[k] as string) : null)
+    // Use 2-letter code where available for country
+    const country = getStr('country_code') ?? getStr('country') ?? getStr('country_name')
+    const region = getStr('region') ?? getStr('region_code') ?? getStr('region_name')
+    const city = getStr('city')
+    return { country, region, city }
+  } catch {
+    return { country: null, region: null, city: null }
   }
-
-  return { country, region, city }
 }
