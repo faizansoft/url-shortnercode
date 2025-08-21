@@ -50,7 +50,8 @@ export async function GET(
   })()
 
   const parsedUA = parseUA(ua)
-  const geo = await resolveGeo(ip)
+  const cfGeo = getCloudflareGeo(_req)
+  const geo = cfGeo ?? (await resolveGeo(ip))
 
   if (geoDebug) {
     const hdr = (k: string) => _req.headers.get(k) || _req.headers.get(k.toLowerCase())
@@ -77,7 +78,7 @@ export async function GET(
     }
     return NextResponse.json({
       debug: true,
-      provider: 'ipinfo.io',
+      provider: cfGeo ? 'cloudflare' : 'ipinfo.io',
       extractedIp: ip,
       headers: {
         'CF-Connecting-IP': hdr('CF-Connecting-IP'),
@@ -89,6 +90,7 @@ export async function GET(
       },
       ua,
       geo,
+      cfGeo,
       providerStatus,
       providerJson,
       fetchError,
@@ -186,7 +188,31 @@ function getClientIp(req: NextRequest): string | null {
   return ip
 }
 
-// Resolve geo using a single provider (ipinfo.io) for consistency
+// Prefer Cloudflare Edge-provided geo when available (single provider on CF Pages)
+function getCloudflareGeo(
+  req: NextRequest,
+): { country: string | null; region: string | null; city: string | null } | null {
+  // Cloudflare Workers/Pages expose a cf object on the Request with rich geo
+  const anyReq = req as unknown as { cf?: Record<string, unknown> }
+  const cf = anyReq.cf || undefined
+  const getStr = (o: Record<string, unknown> | undefined, k: string) =>
+    o && typeof o[k] === 'string' ? (o[k] as string) : null
+  const cfCountry = getStr(cf as any, 'country')
+  const cfRegion = getStr(cf as any, 'region') || getStr(cf as any, 'regionCode')
+  const cfCity = getStr(cf as any, 'city')
+  // Backup to headers when cf object not populated
+  const hdr = (k: string) => req.headers.get(k) || req.headers.get(k.toLowerCase())
+  const hCountry = hdr('CF-IPCountry')
+  const hRegion = hdr('CF-Region')
+  const hCity = hdr('CF-IPCity')
+  const country = cfCountry || hCountry || null
+  const region = cfRegion || hRegion || null
+  const city = cfCity || hCity || null
+  if (country || region || city) return { country, region, city }
+  return null
+}
+
+// Fallback geo using ipinfo.io only if Cloudflare geo not present
 async function resolveGeo(
   ip: string | null,
 ): Promise<{ country: string | null; region: string | null; city: string | null }> {
