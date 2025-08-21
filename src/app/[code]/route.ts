@@ -197,17 +197,23 @@ function getCloudflareGeo(
   const cf = anyReq.cf || undefined
   const getStr = (o: Record<string, unknown> | undefined, k: string) =>
     o && typeof o[k] === 'string' ? (o[k] as string) : null
-  const cfCountry = getStr(cf as any, 'country')
-  const cfRegion = getStr(cf as any, 'region') || getStr(cf as any, 'regionCode')
-  const cfCity = getStr(cf as any, 'city')
+  const cfCountry = getStr(cf, 'country')
+  const cfRegion = getStr(cf, 'region') || getStr(cf, 'regionCode')
+  const cfCity = getStr(cf, 'city')
+
+  // Next.js may populate req.geo on some platforms (e.g., Vercel). Try that too.
+  const anyGeo = (req as unknown as { geo?: Record<string, unknown> }).geo || undefined
+  const geoCountry = getStr(anyGeo, 'country')
+  const geoRegion = getStr(anyGeo, 'region') || getStr(anyGeo, 'regionCode')
+  const geoCity = getStr(anyGeo, 'city')
   // Backup to headers when cf object not populated
   const hdr = (k: string) => req.headers.get(k) || req.headers.get(k.toLowerCase())
-  const hCountry = hdr('CF-IPCountry')
-  const hRegion = hdr('CF-Region')
-  const hCity = hdr('CF-IPCity')
-  const country = cfCountry || hCountry || null
-  const region = cfRegion || hRegion || null
-  const city = cfCity || hCity || null
+  const hCountry = hdr('CF-IPCountry') || hdr('cf-ipcountry')
+  const hRegion = hdr('CF-Region') || hdr('cf-region')
+  const hCity = hdr('CF-IPCity') || hdr('cf-ipcity') || hdr('cf-city')
+  const country = cfCountry || geoCountry || hCountry || null
+  const region = cfRegion || geoRegion || hRegion || null
+  const city = cfCity || geoCity || hCity || null
   if (country || region || city) return { country, region, city }
   return null
 }
