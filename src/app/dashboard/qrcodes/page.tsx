@@ -22,6 +22,8 @@ export default function QRCodesPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 24;
+  // Track per-item download in progress: code -> 'svg' | 'png'
+  const [downloading, setDownloading] = useState<Record<string, 'svg' | 'png' | undefined>>({});
   // Fixed look: no theme-based color changes
   // All customizer state removed in favor of dedicated page
 
@@ -149,6 +151,7 @@ export default function QRCodesPage() {
 
   // Download SVG for a QR item using styled builder (same as Designer export)
 async function handleDownloadSvg(shortUrl: string, code: string) {
+  setDownloading((p) => ({ ...p, [code]: 'svg' }));
   try {
     const svg = await buildStyledSvgOrDefault(shortUrl, code);
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
@@ -162,11 +165,14 @@ async function handleDownloadSvg(shortUrl: string, code: string) {
     URL.revokeObjectURL(url);
   } catch (e) {
     console.error('Failed to generate SVG', e);
+  } finally {
+    setDownloading((p) => { const n = { ...p }; delete n[code]; return n; });
   }
 }
 
   // Download high-resolution PNG for a QR item using styled SVG rasterization
 async function handleDownloadPng(shortUrl: string, code: string) {
+  setDownloading((p) => ({ ...p, [code]: 'png' }));
   try {
     const svg = await buildStyledSvgOrDefault(shortUrl, code);
     const pngDataUrl = await rasterizeSvgToPng(svg, 2048);
@@ -178,6 +184,8 @@ async function handleDownloadPng(shortUrl: string, code: string) {
     a.remove();
   } catch (e) {
     console.error('Failed to generate PNG', e);
+  } finally {
+    setDownloading((p) => { const n = { ...p }; delete n[code]; return n; });
   }
 }
 
@@ -228,28 +236,54 @@ async function handleDownloadPng(shortUrl: string, code: string) {
                   type="button"
                   onClick={() => handleDownloadSvg(it.short_url, it.short_code)}
                   className="btn btn-secondary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
+                  disabled={!!downloading[it.short_code]}
                   aria-label="Download QR as SVG"
                   data-tip="Download SVG"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                    <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
-                    <path d="M19 18H5v3h14v-3Z"/>
-                  </svg>
-                  <span className="leading-none">SVG</span>
+                  {downloading[it.short_code] === 'svg' ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin" aria-hidden>
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
+                        <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3"/>
+                      </svg>
+                      <span className="leading-none">SVG…</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                        <path d="M19 18H5v3h14v-3Z"/>
+                      </svg>
+                      <span className="leading-none">SVG</span>
+                    </>
+                  )}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleDownloadPng(it.short_url, it.short_code)}
                   className="btn btn-primary h-9 w-full inline-flex items-center justify-center gap-2 px-3 whitespace-nowrap tip"
+                  disabled={!!downloading[it.short_code]}
                   aria-label="Download QR as PNG"
                   data-tip="Download high-res PNG"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                    <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
-                    <path d="M19 18H5v3h14v-3Z"/>
-                  </svg>
-                  <span className="leading-none">PNG</span>
+                  {downloading[it.short_code] === 'png' ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin" aria-hidden>
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
+                        <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3"/>
+                      </svg>
+                      <span className="leading-none">PNG…</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                        <path d="M19 18H5v3h14v-3Z"/>
+                      </svg>
+                      <span className="leading-none">PNG</span>
+                    </>
+                  )}
                 </button>
 
                 <Link

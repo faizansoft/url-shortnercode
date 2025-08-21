@@ -22,6 +22,8 @@ export default function LinksIndexPage() {
   const [shareFor, setShareFor] = useState("");
   
   const [copied, setCopied] = useState<string | null>(null);
+  // Download in-progress state for QR modal to prevent double clicks
+  const [downloading, setDownloading] = useState(false);
 
   const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
   const searchParams = useSearchParams();
@@ -421,6 +423,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
   async function handleDownloadPngFromPreview() {
+    setDownloading(true);
     try {
       if (!qrDataUrl || !qrFor) return;
       let pngDataUrl = qrDataUrl;
@@ -440,7 +443,9 @@ function dataUrlToBlob(dataUrl: string): Blob {
       document.body.appendChild(a);
       a.click();
       a.remove();
-    } catch {}
+    } catch {} finally {
+      setDownloading(false);
+    }
   }
 
   async function handleShareLink() {
@@ -598,12 +603,26 @@ function dataUrlToBlob(dataUrl: string): Blob {
                       <button
                         className="btn btn-primary btn-no-motion h-9 px-5 inline-flex items-center gap-2"
                         onClick={handleDownloadPngFromPreview}
+                        disabled={downloading}
+                        aria-busy={downloading}
                       >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                          <path d="M12 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 8.707 10.293L11 12.586V4a1 1 0 0 1 1-1Z"/>
-                          <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2a1 1 0 1 0-2 0v2H7v-2a1 1 0 1 0-2 0v2Z"/>
-                        </svg>
-                        Download PNG
+                        {downloading ? (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin" aria-hidden>
+                              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
+                              <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3"/>
+                            </svg>
+                            <span className="leading-none">PNG…</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                              <path d="M12 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 8.707 10.293L11 12.586V4a1 1 0 0 1 1-1Z"/>
+                              <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2a1 1 0 1 0-2 0v2H7v-2a1 1 0 1 0-2 0v2Z"/>
+                            </svg>
+                            Download PNG
+                          </>
+                        )}
                       </button>
                       <button
                         className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
