@@ -4,6 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 
+// Normalize country values (codes -> display names) for consistent map labels
+const displayNames = (typeof Intl !== 'undefined' && (Intl as unknown as { DisplayNames?: typeof Intl.DisplayNames }).DisplayNames)
+  ? new Intl.DisplayNames(['en'], { type: 'region' })
+  : null;
+const countryCodeAliases: Record<string, string> = { UK: 'GB' };
+function normalizeCountryName(input: string): string {
+  if (!input) return 'Unknown';
+  const raw = String(input).trim();
+  const code = (countryCodeAliases[raw.toUpperCase()] || raw).toUpperCase();
+  // If looks like alpha-2, try to expand; otherwise return as-is
+  if (/^[A-Z]{2}$/.test(code)) {
+    const name = displayNames?.of(code);
+    return name || raw;
+  }
+  return raw;
+}
+
 // Minimal shape for react-simple-maps geography objects we use
 type RSMSimpleGeo = {
   rsmKey: string;
@@ -30,6 +47,7 @@ type AnalyticsData = {
   topLinks: TopLink[];
   topReferrers: TopReferrer[];
   countries: Country[];
+  countriesHuman?: Array<{ code: string; name: string; count: number }>;
   devices: Device[];
   browsers: Browser[];
   oses: Os[];
@@ -37,6 +55,17 @@ type AnalyticsData = {
   regions: Region[];
   cities: City[];
   range?: { days: number };
+  diagnostics?: {
+    resolvedUserId: string | null;
+    linkCount: number;
+    clickCount: number;
+    anomalies?: {
+      parsedRefDomainFromReferrer?: number;
+      malformedReferrer?: number;
+      unknown?: { country?: number; region?: number; city?: number; device?: number; browser?: number; os?: number };
+    };
+    sample?: Array<Record<string, unknown>>;
+  };
 };
 
 // Aggregate daily series into weekly/monthly/yearly buckets
@@ -113,13 +142,14 @@ export default function AnalyticsDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [granularity, setGranularity] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
+  const [debug, setDebug] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
-        const res = await fetch(`/api/analytics?days=${days}`, {
+        const res = await fetch(`/api/analytics?days=${days}${debug ? '&debug=1' : ''}` , {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const payload: unknown = await res.json();
@@ -131,7 +161,7 @@ export default function AnalyticsDashboard() {
         setLoading(false);
       }
     })();
-  }, [days]);
+  }, [days, debug]);
 
   const dailySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.daily ? Object.entries(data.daily) : [];
@@ -210,7 +240,7 @@ export default function AnalyticsDashboard() {
                 <div className="font-medium">Total engagements by referrer</div>
                 <div className="text-xs text-[var(--muted)]">Last 30d</div>
               </div>
-              <ColumnChart items={(data?.topReferrers ?? []).map((x) => ({ label: x.referrer, value: x.count }))} height={240} />
+              <ColumnChart items={(data?.referrerDomains ?? []).map((x) => ({ label: x.domain || 'direct', value: x.count }))} height={240} />
             </section>
           </div>
 
@@ -255,6 +285,13 @@ export default function AnalyticsDashboard() {
                   ))}
                 </div>
               </div>
+              <div className="mt-5">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} />
+                  <span>Debug (show diagnostics)</span>
+                </label>
+                <div className="mt-2 text-xs text-[var(--muted)]">Includes anomaly counters and a small sample when enabled.</div>
+              </div>
             </aside>
           </div>
 
@@ -265,19 +302,76 @@ export default function AnalyticsDashboard() {
                 <div className="font-medium">Total engagements by location</div>
                 <div className="text-xs text-[var(--muted)]">World Map</div>
               </div>
-              <WorldMapChoropleth items={(data?.countries ?? []).map(c => ({ name: c.country, value: c.count }))} />
+              <WorldMapChoropleth
+                items={
+                  (data?.countriesHuman && Array.isArray(data.countriesHuman) && data.countriesHuman.length > 0)
+                    ? data.countriesHuman.map((c: { name: string; code: string; count: number }) => ({ name: c.name, value: c.count }))
+                    : (data?.countries ?? []).map(c => ({ name: normalizeCountryName(c.country), value: c.count }))
+                }
+              />
             </section>
             <section className="rounded-xl glass p-5">
               <div className="flex items-center justify-between">
                 <div className="font-medium">Total engagements by location</div>
               </div>
               <LocationTabs
-                countries={(data?.countries ?? []).map((x, i) => ({ idx: i + 1, name: x.country, value: x.count }))}
+                countries={
+                  (data?.countriesHuman && Array.isArray(data.countriesHuman) && data.countriesHuman.length > 0)
+                    ? data.countriesHuman.map((x: { name: string; code: string; count: number }, i: number) => ({ idx: i + 1, name: x.name, value: x.count }))
+                    : (data?.countries ?? []).map((x, i) => ({ idx: i + 1, name: normalizeCountryName(x.country), value: x.count }))
+                }
                 regions={(data?.regions ?? []).map((x, i) => ({ idx: i + 1, name: x.region, value: x.count }))}
                 cities={(data?.cities ?? []).map((x, i) => ({ idx: i + 1, name: x.city, value: x.count }))}
               />
             </section>
           </div>
+          {/* Diagnostics panel */}
+          {data?.diagnostics && (
+            <section className="rounded-xl glass p-5">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Diagnostics</div>
+                <div className="text-xs text-[var(--muted)]">Debug {debug ? 'on' : 'off'}</div>
+              </div>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="rounded border p-3 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
+                  <div className="text-xs text-[var(--muted)]">Resolved User</div>
+                  <div className="mt-1">{String(data.diagnostics.resolvedUserId ?? 'null')}</div>
+                </div>
+                <div className="rounded border p-3 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
+                  <div className="text-xs text-[var(--muted)]">Links / Clicks</div>
+                  <div className="mt-1 tabular-nums">{data.diagnostics.linkCount} / {data.diagnostics.clickCount}</div>
+                </div>
+                <div className="rounded border p-3 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
+                  <div className="text-xs text-[var(--muted)]">Anomalies</div>
+                  <ul className="mt-1 space-y-1">
+                    {data.diagnostics.anomalies && (
+                      <>
+                        <li>Parsed referrer_domain: <span className="tabular-nums">{data.diagnostics.anomalies.parsedRefDomainFromReferrer ?? 0}</span></li>
+                        <li>Malformed referrer: <span className="tabular-nums">{data.diagnostics.anomalies.malformedReferrer ?? 0}</span></li>
+                        <li>Unknown fields:
+                          <span> country {data.diagnostics.anomalies.unknown?.country ?? 0},</span>
+                          <span> region {data.diagnostics.anomalies.unknown?.region ?? 0},</span>
+                          <span> city {data.diagnostics.anomalies.unknown?.city ?? 0},</span>
+                          <span> device {data.diagnostics.anomalies.unknown?.device ?? 0},</span>
+                          <span> browser {data.diagnostics.anomalies.unknown?.browser ?? 0},</span>
+                          <span> os {data.diagnostics.anomalies.unknown?.os ?? 0}</span>
+                        </li>
+                      </>
+                    )}
+                    {!data.diagnostics.anomalies && <li className="text-[var(--muted)]">No anomaly data</li>}
+                  </ul>
+                </div>
+              </div>
+              {debug && Array.isArray(data.diagnostics.sample) && data.diagnostics.sample.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-sm font-medium mb-2">Sample (first {Math.min(20, data.diagnostics.sample.length)} rows)</div>
+                  <div className="rounded border overflow-x-auto">
+                    <pre className="text-xs p-3 whitespace-pre-wrap">{JSON.stringify(data.diagnostics.sample, null, 2)}</pre>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>

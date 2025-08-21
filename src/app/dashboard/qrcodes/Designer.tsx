@@ -73,6 +73,7 @@ export default function Designer({ value }: DesignerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const qrRef = useRef<QRCodeStyling | null>(null);
   const suppressUpdateRef = useRef<boolean>(false);
+  const [kick, setKick] = useState<number>(0);
   // (removed) data URL cache and CORS inlining logic
 
   // Core options
@@ -346,7 +347,11 @@ export default function Designer({ value }: DesignerProps) {
           if (Number.isFinite(o.logoSize)) setLogoSize(Math.max(0.1, Math.min(0.45, Number(o.logoSize))));
           if (typeof o.hideBgDots === 'boolean') setHideBgDots(!!o.hideBgDots);
         } finally {
-          requestAnimationFrame(() => { suppressUpdateRef.current = false; });
+          requestAnimationFrame(() => {
+            suppressUpdateRef.current = false;
+            // Force one more update after the batch so preview reflects loaded options
+            setKick((k) => k + 1);
+          });
         }
       } catch {}
     })();
@@ -357,6 +362,14 @@ export default function Designer({ value }: DesignerProps) {
     if (suppressUpdateRef.current) return;
     qrRef.current?.update(options);
   }, [options]);
+
+  // One-shot updater triggered after loading saved options finishes
+  useEffect(() => {
+    if (!kick) return;
+    if (suppressUpdateRef.current) return;
+    try { qrRef.current?.update(options); } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kick]);
 
   // Build a fresh SVG of the QR only (no frame) without using the live preview DOM
   async function buildCombinedSVG(): Promise<string> {

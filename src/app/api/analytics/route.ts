@@ -34,9 +34,10 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Read optional range for daily buckets
+    // Read optional range for daily buckets and debug flag
     const url = new URL(req.url)
     const daysParam = url.searchParams.get('days')
+    const debug = url.searchParams.get('debug') === '1'
     const allowed = new Set(['7','30','90'])
     const days = allowed.has(daysParam ?? '') ? Number(daysParam) : 30
 
@@ -91,18 +92,116 @@ export async function GET(req: NextRequest) {
     const getOS = (r: AnyRow): string | null => (r['os'] ?? r['ua_os'] ?? null) as string | null
     const getRefDomain = (r: AnyRow): string | null => (r['referrer_domain'] ?? (r as Record<string, unknown>)['referer_domain'] ?? null) as string | null
 
-    const clicks = (rawClicks ?? []).map((r) => ({
-      ts: getIso(r),
-      referrer: getRef(r),
-      referrer_domain: getRefDomain(r),
-      link_id: getLinkId(r),
-      country: getCountry(r),
-      region: getRegion(r),
-      city: getCity(r),
-      device: getDevice(r),
-      browser: getBrowser(r),
-      os: getOS(r),
-    }))
+    // Helpers
+    const strip = (s: string | null): string | null => {
+      if (!s) return null;
+      const t = String(s).trim();
+      return t.length ? t : null;
+    };
+    const parseDomain = (u: string | null): string | null => {
+      const v = strip(u);
+      if (!v) return null;
+      try {
+        const url = new URL(v);
+        const host = url.hostname.toLowerCase();
+        return host || null;
+      } catch {
+        // Not a full URL; attempt to treat as host
+        const m = /^[a-z0-9.-]+$/i.test(v) ? v : null;
+        return m ? m.toLowerCase() : null;
+      }
+    };
+    const collapseSubdomain = (host: string): string => host.replace(/^www\./i, '').replace(/^m\./i, '').replace(/^l\./i, '');
+    const domainAliases: Record<string, string> = {
+      't.co': 'twitter.com',
+      'x.com': 'twitter.com',
+      'mobile.twitter.com': 'twitter.com',
+      'tweetdeck.twitter.com': 'twitter.com',
+      'lnkd.in': 'linkedin.com',
+      'l.instagram.com': 'instagram.com',
+      'm.facebook.com': 'facebook.com',
+      'lm.facebook.com': 'facebook.com',
+      'l.facebook.com': 'facebook.com',
+      'm.youtube.com': 'youtube.com',
+      'news.google.com': 'google.com',
+      'amp.reddit.com': 'reddit.com',
+      'old.reddit.com': 'reddit.com',
+      'np.reddit.com': 'reddit.com',
+    };
+    const normalizeDomainHost = (host: string | null): string | null => {
+      if (!host) return null;
+      const h = collapseSubdomain(host);
+      if (domainAliases[h]) return domainAliases[h];
+      // Collapse common country subdomains like google.co.uk -> google.co.uk (keep as-is), but strip deep subdomains
+      const parts = h.split('.');
+      if (parts.length > 2) {
+        // If looks like deep subdomain e.g., sub.domain.tld -> domain.tld
+        const base = parts.slice(-2).join('.');
+        return domainAliases[base] || base;
+      }
+      return h;
+    };
+    const normalizeCountry = (c: string | null): string | null => {
+      const v = strip(c);
+      if (!v) return null;
+      const u = v.toUpperCase();
+      // quick alias
+      const alias = u === 'UK' ? 'GB' : u;
+      return alias;
+    };
+
+    const anomalies = {
+      parsedRefDomainFromReferrer: 0,
+      malformedReferrer: 0,
+      unknown: { country: 0, region: 0, city: 0, device: 0, browser: 0, os: 0 },
+    };
+
+    const clicks = (rawClicks ?? []).map((r) => {
+      const ref = strip(getRef(r)) || 'direct';
+      const refDomRaw = strip(getRefDomain(r));
+      const parsedDom = parseDomain(ref);
+      const refDomNorm = normalizeDomainHost(refDomRaw || parsedDom);
+      const refDom = refDomNorm || 'direct';
+      if (!refDomRaw && parsedDom) anomalies.parsedRefDomainFromReferrer++;
+      if (!refDomRaw && !parsedDom && ref !== 'direct') anomalies.malformedReferrer++;
+
+      const country = normalizeCountry(getCountry(r));
+      const region = strip(getRegion(r));
+      const city = strip(getCity(r));
+      const device = strip(getDevice(r));
+      const browser = strip(getBrowser(r));
+      const os = strip(getOS(r));
+      if (!country) anomalies.unknown.country++;
+      if (!region) anomalies.unknown.region++;
+      if (!city) anomalies.unknown.city++;
+      if (!device) anomalies.unknown.device++;
+      if (!browser) anomalies.unknown.browser++;
+      if (!os) anomalies.unknown.os++;
+      return {
+        ts: getIso(r),
+        referrer: ref,
+        referrer_domain: refDom,
+        link_id: getLinkId(r),
+        country,
+        region,
+        city,
+        device,
+        browser,
+        os,
+      };
+    })
+
+    // Country display name expander (server-side) for convenience
+    const DisplayNamesCtor: typeof Intl.DisplayNames | undefined = (Intl as unknown as { DisplayNames?: typeof Intl.DisplayNames }).DisplayNames
+    const regionNames = DisplayNamesCtor ? new Intl.DisplayNames(['en'], { type: 'region' }) : null
+    const toCountryName = (codeOrName: string) => {
+      if (!codeOrName) return 'Unknown'
+      const s = String(codeOrName)
+      if (/^[A-Z]{2}$/.test(s)) {
+        return regionNames?.of(s) || s
+      }
+      return s
+    }
 
     // Summary
     const totalClicks = clicks.length
@@ -157,7 +256,7 @@ export async function GET(req: NextRequest) {
     // Countries
     const countryCounts: Record<string, number> = {}
     for (const c of clicks) {
-      const cc = c.country ?? 'Unknown'
+      const cc = c.country || 'Unknown'
       countryCounts[cc] = (countryCounts[cc] || 0) + 1
     }
     const countries = Object.entries(countryCounts)
@@ -165,10 +264,12 @@ export async function GET(req: NextRequest) {
       .slice(0, 20)
       .map(([country, count]) => ({ country, count }))
 
+    const countriesHuman = countries.map(({ country, count }) => ({ code: country, name: toCountryName(country), count }))
+
     // Regions
     const regionCounts: Record<string, number> = {}
     for (const c of clicks) {
-      const rg = c.region ?? 'Unknown'
+      const rg = c.region || 'Unknown'
       regionCounts[rg] = (regionCounts[rg] || 0) + 1
     }
     const regions = Object.entries(regionCounts)
@@ -179,7 +280,7 @@ export async function GET(req: NextRequest) {
     // Cities
     const cityCounts: Record<string, number> = {}
     for (const c of clicks) {
-      const ct = c.city ?? 'Unknown'
+      const ct = c.city || 'Unknown'
       cityCounts[ct] = (cityCounts[ct] || 0) + 1
     }
     const cities = Object.entries(cityCounts)
@@ -190,7 +291,7 @@ export async function GET(req: NextRequest) {
     // Devices
     const deviceCounts: Record<string, number> = {}
     for (const c of clicks) {
-      const dv = c.device ?? 'Unknown'
+      const dv = c.device || 'Unknown'
       deviceCounts[dv] = (deviceCounts[dv] || 0) + 1
     }
     const devices = Object.entries(deviceCounts)
@@ -244,6 +345,7 @@ export async function GET(req: NextRequest) {
       topReferrers,
       topLinks,
       countries,
+      countriesHuman,
       regions,
       cities,
       devices,
@@ -253,7 +355,13 @@ export async function GET(req: NextRequest) {
       hourly,
       weekdays,
       range: { days },
-      diagnostics: { resolvedUserId: user_id, linkCount: linkIds.length, clickCount: totalClicks },
+      diagnostics: {
+        resolvedUserId: user_id,
+        linkCount: linkIds.length,
+        clickCount: totalClicks,
+        anomalies,
+        ...(debug ? { sample: clicks.slice(0, 20) } : {}),
+      },
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'

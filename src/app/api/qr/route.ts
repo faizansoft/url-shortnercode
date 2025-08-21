@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     const supabaseServer = getSupabaseServer()
     const { searchParams } = new URL(req.url)
     const code = searchParams.get('code')?.trim()
+    const debug = searchParams.get('debug') === '1'
     if (!code) return NextResponse.json({ error: 'Missing code' }, { status: 400 })
 
     // Auth
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
     const user_id = authData?.user?.id
     if (!user_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
 
+    const startedAt = Date.now()
     const { data, error } = await supabaseServer
       .from('qr_styles')
       .select('options')
@@ -50,8 +52,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    const tookMs = Date.now() - startedAt
     return NextResponse.json(
-      { options: data?.options ?? null },
+      { options: data?.options ?? null, ...(debug ? { diagnostics: { tookMs, short_code: code, user_id } } : {}) },
       { headers: { 'Cache-Control': 'private, max-age=30' } }
     )
   } catch (e: unknown) {
@@ -63,11 +66,29 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const supabaseServer = getSupabaseServer()
-    const body = await req.json()
-    const short_code = typeof body?.short_code === 'string' ? body.short_code.trim() : ''
-    const options = body?.options
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
+    }
+    const short_code = typeof (body as any)?.short_code === 'string' ? (body as any).short_code.trim() : ''
+    const options = (body as any)?.options
     if (!short_code || typeof options !== 'object') {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    // Basic validation and size limit (~100KB JSON)
+    let optionsJson = ''
+    try { optionsJson = JSON.stringify(options) } catch { return NextResponse.json({ error: 'Options must be JSON-serializable' }, { status: 400, headers: { 'Cache-Control': 'no-store' } }) }
+    if (optionsJson.length > 100_000) {
+      return NextResponse.json({ error: 'Options too large (limit ~100KB)' }, { status: 413, headers: { 'Cache-Control': 'no-store' } })
+    }
+    // Optional: validate thumbnailUrl shape if present
+    const thumb = (options as Record<string, unknown>)?.['thumbnailUrl']
+    if (typeof thumb === 'string' && thumb.length > 0) {
+      const ok = /^https?:\/\//i.test(thumb) || thumb.startsWith('data:image/')
+      if (!ok) return NextResponse.json({ error: 'thumbnailUrl must be http(s) or data:image URL' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
     }
 
     // Auth
@@ -82,6 +103,7 @@ export async function POST(req: NextRequest) {
     if (!user_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Upsert
+    const startedAt = Date.now()
     const { error } = await supabaseServer
       .from('qr_styles')
       .upsert({ user_id, short_code, options }, { onConflict: 'user_id,short_code' })
@@ -93,7 +115,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
     }
 
-    return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } })
+    const tookMs = Date.now() - startedAt
+    return NextResponse.json({ ok: true, diagnostics: { tookMs } }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
