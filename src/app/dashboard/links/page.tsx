@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
 import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
@@ -60,6 +60,134 @@ export default function LinksIndexPage() {
 
   // Generate preview when modal opens or target changes.
   // Prefer stored thumbnailUrl; if missing, render styled/default and auto-backfill thumbnail.
+  // Helper functions placed before the effect and memoized to keep stable deps
+  const isDataUrl = useCallback((u: string): boolean => (typeof u === 'string' && u.startsWith('data:')), []);
+
+  const toDataUrl = useCallback(async (src: string): Promise<string | null> => {
+    try {
+      const res = await fetch(src, { cache: 'force-cache' });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onerror = () => reject(new Error('failed to read blob'));
+        fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : '');
+        fr.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const generateStyledSvgString = useCallback(async (data: string, saved: SavedOptions): Promise<string | null> => {
+    try {
+      const perfMode = !!saved?.perfMode;
+      const dotsType: DotsType | undefined = saved?.dotsType;
+      const normHex = (c: string) => c.trim().toLowerCase();
+      const baseDotsColor = typeof saved?.dotsColor === 'string' ? saved.dotsColor : '#0b1220';
+      const safeDotsColor = normHex(baseDotsColor) === normHex(saved?.bgColor ?? '') ? '#0b1220' : baseDotsColor;
+      const dotsGradientOn = !!saved?.dotsGradientOn;
+      const dotsGradA = typeof saved?.dotsGradA === 'string' ? saved.dotsGradA : '#000000';
+      const dotsGradB = typeof saved?.dotsGradB === 'string' ? saved.dotsGradB : '#000000';
+      const dotsGradRotation = Number.isFinite(saved?.dotsGradRotation) ? Number(saved.dotsGradRotation) : 0;
+
+      const cornerSquareType = saved?.cornerSquareType ?? 'square';
+      const cornerSquareColor = typeof saved?.cornerSquareColor === 'string' ? saved.cornerSquareColor : '#0b1220';
+      const cornerDotType = saved?.cornerDotType ?? 'dot';
+      const cornerDotColor = typeof saved?.cornerDotColor === 'string' ? saved.cornerDotColor : '#0b1220';
+
+      const bgColor = typeof saved?.bgColor === 'string' ? saved.bgColor : '#ffffff';
+      const bgGradientOn = !!saved?.bgGradientOn;
+      const bgGradA = typeof saved?.bgGradA === 'string' ? saved.bgGradA : '#ffffff';
+      const bgGradB = typeof saved?.bgGradB === 'string' ? saved.bgGradB : '#e2e8f0';
+      const bgGradType = saved?.bgGradType === 'radial' ? 'radial' : 'linear';
+
+      let logoUrl = typeof saved?.logoUrl === 'string' ? saved.logoUrl : '';
+      if (logoUrl && !isDataUrl(logoUrl)) {
+        const inlined = await toDataUrl(logoUrl);
+        logoUrl = inlined || '';
+      }
+      const logoSize = Number.isFinite(saved?.logoSize) ? Math.max(0, Math.min(1, Number(saved.logoSize))) : 0.25;
+      const hideBgDots = !!saved?.hideBgDots;
+
+      const ecLevel = ((): 'L'|'M'|'Q'|'H' => {
+        const x = saved?.ecLevel; return x === 'L' || x === 'Q' || x === 'H' ? x : 'M';
+      })();
+      const margin = Number.isFinite(saved?.margin) ? Math.max(0, Number(saved.margin)) : 1;
+
+      const dots: DotsOpts | { color: string; type: DotsType } = dotsGradientOn
+        ? { type: (dotsType ?? 'rounded'), color: safeDotsColor, gradient: { type: 'linear', rotation: dotsGradRotation, colorStops: [ { offset: 0, color: dotsGradA }, { offset: 1, color: dotsGradB } ] } }
+        : { type: (dotsType ?? 'rounded'), color: safeDotsColor };
+
+      const bg: BgOpts | { color: string } = bgGradientOn
+        ? { color: bgColor, gradient: { type: bgGradType, rotation: 0, colorStops: [ { offset: 0, color: bgGradA }, { offset: 1, color: bgGradB } ] } }
+        : { color: bgColor };
+
+      const opts: QRStyleOptions = {
+        width: 200,
+        height: 200,
+        data,
+        type: 'svg',
+        margin,
+        qrOptions: { errorCorrectionLevel: ecLevel },
+        dotsOptions: perfMode ? { color: safeDotsColor, type: 'square' } : (dots as DotsOpts),
+        cornersSquareOptions: { type: cornerSquareType, color: cornerSquareColor },
+        cornersDotOptions: { type: cornerDotType, color: cornerDotColor },
+        backgroundOptions: perfMode ? { color: bgColor } : (bg as BgOpts),
+        image: logoUrl || undefined,
+        imageOptions: { imageSize: logoSize, hideBackgroundDots: hideBgDots, crossOrigin: 'anonymous' },
+      };
+
+      const tmp = new QRCodeStyling(opts);
+      let svgText: string | null = null;
+      const maybeRaw = tmp as unknown as { getRawData?: (type?: 'svg') => Promise<Blob> };
+      if (typeof maybeRaw.getRawData === 'function') {
+        try { const blob = await maybeRaw.getRawData('svg'); svgText = await blob.text(); } catch {}
+      }
+      if (!svgText) {
+        const tmpDiv = document.createElement('div');
+        tmp.append(tmpDiv);
+        let svgNode: SVGSVGElement | null = null;
+        for (let i = 0; i < 60; i++) {
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+          svgNode = tmpDiv.querySelector('svg');
+          if (svgNode) break;
+          await new Promise((r) => setTimeout(r, 8));
+        }
+        if (!svgNode) return null;
+        svgText = new XMLSerializer().serializeToString(svgNode);
+      }
+      svgText = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+      return svgText;
+    } catch {
+      return null;
+    }
+  }, [isDataUrl, toDataUrl]);
+
+  const buildStyledSvgOrDefault = useCallback(async (shortUrl: string, shortCode: string): Promise<string> => {
+    let opts: SavedOptions | null = null;
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      const token = data.session?.access_token;
+      if (token) {
+        const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(shortCode)}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (resStyle.ok) {
+          const { options } = await resStyle.json();
+          if (options && typeof options === 'object') opts = options as SavedOptions;
+        }
+      }
+    } catch {}
+    if (!opts) {
+      try { const raw = window.localStorage.getItem(`qrDesigner:${shortCode}`); if (raw) opts = JSON.parse(raw) as SavedOptions; } catch {}
+    }
+    if (opts) {
+      const svg = await generateStyledSvgString(shortUrl, opts);
+      if (svg) return svg;
+    }
+    const svg = await QRCode.toString(shortUrl, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' } });
+    return svg;
+  }, [generateStyledSvgString]);
+
   useEffect(() => {
     if (!showQR) return;
     if (!qrFor) return;
@@ -262,9 +390,9 @@ interface SavedOptions {
   margin?: number;
 }
 
-function isDataUrl(u: string): boolean { return typeof u === 'string' && u.startsWith('data:'); }
+const isDataUrl = useCallback((u: string): boolean => (typeof u === 'string' && u.startsWith('data:')), []);
 
-async function toDataUrl(src: string): Promise<string | null> {
+const toDataUrl = useCallback(async (src: string): Promise<string | null> => {
   try {
     const res = await fetch(src, { cache: 'force-cache' });
     if (!res.ok) return null;
@@ -278,9 +406,9 @@ async function toDataUrl(src: string): Promise<string | null> {
   } catch {
     return null;
   }
-}
+}, []);
 
-async function generateStyledSvgString(data: string, saved: SavedOptions): Promise<string | null> {
+const generateStyledSvgString = useCallback(async function generateStyledSvgString(data: string, saved: SavedOptions): Promise<string | null> {
   try {
     const perfMode = !!saved?.perfMode;
     const dotsType: DotsType | undefined = saved?.dotsType;
@@ -363,9 +491,9 @@ async function generateStyledSvgString(data: string, saved: SavedOptions): Promi
   } catch {
     return null;
   }
-}
+}, [isDataUrl, toDataUrl]);
 
-async function buildStyledSvgOrDefault(shortUrl: string, shortCode: string): Promise<string> {
+const buildStyledSvgOrDefault = useCallback(async function buildStyledSvgOrDefault(shortUrl: string, shortCode: string): Promise<string> {
   let opts: SavedOptions | null = null;
   try {
     const { data } = await supabaseClient.auth.getSession();
@@ -387,7 +515,7 @@ async function buildStyledSvgOrDefault(shortUrl: string, shortCode: string): Pro
   }
   const svg = await QRCode.toString(shortUrl, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' } });
   return svg;
-}
+}, [generateStyledSvgString]);
 
 async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<string> {
   const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
@@ -456,7 +584,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
       } else {
         window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareFor)}`,'_blank');
       }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   return (
