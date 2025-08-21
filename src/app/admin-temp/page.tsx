@@ -6,5 +6,6 @@ export const revalidate = 0;
 import AdminClient from './AdminClient'
 
 export default function Page() {
-  return <AdminClient />
+  const allowedEmail = process.env.ADMIN_EMAIL ?? null
+  return <AdminClient allowedEmail={allowedEmail} />
 }

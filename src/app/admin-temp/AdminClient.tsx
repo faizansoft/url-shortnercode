@@ -32,21 +32,36 @@ type Bootstrap = {
   users: AdminUser[]
   links: LinkRow[]
   qr_styles: QrStyle[]
+  pagination?: {
+    users: { page: number; perPage: number; hasMore: boolean }
+    links: { page: number; perPage: number; total: number }
+    qr_styles: { page: number; perPage: number; total: number }
+  }
 }
 
 type UpdateLinkAction = { action: 'update_link'; id?: string; short_code?: string; target_url?: string }
 type DeleteLinkAction = { action: 'delete_link'; id?: string; short_code?: string }
 type DeleteQrStyleAction = { action: 'delete_qr_style'; user_id: string; short_code: string }
 type ResetPasswordAction = { action: 'reset_password'; user_id: string; new_password: string }
-type AdminAction = UpdateLinkAction | DeleteLinkAction | DeleteQrStyleAction | ResetPasswordAction
+type CreateUserAction = { action: 'create_user'; email: string; password: string }
+type DeleteUserAction = { action: 'delete_user'; user_id: string }
+type AdminAction = UpdateLinkAction | DeleteLinkAction | DeleteQrStyleAction | ResetPasswordAction | CreateUserAction | DeleteUserAction
 
-export default function AdminClientPage() {
+export default function AdminClientPage({ allowedEmail }: { allowedEmail: string | null }) {
   // Initialize Supabase only on the client after mount to avoid SSR errors
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<Bootstrap | null>(null)
-  const [adminEmail] = useState<string | null>(typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_ADMIN_EMAIL as string) || null : null)
+  // allowedEmail comes from server wrapper; do not read NEXT_PUBLIC_* at build time
+
+  // Pagination state
+  const [usersPage, setUsersPage] = useState(1)
+  const [linksPage, setLinksPage] = useState(1)
+  const [qrPage, setQrPage] = useState(1)
+  const usersPerPage = 50
+  const linksPerPage = 50
+  const qrPerPage = 50
 
   useEffect(() => {
     try {
@@ -67,7 +82,16 @@ export default function AdminClientPage() {
       const token = sessionData.session?.access_token
       if (!token) throw new Error('Not authenticated')
 
-      const res = await fetch('/api/admin-temp', {
+      const params = new URLSearchParams({
+        usersPage: String(usersPage),
+        usersPerPage: String(usersPerPage),
+        linksPage: String(linksPage),
+        linksPerPage: String(linksPerPage),
+        qrPage: String(qrPage),
+        qrPerPage: String(qrPerPage),
+      })
+
+      const res = await fetch(`/api/admin-temp?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       })
@@ -80,7 +104,7 @@ export default function AdminClientPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [supabase, usersPage, linksPage, qrPage])
 
   useEffect(() => {
     if (supabase) fetchAll()
@@ -117,12 +141,23 @@ export default function AdminClientPage() {
       <h1 className="text-2xl font-semibold">Temporary Admin Page</h1>
       <div className="text-sm text-gray-600">
         <div>Signed in as: <b>{operatorEmail ?? '—'}</b></div>
-        {adminEmail ? <div>Allowed admin: <b>{adminEmail}</b></div> : <div>Set NEXT_PUBLIC_ADMIN_EMAIL to show allowed email client-side</div>}
+        {allowedEmail ? <div>Allowed admin: <b>{allowedEmail}</b></div> : <div>Allowed admin not configured</div>}
         <div className="mt-2">If you cannot see data, ensure your email matches server-side ADMIN_EMAIL env var.</div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <button onClick={fetchAll} className="px-3 py-2 bg-black text-white rounded" disabled={!supabase}>Refresh</button>
+        <button
+          onClick={async () => {
+            const email = prompt('Enter new user email')?.trim()
+            if (!email) return
+            const password = prompt('Enter initial password for ' + email)
+            if (!password) return
+            await act({ action: 'create_user', email, password })
+          }}
+          className="px-3 py-2 bg-emerald-600 text-white rounded disabled:opacity-60"
+          disabled={!supabase}
+        >Add User</button>
         {loading && <span className="text-gray-500">Loading…</span>}
         {error && <span className="text-red-600">{error}</span>}
       </div>
@@ -150,11 +185,12 @@ export default function AdminClientPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="p-2 text-left">Email</th>
-                    <th className="p-2 text-left">ID</th>
-                    <th className="p-2 text-left">Created</th>
-                    <th className="p-2 text-left">Last Sign-in</th>
-                    <th className="p-2 text-left">Reset Password</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Email</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">ID</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Created</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Last Sign-in</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Reset Password</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -174,10 +210,26 @@ export default function AdminClientPage() {
                           }}
                         >Reset</button>
                       </td>
+                      <td className="p-2">
+                        <button
+                          className="px-2 py-1 text-xs bg-rose-600 text-white rounded"
+                          onClick={async () => {
+                            if (!confirm(`Delete user ${u.email || u.id}?`)) return
+                            await act({ action: 'delete_user', user_id: u.id })
+                          }}
+                        >Delete</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <div className="flex items-center justify-between p-2 text-xs text-gray-600 border-t">
+                <div>Page {data.pagination?.users.page ?? usersPage}</div>
+                <div className="space-x-2">
+                  <button className="px-2 py-1 border rounded disabled:opacity-50" disabled={usersPage <= 1 || loading} onClick={() => setUsersPage(p => Math.max(1, p - 1))}>Prev</button>
+                  <button className="px-2 py-1 border rounded disabled:opacity-50" disabled={!data.pagination?.users.hasMore || loading} onClick={() => setUsersPage(p => p + 1)}>Next</button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -187,11 +239,11 @@ export default function AdminClientPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="p-2 text-left">Short</th>
-                    <th className="p-2 text-left">Target</th>
-                    <th className="p-2 text-left">User</th>
-                    <th className="p-2 text-left">Created</th>
-                    <th className="p-2 text-left">Actions</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Short</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Target</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">User</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Created</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -232,6 +284,19 @@ export default function AdminClientPage() {
                   ))}
                 </tbody>
               </table>
+              <div className="flex items-center justify-between p-2 text-xs text-gray-600 border-t">
+                <div>
+                  Page {data.pagination?.links.page ?? linksPage} ·
+                  {' '}Showing {(data.pagination?.links.page ?? linksPage - 1) * linksPerPage + 1}
+                  {' '}- {' '}
+                  {Math.min((data.pagination?.links.page ?? linksPage) * linksPerPage, data.pagination?.links.total ?? data.counts.links)}
+                  {' '}of {data.pagination?.links.total ?? data.counts.links}
+                </div>
+                <div className="space-x-2">
+                  <button className="px-2 py-1 border rounded disabled:opacity-50" disabled={linksPage <= 1 || loading} onClick={() => setLinksPage(p => Math.max(1, p - 1))}>Prev</button>
+                  <button className="px-2 py-1 border rounded disabled:opacity-50" disabled={(data.pagination?.links.total ?? 0) <= linksPage * linksPerPage || loading} onClick={() => setLinksPage(p => p + 1)}>Next</button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -241,10 +306,10 @@ export default function AdminClientPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="p-2 text-left">Short</th>
-                    <th className="p-2 text-left">User</th>
-                    <th className="p-2 text-left">Updated</th>
-                    <th className="p-2 text-left">Actions</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Short</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">User</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Updated</th>
+                    <th className="p-2 text-left sticky top-0 z-10 bg-gray-50">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -263,6 +328,19 @@ export default function AdminClientPage() {
                   ))}
                 </tbody>
               </table>
+              <div className="flex items-center justify-between p-2 text-xs text-gray-600 border-t">
+                <div>
+                  Page {data.pagination?.qr_styles.page ?? qrPage} ·
+                  {' '}Showing {(data.pagination?.qr_styles.page ?? qrPage - 1) * qrPerPage + 1}
+                  {' '}- {' '}
+                  {Math.min((data.pagination?.qr_styles.page ?? qrPage) * qrPerPage, data.pagination?.qr_styles.total ?? data.counts.qr_styles)}
+                  {' '}of {data.pagination?.qr_styles.total ?? data.counts.qr_styles}
+                </div>
+                <div className="space-x-2">
+                  <button className="px-2 py-1 border rounded disabled:opacity-50" disabled={qrPage <= 1 || loading} onClick={() => setQrPage(p => Math.max(1, p - 1))}>Prev</button>
+                  <button className="px-2 py-1 border rounded disabled:opacity-50" disabled={(data.pagination?.qr_styles.total ?? 0) <= qrPage * qrPerPage || loading} onClick={() => setQrPage(p => p + 1)}>Next</button>
+                </div>
+              </div>
             </div>
           </section>
         </>

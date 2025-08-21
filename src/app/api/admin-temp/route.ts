@@ -11,6 +11,10 @@ function deny(msg = 'Forbidden') {
   return NextResponse.json({ error: msg }, { status: 403 })
 }
 
+function unauthorized(msg = 'Not authenticated') {
+  return NextResponse.json({ error: msg }, { status: 401 })
+}
+
 async function getAuthedUser(req: NextRequest) {
   const supabase = getSupabaseServer()
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
@@ -28,37 +32,69 @@ function isOperator(email: string | null | undefined): boolean {
 
 export async function GET(req: NextRequest) {
   try {
+    // Require Authorization header
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return unauthorized()
     const { user } = await getAuthedUser(req)
-    if (!user || !isOperator(user.email)) return deny()
+    if (!user) return unauthorized()
+    if (!isOperator(user.email)) return deny('Email not allowed')
 
     const supabase = getSupabaseServer()
 
-    // List users (limited page)
-    // Note: auth.admin.listUsers is available with service role
-    const usersRes = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
-    const users: User[] = usersRes.data?.users ?? []
+    // Parse pagination params
+    const url = new URL(req.url)
+    const qp = url.searchParams
+    const usersPage = Math.max(1, parseInt(qp.get('usersPage') || '1', 10) || 1)
+    const usersPerPage = Math.min(1000, Math.max(1, parseInt(qp.get('usersPerPage') || '50', 10) || 50))
+    const linksPage = Math.max(1, parseInt(qp.get('linksPage') || '1', 10) || 1)
+    const linksPerPage = Math.min(500, Math.max(1, parseInt(qp.get('linksPerPage') || '50', 10) || 50))
+    const qrPage = Math.max(1, parseInt(qp.get('qrPage') || '1', 10) || 1)
+    const qrPerPage = Math.min(500, Math.max(1, parseInt(qp.get('qrPerPage') || '50', 10) || 50))
 
-    // Fetch links
+    // Users (Supabase admin API paginates but does not return total)
+    const usersRes = await supabase.auth.admin.listUsers({ page: usersPage, perPage: usersPerPage })
+    const users: User[] = usersRes.data?.users ?? []
+    const usersHasMore = users.length === usersPerPage
+
+    // Links with total count
+    const linksFrom = (linksPage - 1) * linksPerPage
+    const linksTo = linksFrom + linksPerPage - 1
+    const { count: linksTotal, error: linksCountErr } = await supabase
+      .from('links')
+      .select('id', { count: 'exact', head: true })
+    if (linksCountErr) return NextResponse.json({ error: linksCountErr.message }, { status: 500 })
     const { data: links, error: linksErr } = await supabase
       .from('links')
       .select('id, short_code, target_url, user_id, created_at')
       .order('created_at', { ascending: false })
-      .limit(2000)
+      .range(linksFrom, linksTo)
     if (linksErr) return NextResponse.json({ error: linksErr.message }, { status: 500 })
 
-    // Fetch qr_styles (if exists)
+    // QR styles with total count
+    const qrFrom = (qrPage - 1) * qrPerPage
+    const qrTo = qrFrom + qrPerPage - 1
+    const { count: qrTotal, error: qrCountErr } = await supabase
+      .from('qr_styles')
+      .select('user_id', { count: 'exact', head: true })
+    if (qrCountErr) return NextResponse.json({ error: qrCountErr.message }, { status: 500 })
     const { data: qrData, error: qrErr } = await supabase
       .from('qr_styles')
       .select('user_id, short_code, updated_at')
-      .limit(5000)
+      .order('updated_at', { ascending: false })
+      .range(qrFrom, qrTo)
     const qr_styles = qrErr ? [] : (qrData ?? [])
 
     return NextResponse.json({
       operator: { id: user.id, email: user.email },
-      counts: { users: users.length, links: (links?.length ?? 0), qr_styles: (qr_styles?.length ?? 0) },
+      counts: { users: users.length, links: (linksTotal ?? 0), qr_styles: (qrTotal ?? 0) },
       users: users.map((u: User) => ({ id: u.id, email: u.email, created_at: u.created_at ?? null, last_sign_in_at: u.last_sign_in_at ?? null })),
       links: links ?? [],
       qr_styles: qr_styles ?? [],
+      pagination: {
+        users: { page: usersPage, perPage: usersPerPage, hasMore: usersHasMore },
+        links: { page: linksPage, perPage: linksPerPage, total: linksTotal ?? 0 },
+        qr_styles: { page: qrPage, perPage: qrPerPage, total: qrTotal ?? 0 },
+      }
     }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
@@ -70,12 +106,18 @@ type UpdateLinkAction = { action: 'update_link'; id?: string; short_code?: strin
 type DeleteLinkAction = { action: 'delete_link'; id?: string; short_code?: string }
 type DeleteQrStyleAction = { action: 'delete_qr_style'; user_id: string; short_code: string }
 type ResetPasswordAction = { action: 'reset_password'; user_id: string; new_password: string }
-type AdminAction = UpdateLinkAction | DeleteLinkAction | DeleteQrStyleAction | ResetPasswordAction | { action: string }
+type CreateUserAction = { action: 'create_user'; email: string; password: string }
+type DeleteUserAction = { action: 'delete_user'; user_id: string }
+type AdminAction = UpdateLinkAction | DeleteLinkAction | DeleteQrStyleAction | ResetPasswordAction | CreateUserAction | DeleteUserAction | { action: string }
 
 export async function POST(req: NextRequest) {
   try {
+    // Require Authorization header
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return unauthorized()
     const { user } = await getAuthedUser(req)
-    if (!user || !isOperator(user.email)) return deny()
+    if (!user) return unauthorized()
+    if (!isOperator(user.email)) return deny('Email not allowed')
     const supabase = getSupabaseServer()
 
     let body: AdminAction
@@ -87,6 +129,27 @@ export async function POST(req: NextRequest) {
     const action = String(body?.action || '').toLowerCase()
 
     switch (action) {
+      case 'create_user': {
+        const b = body as CreateUserAction
+        const email = typeof b.email === 'string' ? b.email.trim() : ''
+        const password = typeof b.password === 'string' ? b.password : ''
+        if (!email || !password) return NextResponse.json({ error: 'Missing email or password' }, { status: 400 })
+        const { data: created, error } = await supabase.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+        })
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ ok: true, user_id: created.user?.id ?? null })
+      }
+      case 'delete_user': {
+        const b = body as DeleteUserAction
+        const user_id = typeof b.user_id === 'string' ? b.user_id : ''
+        if (!user_id) return NextResponse.json({ error: 'Missing user_id' }, { status: 400 })
+        const { error } = await supabase.auth.admin.deleteUser(user_id)
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ ok: true })
+      }
       case 'update_link': {
         const b = body as UpdateLinkAction
         const id = typeof b.id === 'string' ? b.id : ''
