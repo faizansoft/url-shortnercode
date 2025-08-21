@@ -459,12 +459,19 @@ function LineChart({ labels, values, height = 200 }: { labels: string[]; values:
 
 // Donut chart for categorical splits (e.g., devices)
 function DonutChart({ items, size = 220 }: { items: Array<{ label: string; value: number }>; size?: number }) {
-  const total = items.reduce((s, it) => s + it.value, 0) || 1;
+  const [hover, setHover] = useState<number | null>(null);
+  const totalVal = items.reduce((s, it) => s + it.value, 0);
+  const total = totalVal || 1;
   const r = size / 2 - 12;
   const cx = size / 2;
   const cy = size / 2;
-  let acc = 0;
   const colors = ['#14b8a6', '#60a5fa', '#f59e0b', '#a78bfa', '#22c55e', '#f97316'];
+
+  if (items.length === 0 || totalVal === 0) {
+    return <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No data</div>;
+  }
+
+  let acc = 0; // accumulate fractions to compute arc start/end
   return (
     <div className="flex gap-4 items-center">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -478,20 +485,43 @@ function DonutChart({ items, size = 220 }: { items: Array<{ label: string; value
           const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
           const large = end - start > Math.PI ? 1 : 0;
           const path = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+          const active = hover === i;
           return (
-            <path key={i} d={path} stroke={colors[i % colors.length]} strokeWidth={18} fill="none">
+            <path
+              key={i}
+              d={path}
+              stroke={colors[i % colors.length]}
+              strokeWidth={active ? 22 : 18}
+              strokeOpacity={hover === null || active ? 1 : 0.45}
+              fill="none"
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+              style={{ cursor: 'pointer', transition: 'all 120ms ease' }}
+            >
               <title>{`${it.label}: ${it.value}`}</title>
             </path>
           );
         })}
-        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={18} fill="var(--foreground)">
-          {total}
+        <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="central" fontSize={18} fill="var(--foreground)">
+          {totalVal}
         </text>
+        {hover !== null && (
+          <text x={cx} y={cy + 14} textAnchor="middle" dominantBaseline="central" fontSize={12} fill="var(--muted)">
+            {items[hover].label} • {Math.round((items[hover].value / total) * 100)}%
+          </text>
+        )}
       </svg>
       <ul className="text-sm space-y-1">
         {items.map((it, i) => (
-          <li key={i} className="flex items-center gap-2" title={`${it.label}: ${it.value}`}>
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ['#14b8a6','#60a5fa','#f59e0b','#a78bfa','#22c55e','#f97316'][i % 6] }} />
+          <li
+            key={i}
+            className="flex items-center gap-2"
+            title={`${it.label}: ${it.value}`}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+            style={{ opacity: hover === null || hover === i ? 1 : 0.6, transition: 'opacity 120ms ease', cursor: 'default' }}
+          >
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colors[i % colors.length] }} />
             <span className="min-w-[96px]">{it.label}</span>
             <span className="tabular-nums ml-auto">{it.value}</span>
           </li>
