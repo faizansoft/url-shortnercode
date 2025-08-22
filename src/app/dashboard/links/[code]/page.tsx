@@ -169,8 +169,14 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     return [x, y] as const;
   }), [values, labels, innerW, innerH, pad.l, pad.t, max]);
 
+  // Straight polyline path
+  const buildLinearPath = (points: ReadonlyArray<readonly [number, number]>) => {
+    if (points.length === 0) return '';
+    return points.map((p, i) => (i === 0 ? `M ${p[0]},${p[1]}` : `L ${p[0]},${p[1]}`)).join(' ');
+  };
+
   // Smooth quadratic path via midpoints (no hook to avoid deps warnings)
-  const buildPath = (points: ReadonlyArray<readonly [number, number]>) => {
+  const buildSmoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
     if (points.length === 0) return '';
     if (points.length === 1) return `M ${points[0][0]},${points[0][1]}`;
     let d = '';
@@ -186,7 +192,8 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     d += ` T ${xe},${ye}`;
     return d;
   };
-  const path = useMemo(() => buildPath(pts), [pts]);
+  const shouldSmooth = labels.length >= 5 && new Set(values).size > 1;
+  const path = useMemo(() => (shouldSmooth ? buildSmoothPath(pts) : buildLinearPath(pts)), [pts, shouldSmooth]);
 
   const pickNearest = useCallback((x: number) => {
     let idx = 0;
