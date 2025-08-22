@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   _req: NextRequest,
-  ctx: { params: Promise<{ code: string }> }
+  { params }: { params: { code: string } }
 ) {
-  const { code } = await ctx.params
+  const { code } = params
   if (!code || code.length < 3) {
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
@@ -48,6 +48,8 @@ export async function GET(
   const parsedUA = parseUA(ua)
 
   // Synchronous logging (await) to ensure write happens on Edge before redirect
+  const nowIso = new Date().toISOString()
+  // Only include columns that are likely to exist to avoid insert failures
   const clickPayload = {
     link_id: link.id,
     ua,
@@ -57,7 +59,7 @@ export async function GET(
     device: parsedUA.device,
     os: parsedUA.os,
     browser: parsedUA.browser,
-    created_at: new Date().toISOString(),
+    created_at: nowIso,
   }
   try {
     const { error } = await supabaseServer
@@ -67,7 +69,7 @@ export async function GET(
       // Fallback minimal insert to avoid losing data entirely
       await supabaseServer
         .from('clicks')
-        .insert({ link_id: link.id, referrer: ref, ip, created_at: clickPayload.created_at })
+        .insert({ link_id: link.id, referrer: ref, ip, created_at: nowIso })
     }
   } catch {
     // Swallow errors to not block redirect
