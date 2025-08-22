@@ -71,9 +71,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 95,
     preview: '/previews/neon-dark.svg',
     starterBranding: {
+      logoUrl: '/brands/neon-dark.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1534972195531-d756b9bfa9f2?q=80&w=1600&auto=format',
       brandColor: '#22d3ee',
       accentColor: '#a78bfa',
       hero: { height: 360, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0a0a0f', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'h1', type: 'hero', heading: 'The Grand Hotel', subheading: 'Your new escape awaits' },
@@ -97,9 +107,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 90,
     preview: '/previews/sunset.svg',
     starterBranding: {
+      logoUrl: '/brands/sunset.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format',
       brandColor: '#fb7185',
       accentColor: '#f59e0b',
       hero: { height: 340, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0b0b12', opacity: 0.55 }
+      }
     },
     starterBlocks: [
       { id: 's-hero', type: 'hero', heading: 'Summer Pop-Up', subheading: 'Limited-time offers every week' },
@@ -123,10 +143,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 98,
     preview: '/previews/business.svg',
     starterBranding: {
+      logoUrl: '/brands/business.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=1600&auto=format',
       brandColor: '#2563eb',
       accentColor: '#0ea5e9',
       hero: { height: 300, align: 'left' },
-      coverUrl: null,
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0b1220', opacity: 0.55 }
+      }
     },
     starterBlocks: [
       { id: 'bb-hero', type: 'hero', heading: 'Apex Consulting', subheading: 'We help you ship faster' },
@@ -150,9 +179,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 80,
     preview: '/previews/pastel.svg',
     starterBranding: {
+      logoUrl: '/brands/pastel.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?q=80&w=1600&auto=format',
       brandColor: '#60a5fa',
       accentColor: '#f472b6',
       hero: { height: 320, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1534237710431-e2fc698436d0?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0e1116', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'pl-hero', type: 'hero', heading: 'Ava Monroe', subheading: 'Designer & illustrator' },
@@ -175,9 +214,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 75,
     preview: '/previews/mono.svg',
     starterBranding: {
+      logoUrl: '/brands/mono.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1600&auto=format',
       brandColor: '#ffffff',
       accentColor: '#94a3b8',
       hero: { height: 280, align: 'left' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0a0a0a', opacity: 0.6 }
+      }
     },
     starterBlocks: [
       { id: 'm-hero', type: 'hero', heading: 'Alex Carter', subheading: 'Software Engineer' },
@@ -200,9 +249,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 82,
     preview: '/previews/warm.svg',
     starterBranding: {
+      logoUrl: '/brands/warm.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1485182708500-e8f1f318ba72?q=80&w=1600&auto=format',
       brandColor: '#f97316',
       accentColor: '#f43f5e',
       hero: { height: 340, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1509870304001-bc3e5f81c0d0?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0d0f14', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'w-hero', type: 'hero', heading: 'Autumn Fest', subheading: 'Live music • Food trucks • Local makers' },
@@ -225,9 +284,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 70,
     preview: '/previews/mint.svg',
     starterBranding: {
+      logoUrl: '/brands/mint.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=1600&auto=format',
       brandColor: '#34d399',
       accentColor: '#22d3ee',
       hero: { height: 320, align: 'left' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1506806732259-39c2d0268443?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0a1012', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'mf-hero', type: 'hero', heading: 'Green Bowl', subheading: 'Fresh & healthy eats' },
@@ -250,9 +319,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 78,
     preview: '/previews/royal.svg',
     starterBranding: {
+      logoUrl: '/brands/royal.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1600&auto=format',
       brandColor: '#8b5cf6',
       accentColor: '#f59e0b',
       hero: { height: 360, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0c0a14', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'r-hero', type: 'hero', heading: 'Golden Gala', subheading: 'A night to remember' },
@@ -275,9 +354,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 85,
     preview: '/previews/ocean.svg',
     starterBranding: {
+      logoUrl: '/brands/ocean.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1600&auto=format',
       brandColor: '#06b6d4',
       accentColor: '#2563eb',
       hero: { height: 320, align: 'left' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1501959915551-4e8a04a3bba8?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#081017', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'o-hero', type: 'hero', heading: 'Wave Studio', subheading: 'Crafting calm digital experiences' },
@@ -300,9 +389,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 72,
     preview: '/previews/forest.svg',
     starterBranding: {
+      logoUrl: '/brands/forest.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1600&auto=format',
       brandColor: '#16a34a',
       accentColor: '#065f46',
       hero: { height: 340, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#08100a', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'f-hero', type: 'hero', heading: 'Evergreen Fund', subheading: 'Protecting wild places' },
@@ -325,9 +424,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 77,
     preview: '/previews/playful.svg',
     starterBranding: {
+      logoUrl: '/brands/playful.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1520975922323-2f680d2c1c6e?q=80&w=1600&auto=format',
       brandColor: '#f43f5e',
       accentColor: '#06b6d4',
       hero: { height: 320, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0d0b14', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'p-hero', type: 'hero', heading: 'Pop Lab', subheading: 'Colorful merch & gifts' },
@@ -350,9 +459,19 @@ export const themePresets: ThemePreset[] = [
     popularity: 68,
     preview: '/previews/pastel-green.svg',
     starterBranding: {
+      logoUrl: '/brands/pastel-green.svg',
+      coverUrl: 'https://images.unsplash.com/photo-1524594227084-dca3f1b1b5dc?q=80&w=1600&auto=format',
       brandColor: '#a7f3d0',
       accentColor: '#6ee7b7',
       hero: { height: 320, align: 'center' },
+      bg: {
+        type: 'image',
+        imageUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1600&auto=format',
+        repeat: 'no-repeat',
+        size: 'cover',
+        position: 'center',
+        overlay: { color: '#0a0f0d', opacity: 0.5 }
+      }
     },
     starterBlocks: [
       { id: 'pg-hero', type: 'hero', heading: 'Leaf & Loom', subheading: 'Handmade home goods' },
