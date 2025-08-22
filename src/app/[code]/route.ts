@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabaseServer'
+import { geoLookup } from '@/lib/geo'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -30,15 +31,15 @@ export async function GET(
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
 
-  // Fire-and-forget click log (don’t block redirect)
+  // Prepare logging context
   const ref = _req.headers.get('referer') ?? null
   const ip = getClientIp(_req)
-
+  const ua = _req.headers.get('user-agent') ?? null
 
   // Synchronous logging (await) to ensure write happens on Edge before redirect
   const nowIso = new Date().toISOString()
   // Insert minimal columns first to avoid schema mismatches. Rely on DB defaults for timestamps.
-  const minimalPayload = { link_id: link.id, referrer: ref, ...(ip ? { ip } : {}) }
+  const minimalPayload = { link_id: link.id, referrer: ref, ...(ip ? { ip } : {}), ...(ua ? { ua } : {}) }
   try {
     const { error } = await supabaseServer
       .from('clicks')
@@ -53,13 +54,35 @@ export async function GET(
     // Swallow errors to not block redirect
   }
 
-  const targetUrl = (() => {
-    try { return new URL(link.target_url) } catch { return null }
-  })()
-  if (!targetUrl) {
-    return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
+  // Best-effort, non-blocking geo enrichment into a separate table `click_geo`
+  if (ip) {
+    try {
+      const geo = await geoLookup(ip)
+      if (geo) {
+        await supabaseServer
+          .from('click_geo')
+          .insert({
+            link_id: link.id,
+            ip,
+            country: geo.country ?? null,
+            region: geo.region ?? null,
+            city: geo.city ?? null,
+            latitude: geo.lat ?? null,
+            longitude: geo.lon ?? null,
+            org: geo.org ?? null,
+            asn: geo.asn ?? null,
+            created_at: nowIso,
+          })
+      }
+    } catch {
+      // ignore
+    }
   }
-  return NextResponse.redirect(targetUrl, 302)
+
+  // Redirect to interstitial which records engagement and then forwards to target
+  const base = new URL(_req.url)
+  const interstitial = new URL(`/i/${encodeURIComponent(code)}`, base)
+  return NextResponse.redirect(interstitial, 302)
 }
  
 

@@ -212,6 +212,43 @@ export async function GET(req: NextRequest) {
       weekdays[names[i]]++
     }
 
+    // Engagement metrics (best-effort if tables exist)
+    let avgTimeOnPageSec: number | null = null
+    let bounceRate: number | null = null
+    let funnel: Array<{ step: string; count: number }> = []
+    try {
+      // engagement_sessions: { link_id, session_id, started_at, ended_at, duration_ms, bounced boolean }
+      const { data: sessions } = await supabaseServer
+        .from('engagement_sessions')
+        .select('duration_ms, bounced, link_id')
+        .in('link_id', linkIds)
+        .limit(50000)
+      if (sessions && sessions.length) {
+        const durations = sessions.map((s: any) => Number(s.duration_ms) || 0)
+        const total = durations.reduce((a: number, b: number) => a + b, 0)
+        avgTimeOnPageSec = durations.length ? Math.round((total / durations.length) / 1000) : 0
+        const bounces = sessions.filter((s: any) => !!s.bounced).length
+        const rate = sessions.length ? bounces / sessions.length : 0
+        bounceRate = Number((rate * 100).toFixed(1))
+      }
+      // funnel_events: { link_id, session_id, step, ts }
+      const { data: fe } = await supabaseServer
+        .from('funnel_events')
+        .select('step, link_id')
+        .in('link_id', linkIds)
+        .limit(50000)
+      if (fe && fe.length) {
+        const counts: Record<string, number> = {}
+        for (const r of fe as Array<{ step: string }>) {
+          const k = String(r.step || 'unknown')
+          counts[k] = (counts[k] || 0) + 1
+        }
+        funnel = Object.entries(counts)
+          .map(([step, count]) => ({ step, count }))
+          .sort((a, b) => a.step.localeCompare(b.step))
+      }
+    } catch { /* ignore if tables missing */ }
+
     return NextResponse.json({
       summary: { totalClicks, totalLinks },
       daily,
@@ -224,6 +261,7 @@ export async function GET(req: NextRequest) {
       hourly,
       weekdays,
       range: { days },
+      engagement: { avgTimeOnPageSec, bounceRate, funnel },
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'

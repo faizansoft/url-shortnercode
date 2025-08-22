@@ -52,3 +52,97 @@ In Cloudflare Pages project settings:
    - `SUPABASE_SERVICE_ROLE_KEY` = your Supabase service role key
 
 The API routes are set to run on the Edge runtime.
+
+## Geolocation & Engagement (New)
+
+- Geolocation: `src/lib/geo.ts` uses ipwho.is (no API key) with a 1h in-memory TTL cache. Called from `src/app/[code]/route.ts` to enrich clicks.
+- Engagement: `src/app/api/engagement/route.ts` accepts POST beacons for session timing and funnel events.
+- Analytics API `src/app/api/analytics/route.ts` now aggregates engagement: Avg Time on Page (sec), Bounce Rate (%), and Funnel counts.
+
+### Supabase Schema (SQL)
+
+Run these SQL statements in your Supabase project (SQL editor). They are additive and safe to run multiple times with IF NOT EXISTS.
+
+```sql
+-- Minimal clicks table (if you don't already have one)
+create table if not exists public.clicks (
+  id uuid primary key default gen_random_uuid(),
+  link_id uuid not null,
+  created_at timestamptz default now(),
+  referrer text,
+  ip text,
+  ua text
+);
+create index if not exists idx_clicks_link_id on public.clicks(link_id);
+
+-- Geo enrichment table
+create table if not exists public.click_geo (
+  id uuid primary key default gen_random_uuid(),
+  link_id uuid not null,
+  ip text,
+  country text,
+  region text,
+  city text,
+  latitude double precision,
+  longitude double precision,
+  org text,
+  asn text,
+  created_at timestamptz default now()
+);
+create index if not exists idx_click_geo_link_id on public.click_geo(link_id);
+create index if not exists idx_click_geo_ip on public.click_geo(ip);
+
+-- Engagement sessions (for Avg Time on Page and Bounce Rate)
+create table if not exists public.engagement_sessions (
+  id uuid primary key default gen_random_uuid(),
+  link_id uuid not null,
+  session_id text not null,
+  started_at timestamptz,
+  ended_at timestamptz,
+  duration_ms bigint,
+  bounced boolean default false,
+  inserted_at timestamptz default now(),
+  unique (link_id, session_id)
+);
+create index if not exists idx_engagement_sessions_link_id on public.engagement_sessions(link_id);
+
+-- Funnel events (conversion funnel)
+create table if not exists public.funnel_events (
+  id uuid primary key default gen_random_uuid(),
+  link_id uuid not null,
+  session_id text not null,
+  step text not null,
+  ts timestamptz default now()
+);
+create index if not exists idx_funnel_events_link_id on public.funnel_events(link_id);
+create index if not exists idx_funnel_events_step on public.funnel_events(step);
+```
+
+### Client beacons (example)
+
+Send engagement beacons from any page where you want to measure engagement:
+
+```ts
+// Example: send a session summary on unload
+async function sendSessionSummary(link_code: string, session_id: string, startedAt: number) {
+  const duration_ms = Date.now() - startedAt;
+  const bounced = duration_ms < 5000; // customize threshold
+  navigator.sendBeacon(
+    '/api/engagement',
+    new Blob([
+      JSON.stringify({ type: 'session', link_code, session_id, duration_ms, bounced, started_at: new Date(startedAt).toISOString(), ended_at: new Date().toISOString() })
+    ], { type: 'application/json' })
+  );
+}
+
+// Example: record a funnel step
+async function recordFunnelStep(link_code: string, session_id: string, step: string) {
+  await fetch('/api/engagement', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'event', link_code, session_id, step })
+  });
+}
+```
+
+You can also implement an interstitial page to better track time-on-page before redirecting (optional).
