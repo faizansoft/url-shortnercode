@@ -159,13 +159,7 @@ export default function TemplateGalleryPage() {
             {filtered.map((p) => (
               <article key={p.id} className="rounded border overflow-hidden" style={{ borderColor: "var(--border)" }}>
                 <div className="aspect-[4/3] bg-[var(--surface-2)] relative">
-                  {p.preview ? (
-                    <Image src={p.preview} alt={`${p.name} preview`} fill style={{ objectFit: 'cover' }} unoptimized />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded" style={{ background: p.theme.palette.primary }} />
-                    </div>
-                  )}
+                  <LivePresetPreview preset={p} />
                 </div>
                 <div className="p-3 space-y-2">
                   <div className="font-medium">{p.name}</div>
@@ -189,6 +183,50 @@ export default function TemplateGalleryPage() {
             ))}
           </div>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function LivePresetPreview({ preset }: { preset: ThemePreset }) {
+  const t = preset.theme;
+  const b = preset.starterBranding;
+  const grad = `linear-gradient(${t.gradient.angle}deg, ${t.gradient.stops.map(s => `${s.color} ${s.at}%`).join(', ')})`;
+  const borderR = `${t.radius}px`;
+  const brand = (b?.brandColor ?? t.palette.primary);
+  const accent = (b?.accentColor ?? t.palette.secondary);
+  const hasCover = typeof b?.coverUrl === 'string' && !!b?.coverUrl;
+  const bgOverlayColor = b?.bg?.overlay?.color ?? '#000000';
+  const bgOverlayOpacity = typeof b?.bg?.overlay?.opacity === 'number' ? b!.bg!.overlay!.opacity : 0.35;
+  const bgImage = hasCover ? `${`linear-gradient(rgba(0,0,0,${bgOverlayOpacity}), rgba(0,0,0,${bgOverlayOpacity}))`}, url(${b!.coverUrl})` : grad;
+
+  return (
+    <div className="absolute inset-0 p-3" style={{ background: t.palette.surface, color: t.palette.foreground }}>
+      <div className="w-full h-full rounded" style={{ borderRadius: borderR, background: hasCover ? undefined : grad, backgroundImage: hasCover ? bgImage : undefined, backgroundSize: hasCover ? 'cover' : undefined, backgroundPosition: hasCover ? 'center' : undefined, position: 'relative', overflow: 'hidden' }}>
+        {/* Header/logo */}
+        <div className="absolute left-3 right-3 top-3 flex items-center gap-2">
+          {b?.logoUrl ? (
+            <div className="h-5 w-auto max-w-[100px] overflow-hidden">
+              <Image src={b.logoUrl} alt="logo" width={100} height={20} style={{ width: 'auto', height: '20px', objectFit: 'contain' }} unoptimized />
+            </div>
+          ) : (
+            <div className="h-3 w-16 rounded" style={{ background: brand, opacity: 0.95 }} />
+          )}
+          <div className="h-2 w-10 rounded" style={{ background: accent, opacity: 0.8 }} />
+        </div>
+        {/* Hero block */}
+        <div className="absolute left-4 right-4 top-10">
+          <div className="h-6 w-2/3 rounded mb-2" style={{ background: 'rgba(255,255,255,0.9)' }} />
+          <div className="h-3 w-1/2 rounded" style={{ background: 'rgba(255,255,255,0.7)' }} />
+        </div>
+        {/* CTA */}
+        <div className="absolute left-4 bottom-4">
+          <div className="h-6 w-24 rounded" style={{ background: brand }} />
+        </div>
+        {/* Card/image stub */}
+        <div className="absolute right-4 bottom-4">
+          <div className="h-12 w-16 rounded" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.15)' }} />
+        </div>
       </div>
     </div>
   );
