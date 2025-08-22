@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
 import type { QRCodeToStringOptions } from "qrcode";
@@ -40,7 +39,6 @@ export default function QRCodesPage() {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
-        const uid = data.session?.user?.id || '';
         const res = await fetch("/api/links", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -444,7 +442,10 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = url;
-    await new Promise<void>((res, rej) => { img.onload = () => res(); (img as any).onerror = rej; });
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error('failed to load image'));
+    });
     const canvas = document.createElement('canvas');
     canvas.width = exportOuter; canvas.height = exportOuter;
     const ctx = canvas.getContext('2d');

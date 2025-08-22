@@ -161,7 +161,8 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const cw = Math.max(0, Math.floor(entry.contentRect.width));
-        if (cw && cw !== containerW) setContainerW(cw);
+        if (!cw) continue;
+        setContainerW((prev) => (cw !== prev ? cw : prev));
       }
     });
     ro.observe(el);
@@ -201,7 +202,7 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
 
   // Catmull–Rom to cubic Bézier: curve interpolates THROUGH all points
   // Clamp control points to avoid over/undershoot (e.g., below zero between flat segments)
-  const buildSmoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
+  const buildSmoothPath = useCallback((points: ReadonlyArray<readonly [number, number]>) => {
     const n = points.length;
     if (n === 0) return '';
     if (n === 1) return `M ${points[0][0]},${points[0][1]}`;
@@ -227,9 +228,9 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
       d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
     }
     return d;
-  };
+  }, [innerH, pad.t]);
   const shouldSmooth = labels.length >= 5 && new Set(values).size > 1;
-  const path = useMemo(() => (shouldSmooth ? buildSmoothPath(pts) : buildLinearPath(pts)), [pts, shouldSmooth]);
+  const path = useMemo(() => (shouldSmooth ? buildSmoothPath(pts) : buildLinearPath(pts)), [pts, shouldSmooth, buildSmoothPath]);
 
   const pickNearest = useCallback((x: number) => {
     let idx = 0;

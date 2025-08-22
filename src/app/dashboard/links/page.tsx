@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -327,17 +326,7 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
   }
 }
 
-// Convert a data URL (e.g., PNG) into a Blob without refetching
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [meta, base64] = dataUrl.split(',');
-  const mimeMatch = /data:([^;]+);/.exec(meta || '');
-  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-  const binary = atob(base64 || '');
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
+// (removed unused dataUrlToBlob helper)
 
   function handleDownloadSvg() {
     try {
