@@ -1,4 +1,5 @@
 import { getSupabaseServer } from '@/lib/supabaseServer'
+import Image from 'next/image'
 import FontLoader from './FontLoader'
 import type { Theme } from '@/lib/pageThemes'
 import { defaultTheme } from '@/lib/pageThemes'
@@ -151,7 +152,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     >
       {(b.logoUrl) && (
         <header className="mb-4" style={{ textAlign: t.layout.align }}>
-          <img src={b.logoUrl} alt="Logo" style={{ height: 32, objectFit: 'contain', display: 'inline-block' }} />
+          <Image src={b.logoUrl} alt="Logo" width={120} height={32} style={{ height: 32, width: 'auto', objectFit: 'contain', display: 'inline-block' }} unoptimized />
         </header>
       )}
       <div

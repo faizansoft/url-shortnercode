@@ -37,6 +37,14 @@ export const defaultBranding: Branding = {
 export function normalizeBranding(input: unknown): Branding {
   const b = (typeof input === 'object' && input !== null ? (input as Partial<Branding>) : {})
   const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
+
+  const repeats = ['no-repeat','repeat','repeat-x','repeat-y'] as const
+  type Repeat = typeof repeats[number]
+  const isRepeat = (v: unknown): v is Repeat => typeof v === 'string' && (repeats as readonly string[]).includes(v)
+
+  const sizes = ['cover','contain','auto'] as const
+  type Size = typeof sizes[number]
+  const isSize = (v: unknown): v is Size => typeof v === 'string' && (sizes as readonly string[]).includes(v)
   return {
     logoUrl: typeof b.logoUrl === 'string' ? b.logoUrl : null,
     coverUrl: typeof b.coverUrl === 'string' ? b.coverUrl : null,
@@ -49,8 +57,8 @@ export function normalizeBranding(input: unknown): Branding {
     bg: {
       type: b.bg?.type === 'image' ? 'image' : 'none',
       imageUrl: typeof b.bg?.imageUrl === 'string' ? b.bg.imageUrl : null,
-      repeat: (['no-repeat','repeat','repeat-x','repeat-y'] as const).includes((b.bg?.repeat as any)) ? (b.bg!.repeat as any) : 'no-repeat',
-      size: (['cover','contain','auto'] as const).includes((b.bg?.size as any)) ? (b.bg!.size as any) : 'cover',
+      repeat: isRepeat(b.bg?.repeat) ? b.bg!.repeat : 'no-repeat',
+      size: isSize(b.bg?.size) ? b.bg!.size : 'cover',
       position: typeof b.bg?.position === 'string' ? b.bg.position : defaultBranding.bg.position,
       overlay: {
         color: typeof b.bg?.overlay?.color === 'string' ? b.bg.overlay.color : defaultBranding.bg.overlay.color,
