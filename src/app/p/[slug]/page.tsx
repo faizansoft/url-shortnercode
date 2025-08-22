@@ -5,7 +5,7 @@ import type { Theme } from '@/lib/pageThemes'
 import { defaultTheme } from '@/lib/pageThemes'
 import type { Branding } from '@/lib/pageBranding'
 import { defaultBranding, normalizeBranding } from '@/lib/pageBranding'
-import type { Block as SharedBlock } from '@/types/pageBlocks'
+import type { Block as SharedBlock, ImageBlock, ProductCardBlock } from '@/types/pageBlocks'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -32,6 +32,14 @@ function isText(b: unknown): b is TextBlock {
 function isButton(b: unknown): b is ButtonBlock {
   if (!isRecord(b)) return false
   return b['type'] === 'button' && typeof b['label'] === 'string' && typeof b['href'] === 'string'
+}
+function isImage(b: unknown): b is ImageBlock {
+  if (!isRecord(b)) return false
+  return b['type'] === 'image' && typeof b['src'] === 'string'
+}
+function isProductCard(b: unknown): b is ProductCardBlock {
+  if (!isRecord(b)) return false
+  return b['type'] === 'product-card' && typeof b['image'] === 'string' && typeof b['title'] === 'string'
 }
 
 export default async function PublicPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -179,7 +187,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
       </div>
       <section className="space-y-6" style={{ marginTop: 0 }}>
         {blocks.map((b, idx) => {
-          if (b?.type === 'hero') {
+          if (isHero(b)) {
             return (
               <div key={b.id ?? idx} className="rounded-xl p-8" style={{ background: 'color-mix(in oklab, var(--brand) 10%, transparent)', borderRadius: 'var(--radius)' }}>
                 <div className="text-2xl font-semibold mb-1">{b.heading}</div>
@@ -187,30 +195,30 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
               </div>
             )
           }
-          if (b?.type === 'text') {
+          if (isText(b)) {
             return (
               <div key={b.id ?? idx} className="prose prose-invert max-w-none" style={{ color: 'var(--foreground)' }}>
                 {b.text}
               </div>
             )
           }
-          if (b?.type === 'button') {
+          if (isButton(b)) {
             return (
               <div key={b.id ?? idx} style={{ textAlign: (t.layout.align ?? 'left') }}>
                 <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}>{b.label}</a>
               </div>
             )
           }
-          if (b?.type === 'image') {
-            const rounded = (b as any).rounded ? 'var(--radius)' : '8px'
+          if (isImage(b)) {
+            const rounded = b.rounded ? 'var(--radius)' : '8px'
             return (
               <div key={b.id ?? idx} className="overflow-hidden" style={{ borderRadius: rounded }}>
-                <Image src={(b as any).src} alt={(b as any).alt || ''} width={1200} height={675} style={{ width: '100%', height: 'auto', objectFit: 'cover' }} unoptimized />
+                <Image src={b.src} alt={b.alt || ''} width={1200} height={675} style={{ width: '100%', height: 'auto', objectFit: 'cover' }} unoptimized />
               </div>
             )
           }
-          if (b?.type === 'product-card') {
-            const pb = b as any
+          if (isProductCard(b)) {
+            const pb = b
             return (
               <div key={pb.id ?? idx} className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 items-center rounded-xl p-4" style={{ background: 'color-mix(in oklab, var(--surface) 94%, var(--brand) 6%)', borderRadius: 'var(--radius)' }}>
                 <div className="overflow-hidden rounded-lg">

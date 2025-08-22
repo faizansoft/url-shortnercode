@@ -87,7 +87,8 @@ export async function PUT(req: NextRequest) {
 
     // If branding column does not exist yet, retry without branding to remain backward compatible
     if (updateRes.error && /column\s+"?branding"?\s+does not exist/i.test(updateRes.error.message)) {
-      const { branding: _omit, ...fallbackInput } = input
+      const fallbackInput: Record<string, unknown> = { ...input }
+      delete (fallbackInput as Record<string, unknown>)['branding']
       updateRes = await supabase
         .from('pages')
         .update(fallbackInput)
