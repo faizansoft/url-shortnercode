@@ -143,11 +143,20 @@ export default function LinkDetailsPage() {
 
 function DailyBars({ daily }: { daily: Record<string, number> }) {
   const entries = Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0]));
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  if (entries.length === 0 || total === 0) {
+    return <div className="text-sm text-[var(--muted)] h-[140px] grid place-items-center">No clicks in the last 30 days</div>;
+  }
   const max = Math.max(1, ...entries.map(([, v]) => v));
   return (
     <div className="flex items-end gap-1 h-24">
       {entries.map(([day, v]) => (
-        <div key={day} className="flex-1 min-w-[4px] bg-gray-100 rounded relative" title={`${day}: ${v}`}>
+        <div
+          key={day}
+          className="flex-1 min-w-[4px] rounded relative"
+          style={{ background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))' }}
+          title={`${day}: ${v}`}
+        >
           <div
             className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
             style={{ height: `${(v / max) * 100}%` }}
