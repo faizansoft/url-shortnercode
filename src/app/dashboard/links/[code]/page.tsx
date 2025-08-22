@@ -151,6 +151,8 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerW, setContainerW] = useState<number>(600);
+  const rafId = useRef<number | null>(null);
+  const lastX = useRef<number | null>(null);
 
   // Observe container width for responsiveness
   useEffect(() => {
@@ -234,8 +236,13 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    pickNearest(x);
+    lastX.current = e.clientX - rect.left;
+    if (rafId.current == null) {
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+        if (lastX.current != null) pickNearest(lastX.current);
+      });
+    }
   }, [pickNearest]);
 
   const onTouchMove = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
@@ -243,7 +250,13 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
     const touch = e.touches[0];
-    pickNearest(touch.clientX - rect.left);
+    lastX.current = touch.clientX - rect.left;
+    if (rafId.current == null) {
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+        if (lastX.current != null) pickNearest(lastX.current);
+      });
+    }
   }, [pickNearest]);
 
   const onLeave = () => setHover(null);
@@ -316,7 +329,7 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
 
         {/* hover crosshair */}
         {hover !== null && (
-          <g>
+          <g pointerEvents="none">
             <line x1={pts[hover][0]} x2={pts[hover][0]} y1={pad.t} y2={pad.t + innerH} stroke="var(--border)" strokeDasharray="3,3" />
             <circle cx={pts[hover][0]} cy={pts[hover][1]} r={4} fill="var(--background)" stroke="var(--accent)" />
           </g>
@@ -332,7 +345,8 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
             left: Math.min(Math.max(pts[hover][0] - 48, 8), w - 140),
             top: Math.max(pts[hover][1] - 38, 0),
             background: 'var(--surface)',
-            borderColor: 'var(--border)'
+            borderColor: 'var(--border)',
+            pointerEvents: 'none'
           }}
         >
           <div className="font-medium">
