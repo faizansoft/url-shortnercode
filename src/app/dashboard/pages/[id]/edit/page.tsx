@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 
+export const runtime = 'edge'
+
 // Very simple block system
 type Block =
   | { id: string; type: "hero"; heading: string; subheading?: string }
