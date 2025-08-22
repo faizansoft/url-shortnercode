@@ -5,10 +5,10 @@ export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
 // GET /api/pages/[id] -> fetch one page (owner only)
-export async function GET(_req: NextRequest, { params }: any) {
+export async function GET(req: NextRequest) {
   try {
     const supabase = getSupabaseServer()
-    const id = params.id
+    const id = req.nextUrl.pathname.split('/').pop()
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
     const { data, error } = await supabase
@@ -27,10 +27,11 @@ export async function GET(_req: NextRequest, { params }: any) {
 }
 
 // PUT /api/pages/[id] -> update page (owner only)
-export async function PUT(req: NextRequest, { params }: any) {
+export async function PUT(req: NextRequest) {
   try {
     const supabase = getSupabaseServer()
-    const id = params.id
+    const id = req.nextUrl.pathname.split('/').pop()
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : undefined
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -92,10 +93,11 @@ export async function PUT(req: NextRequest, { params }: any) {
 }
 
 // DELETE /api/pages/[id]
-export async function DELETE(req: NextRequest, { params }: any) {
+export async function DELETE(req: NextRequest) {
   try {
     const supabase = getSupabaseServer()
-    const id = params.id
+    const id = req.nextUrl.pathname.split('/').pop()
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : undefined
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
