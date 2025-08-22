@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('pages')
-      .select('id, user_id, title, slug, blocks, theme, published, created_at, updated_at')
+      .select('id, user_id, title, slug, blocks, theme, branding, published, created_at, updated_at')
       .eq('id', id)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -52,6 +52,7 @@ export async function PUT(req: NextRequest) {
     }
     if (obj.blocks && typeof obj.blocks === 'object') input.blocks = obj.blocks
     if (obj.theme && typeof obj.theme === 'object') input.theme = obj.theme
+    if (obj.branding && typeof obj.branding === 'object') input.branding = obj.branding
     if (typeof obj.published === 'boolean') input.published = obj.published
 
     input.updated_at = new Date().toISOString()
@@ -81,7 +82,7 @@ export async function PUT(req: NextRequest) {
       .from('pages')
       .update(input)
       .eq('id', id)
-      .select('id, title, slug, blocks, theme, published, created_at, updated_at')
+      .select('id, title, slug, blocks, theme, branding, published, created_at, updated_at')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

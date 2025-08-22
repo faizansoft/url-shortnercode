@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { defaultTheme, themePresets } from "@/lib/pageThemes";
 import type { Theme } from "@/lib/pageThemes";
+import type { Branding } from "@/lib/pageBranding";
+import { defaultBranding, normalizeBranding } from "@/lib/pageBranding";
 
 export const runtime = 'edge'
 
@@ -77,6 +79,7 @@ interface PageData {
   published: boolean;
   blocks: Block[] | null;
   theme?: Theme | null;
+  branding?: Branding | null;
 }
 
 export default function PageEditor() {
@@ -92,6 +95,7 @@ export default function PageEditor() {
   const [published, setPublished] = useState(false);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const [branding, setBranding] = useState<Branding>(defaultBranding);
 
   useEffect(() => {
     if (!id) return;
@@ -106,6 +110,7 @@ export default function PageEditor() {
         setPublished(!!p.published);
         setBlocks(Array.isArray(p.blocks) ? p.blocks as Block[] : []);
         setTheme(normalizeTheme(p.theme));
+        setBranding(normalizeBranding(p.branding));
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -130,7 +135,7 @@ export default function PageEditor() {
       const res = await fetch(`/api/pages/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ title, slug, published, blocks, theme })
+        body: JSON.stringify({ title, slug, published, blocks, theme, branding })
       });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload?.error || 'Save failed');
@@ -197,6 +202,91 @@ export default function PageEditor() {
             <div className="font-medium mb-2">Preview</div>
             <div className="rounded border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
               <PagePreview title={title} blocks={blocks} />
+            </div>
+            <div className="h-px my-5" style={{ background: 'var(--border)' }} />
+            <div className="font-medium mb-2">Branding</div>
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Brand Color</div>
+                  <input type="color" className="h-9 w-full rounded border p-0" value={branding.brandColor} onChange={(e)=> setBranding({ ...branding, brandColor: e.target.value })} />
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Accent Color</div>
+                  <input type="color" className="h-9 w-full rounded border p-0" value={branding.accentColor} onChange={(e)=> setBranding({ ...branding, accentColor: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <div className="text-xs text-[var(--muted)]">Logo URL</div>
+                <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.logoUrl ?? ''} onChange={(e)=> setBranding({ ...branding, logoUrl: e.target.value || null })} placeholder="https://…/logo.png" />
+              </div>
+              <div className="grid gap-2">
+                <div className="text-xs text-[var(--muted)]">Cover Image URL</div>
+                <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.coverUrl ?? ''} onChange={(e)=> setBranding({ ...branding, coverUrl: e.target.value || null })} placeholder="https://…/cover.jpg" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Hero Height (px)</div>
+                  <input type="number" min={200} max={600} className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.height} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, height: Number(e.target.value) } })} />
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Hero Align</div>
+                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.align} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, align: e.target.value as Branding['hero']['align'] } })}>
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Background Type</div>
+                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.type} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, type: e.target.value as Branding['bg']['type'] } })}>
+                    <option value="none">None</option>
+                    <option value="image">Image</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">BG Image URL</div>
+                  <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.imageUrl ?? ''} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, imageUrl: e.target.value || null } })} placeholder="https://…/background.jpg" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">BG Size</div>
+                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.size} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, size: e.target.value as Branding['bg']['size'] } })}>
+                    <option value="cover">Cover</option>
+                    <option value="contain">Contain</option>
+                    <option value="auto">Auto</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">BG Repeat</div>
+                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.repeat} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, repeat: e.target.value as Branding['bg']['repeat'] } })}>
+                    <option value="no-repeat">No repeat</option>
+                    <option value="repeat">Repeat</option>
+                    <option value="repeat-x">Repeat X</option>
+                    <option value="repeat-y">Repeat Y</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">BG Position</div>
+                  <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.position} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, position: e.target.value } })} placeholder="center" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Overlay Color</div>
+                  <input type="color" className="h-9 w-full rounded border p-0" value={branding.bg.overlay.color} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, color: e.target.value } } })} />
+                </div>
+                <div>
+                  <div className="text-xs text-[var(--muted)] mb-1">Overlay Opacity</div>
+                  <input type="range" min={0} max={1} step={0.05} value={branding.bg.overlay.opacity} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, opacity: Number(e.target.value) } } })} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button className="btn btn-secondary h-8" onClick={()=> setBranding(defaultBranding)}>Reset</button>
+                <button className="btn btn-primary h-8" onClick={handleSave} disabled={saving}>Save Branding</button>
+              </div>
             </div>
             <div className="h-px my-5" style={{ background: 'var(--border)' }} />
             <div className="font-medium mb-2">Theme</div>

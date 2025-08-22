@@ -2,6 +2,8 @@ import { getSupabaseServer } from '@/lib/supabaseServer'
 import FontLoader from './FontLoader'
 import type { Theme } from '@/lib/pageThemes'
 import { defaultTheme } from '@/lib/pageThemes'
+import type { Branding } from '@/lib/pageBranding'
+import { defaultBranding, normalizeBranding } from '@/lib/pageBranding'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -12,7 +14,7 @@ type TextBlock = { id?: string; type: 'text'; text: string }
 type ButtonBlock = { id?: string; type: 'button'; label: string; href: string }
 type Block = HeroBlock | TextBlock | ButtonBlock
 
-type PublicPageRow = { title: string; blocks: unknown; published: boolean; theme?: Theme | null }
+type PublicPageRow = { title: string; blocks: unknown; published: boolean; theme?: Theme | null; branding?: Branding | null }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null
@@ -37,7 +39,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
 
   const { data, error } = await supabase
     .from('pages')
-    .select('title, blocks, published, theme')
+    .select('title, blocks, published, theme, branding')
     .eq('slug', slugDecoded)
     .eq('published', true)
     .maybeSingle()
@@ -77,6 +79,19 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     layout: { ...defaultTheme.layout, ...(theme.layout ?? {}) },
   } : defaultTheme
 
+  // Branding: normalize
+  const b: Branding = normalizeBranding((row as { branding?: unknown }).branding ?? defaultBranding)
+
+  function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex)
+    if (!m) return null
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+  }
+  function overlayCss(color: string, opacity: number): string {
+    const rgb = hexToRgb(color) || { r: 0, g: 0, b: 0 }
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Math.max(0, Math.min(1, opacity))})`
+  }
+
   const googleFontMap: Record<NonNullable<Theme['typography']['font']>, { css: string; family: string }> = {
     'system': { css: '', family: `ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji` },
     'inter': { css: 'Inter:wght@400;500;600;700', family: 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
@@ -109,6 +124,8 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     '--font': gf.family,
     '--font-size': `${t.typography.baseSize}px`,
     '--font-weight': `${t.typography.weight}`,
+    '--brand': b.brandColor,
+    '--accent': b.accentColor,
   } as React.CSSProperties
 
   return (
@@ -125,12 +142,36 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
         color: t.palette.foreground ?? 'var(--foreground)',
         fontFamily: 'var(--font)',
         fontSize: 'var(--font-size)',
-        fontWeight: (t.typography.weight ?? 500)
+        fontWeight: (t.typography.weight ?? 500),
+        backgroundImage: b.bg.type === 'image' && b.bg.imageUrl ? `${b.bg.overlay.opacity > 0 ? `linear-gradient(${overlayCss(b.bg.overlay.color, b.bg.overlay.opacity)}, ${overlayCss(b.bg.overlay.color, b.bg.overlay.opacity)}), ` : ''}url(${b.bg.imageUrl})` : undefined,
+        backgroundRepeat: b.bg.type === 'image' ? b.bg.repeat : undefined,
+        backgroundSize: b.bg.type === 'image' ? b.bg.size : undefined,
+        backgroundPosition: b.bg.type === 'image' ? b.bg.position : undefined,
       }}
     >
+      {(b.logoUrl) && (
+        <header className="mb-4" style={{ textAlign: t.layout.align }}>
+          <img src={b.logoUrl} alt="Logo" style={{ height: 32, objectFit: 'contain', display: 'inline-block' }} />
+        </header>
+      )}
       <div
         className="rounded-xl mb-6"
-        style={{ background: 'var(--gradient)', padding: '24px', textAlign: (t.layout.align ?? 'left') }}
+        style={{
+          padding: '24px',
+          textAlign: (b.hero.align ?? 'left'),
+          height: b.coverUrl ? `${b.hero.height}px` : undefined,
+          display: 'grid',
+          alignItems: 'center',
+          background: b.coverUrl
+            ? undefined
+            : 'var(--gradient)',
+          backgroundImage: b.coverUrl
+            ? `${overlayCss('#000000', 0.0) && b.bg.overlay.opacity >= 0 ? `linear-gradient(${overlayCss(b.bg.overlay.color, b.bg.overlay.opacity)}, ${overlayCss(b.bg.overlay.color, b.bg.overlay.opacity)}), ` : ''}url(${b.coverUrl})`
+            : undefined,
+          backgroundSize: b.coverUrl ? 'cover' : undefined,
+          backgroundPosition: b.coverUrl ? 'center' : undefined,
+          borderRadius: 'var(--radius)'
+        }}
       >
         <h1 className="text-3xl font-bold" style={{ margin: 0 }}>{row.title}</h1>
       </div>
@@ -138,7 +179,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
         {blocks.map((b, idx) => {
           if (b?.type === 'hero') {
             return (
-              <div key={b.id ?? idx} className="rounded-xl p-8" style={{ background: 'var(--gradient)', borderRadius: 'var(--radius)' }}>
+              <div key={b.id ?? idx} className="rounded-xl p-8" style={{ background: 'color-mix(in oklab, var(--brand) 10%, transparent)', borderRadius: 'var(--radius)' }}>
                 <div className="text-2xl font-semibold mb-1">{b.heading}</div>
                 {b.subheading && <div className="text-sm" style={{ color: 'var(--muted)' }}>{b.subheading}</div>}
               </div>
@@ -154,7 +195,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
           if (b?.type === 'button') {
             return (
               <div key={b.id ?? idx} style={{ textAlign: (t.layout.align ?? 'left') }}>
-                <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--primary)', borderRadius: 'var(--radius)' }}>{b.label}</a>
+                <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}>{b.label}</a>
               </div>
             )
           }
