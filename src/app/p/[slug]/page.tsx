@@ -86,8 +86,15 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     'space-grotesk': { css: 'Space+Grotesk:wght@400;500;600;700', family: '"Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
     'lora': { css: 'Lora:wght@400;500;600;700', family: 'Lora, Georgia, serif' },
   }
-  const fontKey = (t.typography.font ?? 'system') as NonNullable<Theme['typography']['font']>
-  const gf = googleFontMap[fontKey]
+  const allowedFonts = ['system','inter','poppins','outfit','merriweather','space-grotesk','lora'] as const
+  type FontKey = typeof allowedFonts[number]
+  function normalizeFont(f: unknown): FontKey {
+    if (typeof f !== 'string') return 'system'
+    const s = f.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')
+    return (allowedFonts as readonly string[]).includes(s) ? (s as FontKey) : 'system'
+  }
+  const fontKey = normalizeFont((t as unknown as { typography?: { font?: unknown } }).typography?.font)
+  const gf = googleFontMap[fontKey] || googleFontMap['system']
   const cssVars = {
     '--primary': t.palette.primary,
     '--secondary': t.palette.secondary,
