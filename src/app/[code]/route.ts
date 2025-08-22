@@ -49,27 +49,17 @@ export async function GET(
 
   // Synchronous logging (await) to ensure write happens on Edge before redirect
   const nowIso = new Date().toISOString()
-  // Only include columns that are likely to exist to avoid insert failures
-  const clickPayload = {
-    link_id: link.id,
-    ua,
-    referrer: ref,
-    referrer_domain: refDomain,
-    ip,
-    device: parsedUA.device,
-    os: parsedUA.os,
-    browser: parsedUA.browser,
-    created_at: nowIso,
-  }
+  // Insert minimal columns first to avoid schema mismatches. Rely on DB defaults for timestamps.
+  const minimalPayload = { link_id: link.id, referrer: ref, ...(ip ? { ip } : {}) }
   try {
     const { error } = await supabaseServer
       .from('clicks')
-      .insert(clickPayload)
+      .insert(minimalPayload)
     if (error) {
-      // Fallback minimal insert to avoid losing data entirely
+      // Fallback: try with explicit created_at for schemas without default timestamp
       await supabaseServer
         .from('clicks')
-        .insert({ link_id: link.id, referrer: ref, ip, created_at: nowIso })
+        .insert({ ...minimalPayload, created_at: nowIso })
     }
   } catch {
     // Swallow errors to not block redirect
