@@ -40,7 +40,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
 
   const { data, error } = await supabase
     .from('pages')
-    .select('title, blocks, published, theme, branding')
+    .select('*')
     .eq('slug', slugDecoded)
     .eq('published', true)
     .maybeSingle()

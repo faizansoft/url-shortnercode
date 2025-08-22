@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('pages')
-      .select('id, user_id, title, slug, blocks, theme, branding, published, created_at, updated_at')
+      .select('*')
       .eq('id', id)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -78,15 +78,26 @@ export async function PUT(req: NextRequest) {
       if (dup) return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
     }
 
-    const { data: updated, error } = await supabase
+    let updateRes = await supabase
       .from('pages')
       .update(input)
       .eq('id', id)
-      .select('id, title, slug, blocks, theme, branding, published, created_at, updated_at')
+      .select('*')
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ page: updated })
+    // If branding column does not exist yet, retry without branding to remain backward compatible
+    if (updateRes.error && /column\s+"?branding"?\s+does not exist/i.test(updateRes.error.message)) {
+      const { branding: _omit, ...fallbackInput } = input
+      updateRes = await supabase
+        .from('pages')
+        .update(fallbackInput)
+        .eq('id', id)
+        .select('*')
+        .single()
+    }
+
+    if (updateRes.error) return NextResponse.json({ error: updateRes.error.message }, { status: 500 })
+    return NextResponse.json({ page: updateRes.data })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -204,212 +204,18 @@ export default function PageEditor() {
               <PagePreview title={title} blocks={blocks} />
             </div>
             <div className="h-px my-5" style={{ background: 'var(--border)' }} />
-            <div className="font-medium mb-2">Branding</div>
-            <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Brand Color</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={branding.brandColor} onChange={(e)=> setBranding({ ...branding, brandColor: e.target.value })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Accent Color</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={branding.accentColor} onChange={(e)=> setBranding({ ...branding, accentColor: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <div className="text-xs text-[var(--muted)]">Logo URL</div>
-                <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.logoUrl ?? ''} onChange={(e)=> setBranding({ ...branding, logoUrl: e.target.value || null })} placeholder="https://…/logo.png" />
-              </div>
-              <div className="grid gap-2">
-                <div className="text-xs text-[var(--muted)]">Cover Image URL</div>
-                <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.coverUrl ?? ''} onChange={(e)=> setBranding({ ...branding, coverUrl: e.target.value || null })} placeholder="https://…/cover.jpg" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Hero Height (px)</div>
-                  <input type="number" min={200} max={600} className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.height} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, height: Number(e.target.value) } })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Hero Align</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.align} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, align: e.target.value as Branding['hero']['align'] } })}>
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Background Type</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.type} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, type: e.target.value as Branding['bg']['type'] } })}>
-                    <option value="none">None</option>
-                    <option value="image">Image</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">BG Image URL</div>
-                  <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.imageUrl ?? ''} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, imageUrl: e.target.value || null } })} placeholder="https://…/background.jpg" />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">BG Size</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.size} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, size: e.target.value as Branding['bg']['size'] } })}>
-                    <option value="cover">Cover</option>
-                    <option value="contain">Contain</option>
-                    <option value="auto">Auto</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">BG Repeat</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.repeat} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, repeat: e.target.value as Branding['bg']['repeat'] } })}>
-                    <option value="no-repeat">No repeat</option>
-                    <option value="repeat">Repeat</option>
-                    <option value="repeat-x">Repeat X</option>
-                    <option value="repeat-y">Repeat Y</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">BG Position</div>
-                  <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.position} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, position: e.target.value } })} placeholder="center" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Overlay Color</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={branding.bg.overlay.color} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, color: e.target.value } } })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Overlay Opacity</div>
-                  <input type="range" min={0} max={1} step={0.05} value={branding.bg.overlay.opacity} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, opacity: Number(e.target.value) } } })} />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button className="btn btn-secondary h-8" onClick={()=> setBranding(defaultBranding)}>Reset</button>
-                <button className="btn btn-primary h-8" onClick={handleSave} disabled={saving}>Save Branding</button>
-              </div>
-            </div>
-            <div className="h-px my-5" style={{ background: 'var(--border)' }} />
-            <div className="font-medium mb-2">Theme</div>
-            <div className="space-y-3 text-sm">
-              <div>
-                <div className="text-xs text-[var(--muted)] mb-1">Preset</div>
-                <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} onChange={(e) => {
-                  const p = themePresets.find(t => t.id === e.target.value)
-                  if (p) setTheme(p.theme)
-                }} value="">
-                  <option value="" disabled>Choose preset…</option>
-                  {themePresets.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Font</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={theme.typography.font} onChange={(e)=> setTheme({ ...theme, typography: { ...theme.typography, font: e.target.value as Theme['typography']['font'] } })}>
-                    <option value="system">System</option>
-                    <option value="inter">Inter</option>
-                    <option value="poppins">Poppins</option>
-                    <option value="outfit">Outfit</option>
-                    <option value="merriweather">Merriweather</option>
-                    <option value="space-grotesk">Space Grotesk</option>
-                    <option value="lora">Lora</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Font Size</div>
-                  <input type="number" min={12} max={22} className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={theme.typography.baseSize} onChange={(e)=> setTheme({ ...theme, typography: { ...theme.typography, baseSize: Number(e.target.value) } })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Font Weight</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={theme.typography.weight} onChange={(e)=> setTheme({ ...theme, typography: { ...theme.typography, weight: Number(e.target.value) as Theme['typography']['weight'] } })}>
-                    <option value={400}>400</option>
-                    <option value={500}>500</option>
-                    <option value={600}>600</option>
-                    <option value={700}>700</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Alignment</div>
-                  <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={theme.layout.align} onChange={(e)=> setTheme({ ...theme, layout: { ...theme.layout, align: e.target.value as Theme['layout']['align'] } })}>
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-[var(--muted)] mb-1">Gradient</div>
-                <div className="grid gap-2">
-                  <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                    <div className="text-xs">Angle</div>
-                    <input type="number" min={0} max={360} className="h-8 w-20 rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={theme.gradient.angle} onChange={(e)=> setTheme({ ...theme, gradient: { ...theme.gradient, angle: Number(e.target.value) } })} />
-                  </div>
-                  <div className="space-y-2">
-                    {theme.gradient.stops.map((s, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
-                        <input type="color" className="h-8 w-full rounded border p-0" value={s.color} onChange={(e)=> {
-                          const stops = theme.gradient.stops.slice();
-                          stops[i] = { ...stops[i], color: e.target.value };
-                          setTheme({ ...theme, gradient: { ...theme.gradient, stops } })
-                        }} />
-                        <input type="number" min={0} max={100} className="h-8 w-20 rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={s.at} onChange={(e)=> {
-                          const stops = theme.gradient.stops.slice();
-                          stops[i] = { ...stops[i], at: Math.max(0, Math.min(100, Number(e.target.value))) };
-                          setTheme({ ...theme, gradient: { ...theme.gradient, stops } })
-                        }} />
-                        <button type="button" className="btn btn-secondary h-8" onClick={()=> {
-                          if (theme.gradient.stops.length <= 2) return;
-                          const stops = theme.gradient.stops.filter((_, idx)=> idx !== i);
-                          setTheme({ ...theme, gradient: { ...theme.gradient, stops } })
-                        }}>Remove</button>
-                      </div>
-                    ))}
-                    <div className="flex gap-2">
-                      <button type="button" className="btn btn-secondary h-8" onClick={()=> {
-                        if (theme.gradient.stops.length >= 4) return;
-                        const last = theme.gradient.stops[theme.gradient.stops.length - 1];
-                        const nextAt = Math.max(0, Math.min(100, last.at + 20));
-                        setTheme({ ...theme, gradient: { ...theme.gradient, stops: [...theme.gradient.stops, { color: last.color, at: nextAt }] } })
-                      }}>Add Stop</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Primary</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={theme.palette.primary} onChange={(e)=> setTheme({ ...theme, palette: { ...theme.palette, primary: e.target.value } })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Secondary</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={theme.palette.secondary} onChange={(e)=> setTheme({ ...theme, palette: { ...theme.palette, secondary: e.target.value } })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Surface</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={theme.palette.surface} onChange={(e)=> setTheme({ ...theme, palette: { ...theme.palette, surface: e.target.value } })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Foreground</div>
-                  <input type="color" className="h-9 w-full rounded border p-0" value={theme.palette.foreground} onChange={(e)=> setTheme({ ...theme, palette: { ...theme.palette, foreground: e.target.value } })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Radius</div>
-                  <input type="range" min={6} max={24} value={theme.radius} onChange={(e)=> setTheme({ ...theme, radius: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)] mb-1">Max Width</div>
-                  <input type="number" className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={theme.layout.maxWidth} onChange={(e)=> setTheme({ ...theme, layout: { ...theme.layout, maxWidth: Number(e.target.value) } })} />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button className="btn btn-secondary h-8" onClick={()=> setTheme(defaultTheme)}>Reset</button>
-                <button className="btn btn-primary h-8" onClick={handleSave} disabled={saving}>Save Theme</button>
-              </div>
-            </div>
+            {/* Tabs: Theme | Customize */}
+            <Tabs
+              theme={theme}
+              onApplyPreset={(id: string)=> {
+                const p = themePresets.find(x=> x.id === id)
+                if (p) setTheme(p.theme)
+              }}
+              branding={branding}
+              setBranding={setBranding}
+              saving={saving}
+              onSave={handleSave}
+            />
           </aside>
         </div>
       )}
@@ -443,6 +249,141 @@ function BlockEditor({ block, onChange, onRemove }: { block: Block; onChange: (b
       <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.label} onChange={(e)=> onChange({ ...block, label: e.target.value })} placeholder="Label" />
       <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.href} onChange={(e)=> onChange({ ...block, href: e.target.value })} placeholder="https://…" />
       <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
+    </div>
+  )
+}
+
+function Tabs({
+  theme,
+  onApplyPreset,
+  branding,
+  setBranding,
+  saving,
+  onSave,
+}: {
+  theme: Theme
+  onApplyPreset: (id: string) => void
+  branding: Branding
+  setBranding: (b: Branding) => void
+  saving: boolean
+  onSave: () => void
+}) {
+  const [active, setActive] = useState<'theme' | 'customize'>('theme')
+  return (
+    <div className="text-sm">
+      <div className="inline-flex rounded border overflow-hidden mb-4" style={{ borderColor: 'var(--border)' }}>
+        <button className={`px-3 h-8 ${active==='theme' ? 'bg-[var(--surface-2)]' : ''}`} onClick={()=> setActive('theme')}>Theme</button>
+        <button className={`px-3 h-8 ${active==='customize' ? 'bg-[var(--surface-2)]' : ''}`} onClick={()=> setActive('customize')}>Customize</button>
+      </div>
+
+      {active === 'theme' && (
+        <div className="space-y-3">
+          <div className="text-xs text-[var(--muted)]">Built-in Themes</div>
+          <div className="grid grid-cols-1 gap-2">
+            {themePresets.map(p => (
+              <div key={p.id} className="flex items-center justify-between rounded border p-3" style={{ borderColor: 'var(--border)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded" style={{ background: p.theme.palette.primary }} />
+                  <div>
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-xs text-[var(--muted)]">Preset</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="btn btn-secondary h-8" onClick={()=> onApplyPreset(p.id)}>Apply</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {active === 'customize' && (
+        <div className="space-y-3">
+          <div className="font-medium">Branding</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Brand Color</div>
+              <input type="color" className="h-9 w-full rounded border p-0" value={branding.brandColor} onChange={(e)=> setBranding({ ...branding, brandColor: e.target.value })} />
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Accent Color</div>
+              <input type="color" className="h-9 w-full rounded border p-0" value={branding.accentColor} onChange={(e)=> setBranding({ ...branding, accentColor: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <div className="text-xs text-[var(--muted)]">Logo URL</div>
+            <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.logoUrl ?? ''} onChange={(e)=> setBranding({ ...branding, logoUrl: e.target.value || null })} placeholder="https://…/logo.png" />
+          </div>
+          <div className="grid gap-2">
+            <div className="text-xs text-[var(--muted)]">Cover Image URL</div>
+            <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.coverUrl ?? ''} onChange={(e)=> setBranding({ ...branding, coverUrl: e.target.value || null })} placeholder="https://…/cover.jpg" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Hero Height (px)</div>
+              <input type="number" min={200} max={600} className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.height} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, height: Number(e.target.value) } })} />
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Hero Align</div>
+              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.align} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, align: e.target.value as Branding['hero']['align'] } })}>
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Background Type</div>
+              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.type} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, type: e.target.value as Branding['bg']['type'] } })}>
+                <option value="none">None</option>
+                <option value="image">Image</option>
+              </select>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">BG Image URL</div>
+              <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.imageUrl ?? ''} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, imageUrl: e.target.value || null } })} placeholder="https://…/background.jpg" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">BG Size</div>
+              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.size} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, size: e.target.value as Branding['bg']['size'] } })}>
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+                <option value="auto">Auto</option>
+              </select>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">BG Repeat</div>
+              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.repeat} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, repeat: e.target.value as Branding['bg']['repeat'] } })}>
+                <option value="no-repeat">No repeat</option>
+                <option value="repeat">Repeat</option>
+                <option value="repeat-x">Repeat X</option>
+                <option value="repeat-y">Repeat Y</option>
+              </select>
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">BG Position</div>
+              <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.position} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, position: e.target.value } })} placeholder="center" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Overlay Color</div>
+              <input type="color" className="h-9 w-full rounded border p-0" value={branding.bg.overlay.color} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, color: e.target.value } } })} />
+            </div>
+            <div>
+              <div className="text-xs text-[var(--muted)] mb-1">Overlay Opacity</div>
+              <input type="range" min={0} max={1} step={0.05} value={branding.bg.overlay.opacity} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, opacity: Number(e.target.value) } } })} />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="btn btn-secondary h-8" onClick={()=> setBranding(defaultBranding)}>Reset</button>
+            <button className="btn btn-primary h-8" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
