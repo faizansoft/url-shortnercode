@@ -35,17 +35,6 @@ export async function GET(
   const ref = _req.headers.get('referer') ?? null
   const ip = getClientIp(_req)
 
-  const refDomain = (() => {
-    if (!ref) return null
-    try {
-      const u = new URL(ref)
-      return u.hostname.replace(/^www\./, '')
-    } catch {
-      return null
-    }
-  })()
-
-  const parsedUA = parseUA(ua)
 
   // Synchronous logging (await) to ensure write happens on Edge before redirect
   const nowIso = new Date().toISOString()

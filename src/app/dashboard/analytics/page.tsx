@@ -477,23 +477,4 @@ function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: 
   );
 }
 
-function RankedBars({ items }: { items: Array<{ label: string; count: number }> }) {
-  const max = Math.max(1, ...items.map((i) => i.count));
-  return (
-    <ul className="space-y-2">
-      {items.length === 0 ? (
-        <li className="text-sm text-[var(--muted)]">No data</li>
-      ) : (
-        items.map((i) => (
-          <li key={i.label} className="flex items-center gap-3">
-            <div className="w-48 truncate" title={i.label}>{i.label}</div>
-            <div className="flex-1 h-2 rounded" style={{ background: 'color-mix(in oklab, var(--surface) 92%, var(--foreground))' }}>
-              <div className="h-2 rounded bg-[var(--accent)]" style={{ width: `${(i.count / max) * 100}%` }} />
-            </div>
-            <div className="w-12 text-right tabular-nums">{i.count}</div>
-          </li>
-        ))
-      )}
-    </ul>
-  );
-}
+// Removed unused RankedBars to satisfy ESLint no-unused-vars
