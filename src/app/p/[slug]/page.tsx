@@ -27,14 +27,15 @@ function isButton(b: unknown): b is ButtonBlock {
   return b['type'] === 'button' && typeof b['label'] === 'string' && typeof b['href'] === 'string'
 }
 
-export default async function PublicPage({ params }: { params: { slug: string } }) {
+export default async function PublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const supabase = getSupabaseServer()
-  const slug = decodeURIComponent(params.slug)
+  const { slug } = await params
+  const slugDecoded = decodeURIComponent(slug)
 
   const { data, error } = await supabase
     .from('pages')
     .select('title, blocks, published')
-    .eq('slug', slug)
+    .eq('slug', slugDecoded)
     .eq('published', true)
     .maybeSingle()
 
