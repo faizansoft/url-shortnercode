@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useId, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -148,12 +148,13 @@ export default function LinkDetailsPage() {
 function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; rangeDays: 7 | 30 | 90 }) {
   // Hooks must be called unconditionally at the top level
   const [hover, setHover] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
   const entries = useMemo(() => Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0])), [daily]);
   const sliced = useMemo(() => entries.slice(-rangeDays), [entries, rangeDays]);
   const total = useMemo(() => sliced.reduce((s, [, v]) => s + v, 0), [sliced]);
-  const labels = sliced.map(([d]) => d);
-  const values = sliced.map(([, v]) => v);
+  const labels = useMemo(() => sliced.map(([d]) => d), [sliced]);
+  const values = useMemo(() => sliced.map(([, v]) => v), [sliced]);
   const max = Math.max(1, ...values);
 
   const w = Math.max(360, Math.min(1200, labels.length * 24));
@@ -162,11 +163,11 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
 
-  const pts = values.map((v, i) => {
+  const pts = useMemo(() => values.map((v, i) => {
     const x = pad.l + (labels.length === 1 ? innerW / 2 : (i / (labels.length - 1)) * innerW);
     const y = pad.t + innerH - (v / max) * innerH;
     return [x, y] as const;
-  });
+  }), [values, labels, innerW, innerH, pad.l, pad.t, max]);
 
   // Smooth quadratic path via midpoints (no hook to avoid deps warnings)
   const buildPath = (points: ReadonlyArray<readonly [number, number]>) => {
@@ -185,12 +186,9 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     d += ` T ${xe},${ye}`;
     return d;
   };
-  const path = buildPath(pts);
+  const path = useMemo(() => buildPath(pts), [pts]);
 
-  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    // find nearest x
+  const pickNearest = useCallback((x: number) => {
     let idx = 0;
     let best = Infinity;
     for (let i = 0; i < pts.length; i++) {
@@ -198,11 +196,27 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
       if (dx < best) { best = dx; idx = i; }
     }
     setHover(idx);
-  };
+  }, [pts]);
+
+  const onMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    pickNearest(x);
+  }, [pickNearest]);
+
+  const onTouchMove = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const touch = e.touches[0];
+    pickNearest(touch.clientX - rect.left);
+  }, [pickNearest]);
 
   const onLeave = () => setHover(null);
 
-  const gradientId = `grad-${Math.random().toString(36).slice(2, 8)}`;
+  const gradientId = useId();
 
   const noData = entries.length === 0 || total === 0;
 
@@ -211,7 +225,19 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
       {noData ? (
         <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the selected range</div>
       ) : (
-      <svg width={w} height={h} className="block" onMouseMove={onMove} onMouseLeave={onLeave}>
+      <svg
+        ref={svgRef}
+        width={w}
+        height={h}
+        className="block"
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
+        onTouchStart={onTouchMove}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onLeave}
+        role="img"
+        aria-label={`Daily clicks over time for last ${rangeDays} days`}
+      >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.32" />
@@ -221,11 +247,17 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
 
         <rect x={0} y={0} width={w} height={h} fill="transparent" />
 
-        {/* gridlines */}
+        {/* gridlines + y-axis ticks */}
         {Array.from({ length: 5 }).map((_, i) => {
           const y = pad.t + (i / 4) * innerH;
+          const val = Math.round((max * (1 - i / 4)));
           return (
-            <line key={`g-${i}`} x1={pad.l} x2={w - pad.r} y1={y} y2={y} stroke="color-mix(in oklab, var(--surface) 85%, var(--foreground))" strokeWidth={1} />
+            <g key={`g-${i}`}>
+              <line x1={pad.l} x2={w - pad.r} y1={y} y2={y} stroke="color-mix(in oklab, var(--surface) 85%, var(--foreground))" strokeWidth={1} />
+              {i !== 4 && (
+                <text x={pad.l - 8} y={y + 3} textAnchor="end" fontSize={10} fill="var(--muted)">{val}</text>
+              )}
+            </g>
           );
         })}
 
@@ -265,7 +297,7 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
         <div
           className="absolute px-2 py-1 rounded border text-xs shadow-sm"
           style={{
-            left: Math.min(Math.max(pts[hover][0] - 40, 0), w - 100),
+            left: Math.min(Math.max(pts[hover][0] - 48, 8), w - 140),
             top: Math.max(pts[hover][1] - 38, 0),
             background: 'var(--surface)',
             borderColor: 'var(--border)'
@@ -280,9 +312,9 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
               const prev = values[hover - 1] ?? 0;
               const diff = values[hover] - prev;
               const pct = prev > 0 ? (diff / prev) * 100 : (values[hover] > 0 ? 100 : 0);
-              const sign = diff > 0 ? '+' : diff < 0 ? '' : '';
+              const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
               return (
-                <div className="tabular-nums text-[var(--muted)]">{sign}{diff} ({pct.toFixed(0)}%) vs prev day</div>
+                <div className="tabular-nums text-[var(--muted)]">{sign}{Math.abs(diff)} ({sign || ''}{Math.round(Math.abs(pct))}%) vs prev day</div>
               );
             })()
           )}
