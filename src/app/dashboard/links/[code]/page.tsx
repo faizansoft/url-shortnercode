@@ -148,21 +148,38 @@ function DailyBars({ daily }: { daily: Record<string, number> }) {
     return <div className="text-sm text-[var(--muted)] h-[140px] grid place-items-center">No clicks in the last 30 days</div>;
   }
   const max = Math.max(1, ...entries.map(([, v]) => v));
+  const height = 96; // px
   return (
-    <div className="flex items-end gap-1 h-24">
-      {entries.map(([day, v]) => (
-        <div
-          key={day}
-          className="flex-1 min-w-[4px] rounded relative"
-          style={{ background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))' }}
-          title={`${day}: ${v}`}
-        >
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
-            style={{ height: `${(v / max) * 100}%` }}
-          />
-        </div>
-      ))}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-end gap-1" style={{ height }}>
+        {entries.map(([day, v]) => {
+          const hPct = (v / max) * 100;
+          const minPx = v > 0 ? 2 : 0;
+          return (
+            <div
+              key={day}
+              className="flex-1 min-w-[4px] rounded relative border"
+              style={{ background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))', borderColor: 'var(--border)' }}
+              title={`${day}: ${v}`}
+            >
+              <div
+                className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
+                style={{ height: `max(${hPct}%, ${minPx}px)` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid gap-1 text-[10px] leading-3 text-[var(--muted)]" style={{ gridTemplateColumns: `repeat(${entries.length || 1}, minmax(0,1fr))` }}>
+        {entries.map(([day], idx) => {
+          const show = idx % Math.max(1, Math.ceil(entries.length / 14)) === 0 || idx === entries.length - 1;
+          return (
+            <div key={`lbl-${day}`} className="text-center tabular-nums">
+              {show ? day.slice(8, 10) : ''}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
