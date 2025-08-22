@@ -146,3 +146,47 @@ async function recordFunnelStep(link_code: string, session_id: string, step: str
 ```
 
 You can also implement an interstitial page to better track time-on-page before redirecting (optional).
+
+## Pages Themes (Customization)
+
+Pages now support a customizable theme (colors, gradient, fonts, radius, layout) stored per page in a `theme` JSONB column.
+
+### Database migration
+
+Run the provided migration to add the column (idempotent):
+
+```sql
+alter table if exists public.pages
+  add column if not exists theme jsonb;
+
+update public.pages set theme = '{}'::jsonb where theme is null;
+```
+
+The migration file is in `scripts/20250822_add_theme_column.sql`.
+
+Example ways to apply:
+
+- psql:
+  ```bash
+  psql "$SUPABASE_DB_URL" -f scripts/20250822_add_theme_column.sql
+  ```
+- Supabase SQL editor: paste the SQL content and run.
+
+### Editor UI
+
+In `Dashboard > Pages > Edit`, use the Theme panel to:
+
+- Presets: quickly apply curated themes
+- Colors: primary, secondary, surface, foreground
+- Gradient: angle and multi-stop editor (add/remove stops)
+- Fonts: choose System, Inter, Poppins, Outfit, Merriweather, Space Grotesk, Lora
+- Font size and weight
+- Layout: radius, max width, alignment
+
+Click "Save Theme" to persist.
+
+### Public rendering and Google Fonts
+
+Public pages (`src/app/p/[slug]/page.tsx`) read the `theme` and apply CSS variables for palette, gradient, fonts, radius, and layout. When a Google Font is selected, the page injects the appropriate `<link>` to Google Fonts at runtime to load the font family.
+
+No extra config is required; ensure outbound access is allowed so the font CSS can be fetched from `fonts.googleapis.com`.

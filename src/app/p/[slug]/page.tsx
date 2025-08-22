@@ -1,4 +1,6 @@
 import { getSupabaseServer } from '@/lib/supabaseServer'
+import FontLoader from './FontLoader'
+import type { Theme } from '@/lib/pageThemes'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -9,7 +11,7 @@ type TextBlock = { id?: string; type: 'text'; text: string }
 type ButtonBlock = { id?: string; type: 'button'; label: string; href: string }
 type Block = HeroBlock | TextBlock | ButtonBlock
 
-type PublicPageRow = { title: string; blocks: unknown; published: boolean }
+type PublicPageRow = { title: string; blocks: unknown; published: boolean; theme?: Theme | null }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null
@@ -34,7 +36,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
 
   const { data, error } = await supabase
     .from('pages')
-    .select('title, blocks, published')
+    .select('title, blocks, published, theme')
     .eq('slug', slugDecoded)
     .eq('published', true)
     .maybeSingle()
@@ -60,16 +62,64 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     ? rawBlocks.filter((b: unknown): b is Block => isHero(b) || isText(b) || isButton(b))
     : []
 
+  const theme = row.theme as Theme | null | undefined
+  const googleFontMap: Record<NonNullable<Theme['typography']['font']>, { css: string; family: string }> = {
+    'system': { css: '', family: `ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji` },
+    'inter': { css: 'Inter:wght@400;500;600;700', family: 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
+    'poppins': { css: 'Poppins:wght@400;500;600;700', family: 'Poppins, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
+    'outfit': { css: 'Outfit:wght@400;500;600;700', family: 'Outfit, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
+    'merriweather': { css: 'Merriweather:wght@400;700', family: 'Merriweather, Georgia, serif' },
+    'space-grotesk': { css: 'Space+Grotesk:wght@400;500;600;700', family: '"Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
+    'lora': { css: 'Lora:wght@400;500;600;700', family: 'Lora, Georgia, serif' },
+  }
+  const fontKey = (theme?.typography.font ?? 'system') as NonNullable<Theme['typography']['font']>
+  const gf = googleFontMap[fontKey]
+  const cssVars = theme ? {
+    '--primary': theme.palette.primary,
+    '--secondary': theme.palette.secondary,
+    '--surface': theme.palette.surface,
+    '--foreground': theme.palette.foreground,
+    '--muted': theme.palette.muted,
+    '--border': theme.palette.border,
+    '--radius': `${theme.radius}px`,
+    '--maxw': `${theme.layout.maxWidth}px`,
+    '--section-gap': `${theme.layout.sectionGap}px`,
+    '--gradient': `linear-gradient(${theme.gradient.angle}deg, ${theme.gradient.stops.map(s=>`${s.color} ${s.at}%`).join(', ')})`,
+    '--font': gf.family,
+    '--font-size': `${theme.typography.baseSize}px`,
+    '--font-weight': `${theme.typography.weight}`,
+  } as React.CSSProperties : ({} as React.CSSProperties)
+
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-8">
-      <h1 className="text-3xl font-bold">{row.title}</h1>
-      <section className="space-y-6">
+    <>
+    {gf.css && (
+      <FontLoader href={`https://fonts.googleapis.com/css2?family=${gf.css}&display=swap`} />
+    )}
+    <main
+      className="mx-auto p-6"
+      style={{
+        ...(cssVars || {}),
+        maxWidth: (theme?.layout.maxWidth ?? 768),
+        background: (theme?.palette.surface ?? 'var(--surface)'),
+        color: (theme?.palette.foreground ?? 'var(--foreground)'),
+        fontFamily: 'var(--font)',
+        fontSize: 'var(--font-size)',
+        fontWeight: Number(theme?.typography.weight ?? 500) as any
+      }}
+    >
+      <div
+        className="rounded-xl mb-6"
+        style={{ background: theme ? 'var(--gradient)' : undefined, padding: '24px', textAlign: (theme?.layout.align ?? 'left') as any }}
+      >
+        <h1 className="text-3xl font-bold" style={{ margin: 0 }}>{row.title}</h1>
+      </div>
+      <section className="space-y-6" style={{ marginTop: 0 }}>
         {blocks.map((b, idx) => {
           if (b?.type === 'hero') {
             return (
-              <div key={b.id ?? idx} className="rounded-xl p-8 text-center" style={{ background: 'color-mix(in oklab, var(--accent) 12%, transparent)' }}>
+              <div key={b.id ?? idx} className="rounded-xl p-8" style={{ background: 'var(--gradient)', borderRadius: 'var(--radius)' }}>
                 <div className="text-2xl font-semibold mb-1">{b.heading}</div>
-                {b.subheading && <div className="text-sm text-[var(--muted)]">{b.subheading}</div>}
+                {b.subheading && <div className="text-sm" style={{ color: 'var(--muted)' }}>{b.subheading}</div>}
               </div>
             )
           }
@@ -82,8 +132,8 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
           }
           if (b?.type === 'button') {
             return (
-              <div key={b.id ?? idx} className="text-center">
-                <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4">{b.label}</a>
+              <div key={b.id ?? idx} style={{ textAlign: (theme?.layout.align ?? 'left') as any }}>
+                <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--primary)', borderRadius: 'var(--radius)' }}>{b.label}</a>
               </div>
             )
           }
@@ -91,5 +141,6 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
         })}
       </section>
     </main>
+    </>
   )
 }
