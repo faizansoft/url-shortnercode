@@ -31,7 +31,6 @@ export async function GET(
   }
 
   // Fire-and-forget click log (don’t block redirect)
-  const ua = _req.headers.get('user-agent') ?? null
   const ref = _req.headers.get('referer') ?? null
   const ip = getClientIp(_req)
 
@@ -62,30 +61,7 @@ export async function GET(
   }
   return NextResponse.redirect(targetUrl, 302)
 }
-
-// Minimal user-agent parser to enrich analytics without extra deps
-function parseUA(ua: string | null): { device: string | null; os: string | null; browser: string | null } {
-  if (!ua) return { device: null, os: null, browser: null }
-  const s = ua.toLowerCase()
-  let device: string = 'desktop'
-  if (/mobile|iphone|android/.test(s)) device = 'mobile'
-  else if (/ipad|tablet/.test(s)) device = 'tablet'
-
-  let os: string | null = null
-  if (/windows nt/.test(s)) os = 'Windows'
-  else if (/mac os x/.test(s)) os = 'macOS'
-  else if (/android/.test(s)) os = 'Android'
-  else if (/(iphone|ipad|ipod|ios)/.test(s)) os = 'iOS'
-  else if (/linux/.test(s)) os = 'Linux'
-
-  let browser: string | null = null
-  if (/edg\//.test(s)) browser = 'Edge'
-  else if (/chrome\//.test(s)) browser = 'Chrome'
-  else if (/safari\//.test(s) && !/chrome\//.test(s)) browser = 'Safari'
-  else if (/firefox\//.test(s)) browser = 'Firefox'
-
-  return { device, os, browser }
-}
+ 
 
 // Extract best-effort client IP from common proxy/CDN headers
 function getClientIp(req: NextRequest): string | null {

@@ -152,9 +152,6 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
   const entries = useMemo(() => Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0])), [daily]);
   const sliced = useMemo(() => entries.slice(-rangeDays), [entries, rangeDays]);
   const total = useMemo(() => sliced.reduce((s, [, v]) => s + v, 0), [sliced]);
-  if (entries.length === 0 || total === 0) {
-    return <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the selected range</div>;
-  }
   const labels = sliced.map(([d]) => d);
   const values = sliced.map(([, v]) => v);
   const max = Math.max(1, ...values);
@@ -171,24 +168,24 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     return [x, y] as const;
   });
 
-  // Smooth quadratic path via midpoints
-  const path = useMemo(() => {
-    if (pts.length === 0) return '';
-    if (pts.length === 1) return `M ${pts[0][0]},${pts[0][1]}`;
+  // Smooth quadratic path via midpoints (no hook to avoid deps warnings)
+  const buildPath = (points: ReadonlyArray<readonly [number, number]>) => {
+    if (points.length === 0) return '';
+    if (points.length === 1) return `M ${points[0][0]},${points[0][1]}`;
     let d = '';
-    for (let i = 0; i < pts.length - 1; i++) {
-      const [x0, y0] = pts[i];
-      const [x1, y1] = pts[i + 1];
+    for (let i = 0; i < points.length - 1; i++) {
+      const [x0, y0] = points[i];
+      const [x1, y1] = points[i + 1];
       const mx = (x0 + x1) / 2;
       const my = (y0 + y1) / 2;
       if (i === 0) d += `M ${x0},${y0} Q ${x0},${y0} ${mx},${my}`;
       else d += ` T ${mx},${my}`;
     }
-    // end at last point
-    const [xe, ye] = pts[pts.length - 1];
+    const [xe, ye] = points[points.length - 1];
     d += ` T ${xe},${ye}`;
     return d;
-  }, [pts.map(p => p.join(',')).join('|')]);
+  };
+  const path = buildPath(pts);
 
   const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect();
@@ -207,8 +204,13 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
 
   const gradientId = `grad-${Math.random().toString(36).slice(2, 8)}`;
 
+  const noData = entries.length === 0 || total === 0;
+
   return (
     <div className="relative overflow-x-auto">
+      {noData ? (
+        <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the selected range</div>
+      ) : (
       <svg width={w} height={h} className="block" onMouseMove={onMove} onMouseLeave={onLeave}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -256,9 +258,10 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
           </g>
         )}
       </svg>
+      )}
 
       {/* tooltip */}
-      {hover !== null && (
+      {!noData && hover !== null && (
         <div
           className="absolute px-2 py-1 rounded border text-xs shadow-sm"
           style={{
