@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 // Very simple block system
@@ -20,7 +20,6 @@ interface PageData {
 
 export default function PageEditor() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const id = params?.id as string;
 
   const [loading, setLoading] = useState(true);

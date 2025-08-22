@@ -4,6 +4,29 @@ export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
 // Public-facing page renderer by slug
+type HeroBlock = { id?: string; type: 'hero'; heading: string; subheading?: string }
+type TextBlock = { id?: string; type: 'text'; text: string }
+type ButtonBlock = { id?: string; type: 'button'; label: string; href: string }
+type Block = HeroBlock | TextBlock | ButtonBlock
+
+type PublicPageRow = { title: string; blocks: unknown; published: boolean }
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null
+}
+function isHero(b: unknown): b is HeroBlock {
+  if (!isRecord(b)) return false
+  return b['type'] === 'hero' && typeof b['heading'] === 'string'
+}
+function isText(b: unknown): b is TextBlock {
+  if (!isRecord(b)) return false
+  return b['type'] === 'text' && typeof b['text'] === 'string'
+}
+function isButton(b: unknown): b is ButtonBlock {
+  if (!isRecord(b)) return false
+  return b['type'] === 'button' && typeof b['label'] === 'string' && typeof b['href'] === 'string'
+}
+
 export default async function PublicPage({ params }: { params: { slug: string } }) {
   const supabase = getSupabaseServer()
   const slug = decodeURIComponent(params.slug)
@@ -30,11 +53,15 @@ export default async function PublicPage({ params }: { params: { slug: string } 
     )
   }
 
-  const blocks = Array.isArray((data as any).blocks) ? ((data as any).blocks as any[]) : []
+  const row = data as PublicPageRow
+  const rawBlocks = row.blocks
+  const blocks: Block[] = Array.isArray(rawBlocks)
+    ? rawBlocks.filter((b: unknown): b is Block => isHero(b) || isText(b) || isButton(b))
+    : []
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-8">
-      <h1 className="text-3xl font-bold">{(data as any).title}</h1>
+      <h1 className="text-3xl font-bold">{row.title}</h1>
       <section className="space-y-6">
         {blocks.map((b, idx) => {
           if (b?.type === 'hero') {
