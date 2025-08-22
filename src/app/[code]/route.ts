@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { code: string } }
+  ctx: any
 ) {
-  const { code } = params
+  const { code } = (ctx?.params || {}) as { code?: string }
   if (!code || code.length < 3) {
     return NextResponse.redirect(new URL('/_not-found', new URL(_req.url)), 302)
   }
