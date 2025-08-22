@@ -175,21 +175,24 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     return points.map((p, i) => (i === 0 ? `M ${p[0]},${p[1]}` : `L ${p[0]},${p[1]}`)).join(' ');
   };
 
-  // Smooth quadratic path via midpoints (no hook to avoid deps warnings)
+  // Catmull–Rom to cubic Bézier: curve interpolates THROUGH all points (no visual gaps)
   const buildSmoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
-    if (points.length === 0) return '';
-    if (points.length === 1) return `M ${points[0][0]},${points[0][1]}`;
-    let d = '';
-    for (let i = 0; i < points.length - 1; i++) {
-      const [x0, y0] = points[i];
-      const [x1, y1] = points[i + 1];
-      const mx = (x0 + x1) / 2;
-      const my = (y0 + y1) / 2;
-      if (i === 0) d += `M ${x0},${y0} Q ${x0},${y0} ${mx},${my}`;
-      else d += ` T ${mx},${my}`;
+    const n = points.length;
+    if (n === 0) return '';
+    if (n === 1) return `M ${points[0][0]},${points[0][1]}`;
+    let d = `M ${points[0][0]},${points[0][1]}`;
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(n - 1, i + 2)];
+      // Uniform Catmull-Rom with tension = 0.5 => factor = 1/6
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
     }
-    const [xe, ye] = points[points.length - 1];
-    d += ` T ${xe},${ye}`;
     return d;
   };
   const shouldSmooth = labels.length >= 5 && new Set(values).size > 1;
