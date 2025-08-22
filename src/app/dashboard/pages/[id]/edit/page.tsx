@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Image from 'next/image'
 import { supabaseClient } from "@/lib/supabaseClient";
 import { defaultTheme, themePresets } from "@/lib/pageThemes";
 import type { Theme } from "@/lib/pageThemes";
@@ -284,7 +285,7 @@ function BlockEditor({ block, onChange, onRemove }: { block: Block; onChange: (b
 }
 
 function Tabs({
-  theme,
+  theme: _theme,
   onApplyPreset,
   branding,
   setBranding,
@@ -444,14 +445,14 @@ function PagePreview({ title, blocks }: { title: string; blocks: Block[] }) {
         if (b.type === 'image') {
           return (
             <div key={b.id} className="rounded overflow-hidden" style={{ borderRadius: b.rounded ? 12 : 6 }}>
-              <img src={b.src} alt={b.alt || ''} className="w-full h-auto" />
+              <Image src={b.src} alt={b.alt || ''} width={800} height={450} className="w-full h-auto" unoptimized />
             </div>
           )
         }
         if (b.type === 'product-card') {
           return (
             <div key={b.id} className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3" style={{ borderColor: 'var(--border)' }}>
-              <div className="rounded overflow-hidden"><img src={b.image} alt={b.title} className="w-full h-auto" /></div>
+              <div className="rounded overflow-hidden"><Image src={b.image} alt={b.title} width={600} height={600} className="w-full h-auto" unoptimized /></div>
               <div>
                 <div className="font-medium">{b.title}</div>
                 {b.subtitle && <div className="text-xs text-[var(--muted)] mb-2">{b.subtitle}</div>}

@@ -1,0 +1,6 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'>
+  <rect width='800' height='500' fill='#0a0a0a'/>
+  <rect x='24' y='24' width='752' height='452' rx='10' fill='#111827' opacity='0.5'/>
+  <text x='40' y='80' fill='#f1f5f9' font-family='system-ui' font-size='28' font-weight='600'>Mono</text>
+  <rect x='40' y='110' width='160' height='28' rx='8' fill='#94a3b8'/>
+</svg>
