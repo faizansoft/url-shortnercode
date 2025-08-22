@@ -168,9 +168,18 @@ export default function LinksIndexPage() {
       const { data } = await supabaseClient.auth.getSession();
       const token = data.session?.access_token;
       if (token) {
-        const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(shortCode)}`, { headers: { Authorization: `Bearer ${token}` } });
+        const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(shortCode)}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
         if (resStyle.ok) {
-          const { options } = await resStyle.json();
+          let { options } = await resStyle.json();
+          // prefer fresher local draft if available
+          try {
+            const rawLocal = window.localStorage.getItem(`qrDesigner:${shortCode}`);
+            if (rawLocal) {
+              const local = JSON.parse(rawLocal) as { ts?: number };
+              const remoteTs = typeof options?.ts === 'number' ? options.ts : 0;
+              if (local && typeof local.ts === 'number' && local.ts > remoteTs) options = local;
+            }
+          } catch {}
           if (options && typeof options === 'object') opts = options as SavedOptions;
         }
       }

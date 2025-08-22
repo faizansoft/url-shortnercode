@@ -59,9 +59,20 @@ export default function QRCodesPage() {
             let styledSvg: string | null = null;
             try {
               if (token) {
-                const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(it.short_code)}` , { headers: { Authorization: `Bearer ${token}` } });
+                const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(it.short_code)}` , { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
                 if (resStyle.ok) {
-                  const { options } = await resStyle.json();
+                  let { options } = await resStyle.json();
+                  // If a fresher local draft exists, prefer it
+                  try {
+                    const rawLocal = window.localStorage.getItem(`qrDesigner:${it.short_code}`);
+                    if (rawLocal) {
+                      const local = JSON.parse(rawLocal) as { ts?: number };
+                      if (local && typeof local === 'object' && typeof local.ts === 'number') {
+                        const remoteTs = typeof options?.ts === 'number' ? options.ts : 0;
+                        if (local.ts > remoteTs) options = local;
+                      }
+                    }
+                  } catch {}
                   if (options && typeof options === 'object') {
                     // Always generate inline SVG using saved options
                     const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
@@ -308,7 +319,7 @@ function isDataUrl(u: string): boolean { return typeof u === 'string' && u.start
 // Convert a URL (same-origin recommended) to a data URL
 async function toDataUrl(src: string): Promise<string | null> {
   try {
-    const res = await fetch(src, { cache: 'force-cache' });
+    const res = await fetch(src, { cache: 'no-store' });
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {
