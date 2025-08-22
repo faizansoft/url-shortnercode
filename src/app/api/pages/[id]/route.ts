@@ -5,7 +5,7 @@ export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
 // GET /api/pages/[id] -> fetch one page (owner only)
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: any) {
   try {
     const supabase = getSupabaseServer()
     const id = params.id
@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 // PUT /api/pages/[id] -> update page (owner only)
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: any) {
   try {
     const supabase = getSupabaseServer()
     const id = params.id
@@ -92,7 +92,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/pages/[id]
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: any) {
   try {
     const supabase = getSupabaseServer()
     const id = params.id
