@@ -14,7 +14,6 @@
   --selection-text: #0b1220; /* selection text */
 }
 
-<<<<<<< HEAD
 /* Themed scrollbars */
 .scrollbar {
   scrollbar-width: thin; /* Firefox */
@@ -38,9 +37,7 @@
 .scrollbar::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklab, var(--accent) 55%, var(--foreground) 5%);
 }
-
-=======
->>>>>>> 0e1f9ed (Initial commit)
+ 
 /* Removed @theme inline to silence CSS validator warning.
    We keep using the CSS variables directly in components. */
 
@@ -53,7 +50,6 @@
     --accent: #60a5fa; /* lighter blue */
     --accent-2: #34d399;
     --accent-3: #fbbf24;
-<<<<<<< HEAD
     /* ensure surfaces and borders are darker in dark mode */
     --surface: #0f1626; /* slightly elevated surface */
     --border: #21304d; /* subtle border for dark */
@@ -85,9 +81,6 @@
 
   /* Nav items hover should also adopt accent text color */
   .nav-item:hover { color: var(--accent); }
-=======
-  }
->>>>>>> 0e1f9ed (Initial commit)
 }
 
 /* App chrome */
@@ -113,11 +106,7 @@ input::placeholder, textarea::placeholder {
   color: color-mix(in oklab, var(--foreground) 45%, #94a3b8);
   opacity: 1;
 }
-<<<<<<< HEAD
 input, textarea, select { color: var(--foreground); caret-color: var(--accent); }
-=======
-input, textarea, select { color: var(--foreground); }
->>>>>>> 0e1f9ed (Initial commit)
 
 /* Links */
 a {
@@ -149,7 +138,6 @@ a:hover {
 
 /* Subtle card glass effect utilities */
 .glass {
-<<<<<<< HEAD
   /* modern glossy card: subtle gradient, soft border, deeper blur */
   background:
     linear-gradient(
@@ -163,12 +151,6 @@ a:hover {
     0 10px 30px rgba(15, 23, 42, .08),
     inset 0 1px 0 rgba(255,255,255,.08);
   border-radius: .9rem;
-=======
-  background-color: color-mix(in oklab, var(--background) 88%, transparent);
-  border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(37,99,235,.10);
->>>>>>> 0e1f9ed (Initial commit)
 }
 
 /* Brand gradient utilities */
@@ -192,7 +174,6 @@ a:hover {
   background-image: linear-gradient(90deg, color-mix(in oklab, var(--accent) 92%, #fff 0%), color-mix(in oklab, var(--accent-2) 92%, #fff 0%));
   box-shadow: 0 10px 18px rgba(37,99,235,.18), inset 0 -1px 0 rgba(255,255,255,.25);
 }
-<<<<<<< HEAD
 .btn-primary:hover {
   filter: brightness(1.03);
   transform: translateY(-.5px);
@@ -228,32 +209,13 @@ a:hover {
 
 /* Accent-colored button text to match link-style buttons */
 .btn-text-accent { color: var(--accent); }
-=======
-.btn-primary:hover { filter: brightness(1.03); transform: translateY(-.5px); }
-.btn-primary:active { filter: brightness(.98); transform: translateY(0); }
-
-.btn-secondary {
-  color: var(--foreground);
-  background: #fff;
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(16,24,40,.04);
-}
-.btn-secondary:hover { background: color-mix(in oklab, #fff 92%, var(--accent) 8%); }
-.btn-secondary:active { background: color-mix(in oklab, #fff 88%, var(--accent) 12%); }
->>>>>>> 0e1f9ed (Initial commit)
 
 .btn-ghost {
   color: var(--foreground);
   background: transparent;
-<<<<<<< HEAD
   border: 1px solid color-mix(in oklab, var(--border) 70%, var(--surface) 30%);
 }
 .btn-ghost:hover { background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%); }
-=======
-  border: 1px solid color-mix(in oklab, var(--border) 70%, #fff 30%);
-}
-.btn-ghost:hover { background: color-mix(in oklab, #fff 92%, var(--accent) 8%); }
->>>>>>> 0e1f9ed (Initial commit)
 
 /* Subtle gradient ring wrapper */
 .ring-gradient { position: relative; border-radius: .7rem; padding: 1px; }
@@ -291,7 +253,6 @@ a:hover {
 .nav-item:hover::before { transform: scaleY(.6); }
 .nav-item-active::before { transform: scaleY(1); }
 
-<<<<<<< HEAD
 /* (deduped .glass; see definition above) */
 
 /* Tooltips: glossy theme-aligned */
@@ -334,12 +295,4 @@ a:hover {
     box-shadow: 0 10px 24px rgba(2,6,23,.4), inset 0 1px 0 rgba(255,255,255,.06);
   }
   .tip[data-tip]::before { background: color-mix(in oklab, var(--surface) 92%, #000 8%); }
-=======
-/* Elevated glass card with edge highlight */
-.glass {
-  background-color: color-mix(in oklab, var(--background) 88%, transparent);
-  border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(37,99,235,.10);
->>>>>>> 0e1f9ed (Initial commit)
 }

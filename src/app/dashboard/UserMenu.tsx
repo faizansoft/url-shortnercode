@@ -23,7 +23,6 @@ export default function UserMenu() {
         U
       </button>
       {open && (
-<<<<<<< HEAD
         <div
           className="absolute right-0 mt-2 w-40 rounded-md text-sm shadow-lg border"
           style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
@@ -33,11 +32,6 @@ export default function UserMenu() {
             style={{ background: 'transparent' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in oklab, var(--accent) 10%, var(--surface))')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-=======
-        <div className="absolute right-0 mt-2 w-40 rounded-md border bg-white shadow-lg text-sm">
-          <button
-            className="w-full text-left px-3 py-2 hover:bg-gray-50"
->>>>>>> 0e1f9ed (Initial commit)
             onClick={logout}
           >
             Logout

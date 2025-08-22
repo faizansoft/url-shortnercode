@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-<<<<<<< HEAD
 import { getSupabaseServer } from '@/lib/supabaseServer'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
-=======
-import { supabaseServer } from '@/lib/supabaseServer'
->>>>>>> 0e1f9ed (Initial commit)
 
 // GET /api/analytics
 // Aggregates clicks for the authenticated user's links
@@ -14,11 +10,7 @@ export async function GET(req: NextRequest) {
   try {
     const auth = req.headers.get('authorization') || req.headers.get('Authorization')
     const token = auth?.startsWith('Bearer ') ? auth.slice('Bearer '.length) : null
-
-<<<<<<< HEAD
     const supabaseServer = getSupabaseServer()
-=======
->>>>>>> 0e1f9ed (Initial commit)
     let user_id: string | null = null
     if (token) {
       const { data, error } = await supabaseServer.auth.getUser(token)
@@ -35,25 +27,21 @@ export async function GET(req: NextRequest) {
         daily: {},
         topReferrers: [],
         topLinks: [],
-        countries: [],
         devices: [],
-<<<<<<< HEAD
-        diagnostics: { resolvedUserId: null, linkCount: 0, clickCount: 0 },
+        browsers: [],
+        oses: [],
+        referrerDomains: [],
+        hourly: {},
+        weekdays: {},
       })
     }
 
-    // Read optional range for daily buckets and debug flag
+    // Read optional range for daily buckets
     const url = new URL(req.url)
     const daysParam = url.searchParams.get('days')
-    const debug = url.searchParams.get('debug') === '1'
     const allowed = new Set(['7','30','90'])
     const days = allowed.has(daysParam ?? '') ? Number(daysParam) : 30
 
-=======
-      })
-    }
-
->>>>>>> 0e1f9ed (Initial commit)
     // Get user's links
     const { data: links, error: linksErr } = await supabaseServer
       .from('links')
@@ -69,12 +57,12 @@ export async function GET(req: NextRequest) {
         daily: {},
         topReferrers: [],
         topLinks: [],
-        countries: [],
         devices: [],
-<<<<<<< HEAD
-        diagnostics: { resolvedUserId: user_id, linkCount: 0, clickCount: 0 },
-=======
->>>>>>> 0e1f9ed (Initial commit)
+        browsers: [],
+        oses: [],
+        referrerDomains: [],
+        hourly: {},
+        weekdays: {},
       })
     }
 
@@ -86,7 +74,6 @@ export async function GET(req: NextRequest) {
       .limit(50000)
     if (clicksErr) return NextResponse.json({ error: clicksErr.message }, { status: 500 })
 
-<<<<<<< HEAD
     type AnyRow = Record<string, unknown>
     const getIso = (r: AnyRow): string => {
       const v = (r['created_at'] ?? r['createdAt'] ?? r['timestamp'] ?? r['ts'] ?? r['inserted_at'] ?? r['insertedAt']) as string | number | Date | null | undefined
@@ -95,191 +82,43 @@ export async function GET(req: NextRequest) {
     }
     const getRef = (r: AnyRow): string => (r['referrer'] ?? (r as Record<string, unknown>)['referer'] ?? 'direct') as string
     const getLinkId = (r: AnyRow): string => (r['link_id'] ?? r['linkId'] ?? r['link'] ?? '') as string
-    const getCountry = (r: AnyRow): string | null => (r['country'] ?? r['country_code'] ?? r['countryCode'] ?? null) as string | null
     const getDevice = (r: AnyRow): string | null => (r['device'] ?? r['ua_device'] ?? r['user_agent_device'] ?? null) as string | null
+    const getBrowser = (r: AnyRow): string | null => (r['browser'] ?? r['ua_browser'] ?? null) as string | null
+    const getOS = (r: AnyRow): string | null => (r['os'] ?? r['ua_os'] ?? null) as string | null
+    const getRefDomain = (r: AnyRow): string | null => (r['referrer_domain'] ?? (r as Record<string, unknown>)['referer_domain'] ?? null) as string | null
 
     type LinkRow = { id: string; short_code: string }
     const linkMap = new Map<string, { short_code: string }>()
     const typedLinks = (links ?? []) as unknown as LinkRow[]
     for (const l of typedLinks) linkMap.set(l.id, { short_code: l.short_code })
 
-    const getRegion = (r: AnyRow): string | null => (
-      r['region'] ?? r['region_name'] ?? r['regionName'] ??
-      r['subdivision'] ?? r['subdivision_name'] ?? r['subdivision1'] ?? r['subdivision_1'] ?? r['subdivision_name_1'] ??
-      r['state'] ?? r['state_name'] ?? r['state_code'] ??
-      r['province'] ?? r['province_name'] ??
-      r['regionCode'] ?? r['region_code'] ?? null
-    ) as string | null
-    const getCity = (r: AnyRow): string | null => (
-      r['city'] ?? r['city_name'] ?? r['cityName'] ?? r['locality'] ?? r['town'] ?? r['municipality'] ?? r['village'] ?? null
-    ) as string | null
-    const getBrowser = (r: AnyRow): string | null => (r['browser'] ?? r['ua_browser'] ?? null) as string | null
-    const getOS = (r: AnyRow): string | null => (r['os'] ?? r['ua_os'] ?? null) as string | null
-    const getRefDomain = (r: AnyRow): string | null => (r['referrer_domain'] ?? (r as Record<string, unknown>)['referer_domain'] ?? null) as string | null
-
-    // Helpers
-    const strip = (s: string | null): string | null => {
-      if (!s) return null;
-      const t = String(s).trim();
-      if (!t.length) return null;
-      const low = t.toLowerCase();
-      if (low === 'unknown' || low === 'n/a' || low === '-') return null;
-      return t;
-    };
-    const parseDomain = (u: string | null): string | null => {
-      const v = strip(u);
-      if (!v) return null;
-      try {
-        const url = new URL(v);
-        const host = url.hostname.toLowerCase();
-        return host || null;
-      } catch {
-        // Not a full URL; attempt to treat as host
-        const m = /^[a-z0-9.-]+$/i.test(v) ? v : null;
-        return m ? m.toLowerCase() : null;
-      }
-    };
-    const collapseSubdomain = (host: string): string => host.replace(/^www\./i, '').replace(/^m\./i, '').replace(/^l\./i, '');
-    const domainAliases: Record<string, string> = {
-      't.co': 'twitter.com',
-      'x.com': 'twitter.com',
-      'mobile.twitter.com': 'twitter.com',
-      'tweetdeck.twitter.com': 'twitter.com',
-      'lnkd.in': 'linkedin.com',
-      'l.instagram.com': 'instagram.com',
-      'm.facebook.com': 'facebook.com',
-      'lm.facebook.com': 'facebook.com',
-      'l.facebook.com': 'facebook.com',
-      'm.youtube.com': 'youtube.com',
-      'news.google.com': 'google.com',
-      'amp.reddit.com': 'reddit.com',
-      'old.reddit.com': 'reddit.com',
-      'np.reddit.com': 'reddit.com',
-    };
-    const normalizeDomainHost = (host: string | null): string | null => {
-      if (!host) return null;
-      const h = collapseSubdomain(host);
-      if (domainAliases[h]) return domainAliases[h];
-      // Collapse common country subdomains like google.co.uk -> google.co.uk (keep as-is), but strip deep subdomains
-      const parts = h.split('.');
-      if (parts.length > 2) {
-        // If looks like deep subdomain e.g., sub.domain.tld -> domain.tld
-        const base = parts.slice(-2).join('.');
-        return domainAliases[base] || base;
-      }
-      return h;
-    };
-    const normalizeCountry = (c: string | null): string | null => {
-      const v = strip(c);
-      if (!v) return null;
-      const u = v.toUpperCase();
-      // quick alias
-      const alias = u === 'UK' ? 'GB' : u;
-      return alias;
-    };
-
-    const anomalies = {
-      parsedRefDomainFromReferrer: 0,
-      malformedReferrer: 0,
-      unknown: { country: 0, region: 0, city: 0, device: 0, browser: 0, os: 0 },
-    };
-
     const clicks = (rawClicks ?? []).map((r) => {
-      const ref = strip(getRef(r)) || 'direct';
-      const refDomRaw = strip(getRefDomain(r));
-      const parsedDom = parseDomain(ref);
-      const refDomNorm = normalizeDomainHost(refDomRaw || parsedDom);
-      const refDom = refDomNorm || 'direct';
-      if (!refDomRaw && parsedDom) anomalies.parsedRefDomainFromReferrer++;
-      if (!refDomRaw && !parsedDom && ref !== 'direct') anomalies.malformedReferrer++;
-
-      const country = normalizeCountry(getCountry(r));
-      const region = strip(getRegion(r));
-      const city = strip(getCity(r));
-      const device = strip(getDevice(r));
-      const browser = strip(getBrowser(r));
-      const os = strip(getOS(r));
-      if (!country) anomalies.unknown.country++;
-      if (country && !region) anomalies.unknown.region++;
-      if (country && !city) anomalies.unknown.city++;
-      if (!device) anomalies.unknown.device++;
-      if (!browser) anomalies.unknown.browser++;
-      if (!os) anomalies.unknown.os++;
+      const ref = getRef(r)
+      const refDomRaw = getRefDomain(r)
+      const refDomNorm = refDomRaw
+      const refDom = refDomNorm || 'direct'
+      const device = getDevice(r)
+      const browser = getBrowser(r)
+      const os = getOS(r)
       return {
         ts: getIso(r),
         referrer: ref,
         referrer_domain: refDom,
         link_id: getLinkId(r),
-        country,
-        region,
-        city,
         device,
         browser,
         os,
-      };
-    })
-
-    // Country display name expander (server-side) for convenience
-    const DisplayNamesCtor: typeof Intl.DisplayNames | undefined = (Intl as unknown as { DisplayNames?: typeof Intl.DisplayNames }).DisplayNames
-    const regionNames = DisplayNamesCtor ? new Intl.DisplayNames(['en'], { type: 'region' }) : null
-    const toCountryName = (codeOrName: string) => {
-      if (!codeOrName) return 'Unknown'
-      const s = String(codeOrName)
-      if (/^[A-Z]{2}$/.test(s)) {
-        return regionNames?.of(s) || s
       }
-      return s
-    }
-=======
-    type AnyRow = Record<string, any>
-    const getIso = (r: AnyRow): string => {
-      const v = r.created_at ?? r.createdAt ?? r.timestamp ?? r.ts ?? r.inserted_at ?? r.insertedAt
-      const d = v ? new Date(v) : new Date(0)
-      return isNaN(d as unknown as number) ? new Date(0).toISOString() : d.toISOString()
-    }
-    const getRef = (r: AnyRow): string => (r.referrer ?? r.referer ?? 'direct') as string
-    const getLinkId = (r: AnyRow): string => (r.link_id ?? r.linkId ?? r.link ?? '') as string
-    const getCountry = (r: AnyRow): string | null => (r.country ?? r.country_code ?? r.countryCode ?? null)
-    const getDevice = (r: AnyRow): string | null => (r.device ?? r.ua_device ?? r.user_agent_device ?? null)
-
-    const linkMap = new Map<string, { short_code: string }>()
-    for (const l of links ?? []) linkMap.set(l.id, { short_code: l.short_code })
-
-    const getRegion = (r: AnyRow): string | null => (r.region ?? r.region_name ?? r.subdivision ?? null)
-    const getCity = (r: AnyRow): string | null => (r.city ?? r.city_name ?? null)
-    const getBrowser = (r: AnyRow): string | null => (r.browser ?? r.ua_browser ?? null)
-    const getOS = (r: AnyRow): string | null => (r.os ?? r.ua_os ?? null)
-    const getRefDomain = (r: AnyRow): string | null => (r.referrer_domain ?? r.referer_domain ?? null)
-
-    const clicks = (rawClicks ?? []).map((r) => ({
-      ts: getIso(r),
-      referrer: getRef(r),
-      referrer_domain: getRefDomain(r),
-      link_id: getLinkId(r),
-      country: getCountry(r),
-      region: getRegion(r),
-      city: getCity(r),
-      device: getDevice(r),
-      browser: getBrowser(r),
-      os: getOS(r),
-    }))
->>>>>>> 0e1f9ed (Initial commit)
+    })
 
     // Summary
     const totalClicks = clicks.length
     const totalLinks = links?.length ?? 0
 
-<<<<<<< HEAD
     // Daily for last N days (7/30/90)
     const dayKey = (d: Date) => d.toISOString().slice(0, 10)
     const daily: Record<string, number> = {}
     for (let i = 0; i < days; i++) {
-=======
-    // Daily for last 30 days
-    const dayKey = (d: Date) => d.toISOString().slice(0, 10)
-    const daily: Record<string, number> = {}
-    for (let i = 0; i < 30; i++) {
->>>>>>> 0e1f9ed (Initial commit)
       const d = new Date()
       d.setDate(d.getDate() - i)
       daily[dayKey(d)] = 0
@@ -322,64 +161,10 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 20)
 
-    // Countries
-    const countryCounts: Record<string, number> = {}
-    for (const c of clicks) {
-<<<<<<< HEAD
-      const cc = c.country || 'Unknown'
-=======
-      const cc = c.country ?? 'Unknown'
->>>>>>> 0e1f9ed (Initial commit)
-      countryCounts[cc] = (countryCounts[cc] || 0) + 1
-    }
-    const countries = Object.entries(countryCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([country, count]) => ({ country, count }))
-
-<<<<<<< HEAD
-    const countriesHuman = countries.map(({ country, count }) => ({ code: country, name: toCountryName(country), count }))
-
-    // Regions
-    const regionCounts: Record<string, number> = {}
-    for (const c of clicks) {
-      const rg = c.region || 'Unknown'
-=======
-    // Regions
-    const regionCounts: Record<string, number> = {}
-    for (const c of clicks) {
-      const rg = c.region ?? 'Unknown'
->>>>>>> 0e1f9ed (Initial commit)
-      regionCounts[rg] = (regionCounts[rg] || 0) + 1
-    }
-    const regions = Object.entries(regionCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([region, count]) => ({ region, count }))
-
-    // Cities
-    const cityCounts: Record<string, number> = {}
-    for (const c of clicks) {
-<<<<<<< HEAD
-      const ct = c.city || 'Unknown'
-=======
-      const ct = c.city ?? 'Unknown'
->>>>>>> 0e1f9ed (Initial commit)
-      cityCounts[ct] = (cityCounts[ct] || 0) + 1
-    }
-    const cities = Object.entries(cityCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([city, count]) => ({ city, count }))
-
     // Devices
     const deviceCounts: Record<string, number> = {}
     for (const c of clicks) {
-<<<<<<< HEAD
-      const dv = c.device || 'Unknown'
-=======
       const dv = c.device ?? 'Unknown'
->>>>>>> 0e1f9ed (Initial commit)
       deviceCounts[dv] = (deviceCounts[dv] || 0) + 1
     }
     const devices = Object.entries(deviceCounts)
@@ -432,41 +217,16 @@ export async function GET(req: NextRequest) {
       daily,
       topReferrers,
       topLinks,
-      countries,
-<<<<<<< HEAD
-      countriesHuman,
-=======
->>>>>>> 0e1f9ed (Initial commit)
-      regions,
-      cities,
       devices,
       browsers,
       oses,
       referrerDomains: referrerDomains,
       hourly,
       weekdays,
-<<<<<<< HEAD
       range: { days },
-      diagnostics: {
-        resolvedUserId: user_id,
-        linkCount: linkIds.length,
-        clickCount: totalClicks,
-        anomalies,
-        ...(debug ? { sample: clicks.slice(0, 20).map(c => ({
-          ...c,
-          // Show friendly placeholders in debug sample while keeping internal normalization nulls
-          region: c.region ?? 'Unknown',
-          city: c.city ?? 'Unknown',
-        })) } : {}),
-      },
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
-=======
-    })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Unknown error' }, { status: 500 })
->>>>>>> 0e1f9ed (Initial commit)
   }
 }

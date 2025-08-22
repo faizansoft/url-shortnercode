@@ -16,11 +16,7 @@ export default function AuthCallbackPage() {
         // Supabase JS automatically parses tokens from URL and sets the session.
         setStatus("done");
         router.replace("/dashboard");
-<<<<<<< HEAD
       } catch {
-=======
-      } catch (e) {
->>>>>>> 0e1f9ed (Initial commit)
         setStatus("error");
       }
     })();

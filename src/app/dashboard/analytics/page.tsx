@@ -2,43 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
-<<<<<<< HEAD
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
-
-// Normalize country values (codes -> display names) for consistent map labels
-const displayNames = (typeof Intl !== 'undefined' && (Intl as unknown as { DisplayNames?: typeof Intl.DisplayNames }).DisplayNames)
-  ? new Intl.DisplayNames(['en'], { type: 'region' })
-  : null;
-const countryCodeAliases: Record<string, string> = { UK: 'GB' };
-function normalizeCountryName(input: string): string {
-  if (!input) return 'Unknown';
-  const raw = String(input).trim();
-  const code = (countryCodeAliases[raw.toUpperCase()] || raw).toUpperCase();
-  // If looks like alpha-2, try to expand; otherwise return as-is
-  if (/^[A-Z]{2}$/.test(code)) {
-    const name = displayNames?.of(code);
-    return name || raw;
-  }
-  return raw;
-}
-
-// Minimal shape for react-simple-maps geography objects we use
-type RSMSimpleGeo = {
-  rsmKey: string;
-  properties: { name?: string } & Record<string, unknown>;
-};
-
 type Summary = { totalClicks: number; totalLinks: number };
 type CountItem<TLabel extends string> = { [K in TLabel]: string } & { count: number };
 type TopLink = { code: string; count: number };
 type TopReferrer = CountItem<"referrer">;
-type Country = CountItem<"country">;
 type Device = CountItem<"device">;
 type Browser = CountItem<"browser">;
 type Os = CountItem<"os">;
 type ReferrerDomain = CountItem<"domain">;
-type Region = CountItem<"region">;
-type City = CountItem<"city">;
 
 type AnalyticsData = {
   summary: Summary;
@@ -47,26 +18,11 @@ type AnalyticsData = {
   weekdays: Record<string, number>;
   topLinks: TopLink[];
   topReferrers: TopReferrer[];
-  countries: Country[];
-  countriesHuman?: Array<{ code: string; name: string; count: number }>;
   devices: Device[];
   browsers: Browser[];
   oses: Os[];
   referrerDomains: ReferrerDomain[];
-  regions: Region[];
-  cities: City[];
   range?: { days: number };
-  diagnostics?: {
-    resolvedUserId: string | null;
-    linkCount: number;
-    clickCount: number;
-    anomalies?: {
-      parsedRefDomainFromReferrer?: number;
-      malformedReferrer?: number;
-      unknown?: { country?: number; region?: number; city?: number; device?: number; browser?: number; os?: number };
-    };
-    sample?: Array<Record<string, unknown>>;
-  };
 };
 
 // Aggregate daily series into weekly/monthly/yearly buckets
@@ -98,66 +54,19 @@ function aggregateSeries(pairs: Array<[string, number]>, granularity: 'daily'|'w
   return Array.from(map.entries()).sort((a,b) => a[0].localeCompare(b[0]));
 }
 
-// Simple world map choropleth using country name counts
-function WorldMapChoropleth({ items }: { items: Array<{ name: string; value: number }> }) {
-  const max = Math.max(1, ...items.map(i => i.value));
-  const data = useMemo(() => new Map(items.map(i => [i.name.toLowerCase(), i.value] as const)), [items]);
-  const colorFor = (val: number) => {
-    const t = val / max; // 0..1
-    const lightness = 92 - t * 52; // 92% -> 40%
-    return `hsl(200 80% ${lightness}%)`;
-  };
-  return (
-    <div className="mt-3">
-      <ComposableMap projectionConfig={{ scale: 130 }}>
-        <Geographies geography="https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json">
-          {({ geographies }: { geographies: unknown[] }) =>
-            geographies.map((geo) => {
-              const g = geo as RSMSimpleGeo;
-              const name = g.properties.name ?? '';
-              const v = data.get(name?.toLowerCase?.() || '') || 0;
-              return (
-                <Geography
-                  key={g.rsmKey}
-                  geography={g}
-                  fill={v > 0 ? colorFor(v) : 'var(--surface)'}
-                  stroke="var(--border)"
-                  style={{ default: { outline: 'none' }, hover: { outline: 'none' }, pressed: { outline: 'none' } }}
-                >
-                  <title>{`${name}: ${v}`}</title>
-                </Geography>
-              );
-            })
-          }
-        </Geographies>
-      </ComposableMap>
-    </div>
-  );
-}
-
- 
-=======
->>>>>>> 0e1f9ed (Initial commit)
-
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-<<<<<<< HEAD
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [granularity, setGranularity] = useState<'daily'|'weekly'|'monthly'|'yearly'>('daily');
-  const [debug, setDebug] = useState(false);
-=======
-  const [data, setData] = useState<any>(null);
->>>>>>> 0e1f9ed (Initial commit)
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
-<<<<<<< HEAD
-        const res = await fetch(`/api/analytics?days=${days}${debug ? '&debug=1' : ''}` , {
+        const res = await fetch(`/api/analytics?days=${days}` , {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const payload: unknown = await res.json();
@@ -165,42 +74,22 @@ export default function AnalyticsDashboard() {
         setData(payload as AnalyticsData);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load analytics");
-=======
-        const res = await fetch("/api/analytics", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.error || "Failed to load analytics");
-        setData(payload);
-      } catch (e: any) {
-        setError(e?.message ?? "Failed to load analytics");
->>>>>>> 0e1f9ed (Initial commit)
       } finally {
         setLoading(false);
       }
     })();
-<<<<<<< HEAD
-  }, [days, debug]);
-=======
-  }, []);
->>>>>>> 0e1f9ed (Initial commit)
+  }, [days]);
 
   const dailySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.daily ? Object.entries(data.daily) : [];
     return entries.sort((a, b) => a[0].localeCompare(b[0]));
   }, [data]);
 
-<<<<<<< HEAD
   const aggregatedSeries = useMemo(() => aggregateSeries(dailySeries, granularity), [dailySeries, granularity]);
 
   const hourlySeries = useMemo(() => {
     const entries: Array<[string, number]> = data?.hourly ? Object.entries(data.hourly) : [];
     return entries.sort((a, b) => Number(a[0]) - Number(b[0]));
-=======
-  const hourlySeries = useMemo(() => {
-    const entries: Array<[string, number]> = data?.hourly ? Object.entries(data.hourly) : [];
-    return entries.sort((a, b) => a[0].localeCompare(b[0]));
->>>>>>> 0e1f9ed (Initial commit)
   }, [data]);
 
   const weekdaySeries = useMemo(() => {
@@ -209,7 +98,6 @@ export default function AnalyticsDashboard() {
     return order.map((k) => [k, Number(w[k] || 0)]) as Array<[string, number]>;
   }, [data]);
 
-<<<<<<< HEAD
   const dailyTotal = useMemo(() => dailySeries.reduce((s, [, v]) => s + v, 0), [dailySeries]);
   const hourlyTotal = useMemo(() => hourlySeries.reduce((s, [, v]) => s + v, 0), [hourlySeries]);
   const weekdayTotal = useMemo(() => weekdaySeries.reduce((s, [, v]) => s + v, 0), [weekdaySeries]);
@@ -218,12 +106,6 @@ export default function AnalyticsDashboard() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Analytics</h1>
-=======
-  return (
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
->>>>>>> 0e1f9ed (Initial commit)
       </header>
 
       {loading ? (
@@ -237,7 +119,6 @@ export default function AnalyticsDashboard() {
             <StatCard label="Total Links" value={data?.summary?.totalLinks ?? 0} />
             <StatCard label="Avg Clicks / Link" value={avgClicks(data?.summary)} />
           </div>
-<<<<<<< HEAD
           {/* Top row: top day + device donut */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <section className="rounded-xl glass p-5 lg:col-span-2">
@@ -321,169 +202,14 @@ export default function AnalyticsDashboard() {
                   ))}
                 </div>
               </div>
-              <div className="mt-5">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} />
-                  <span>Debug (show diagnostics)</span>
-                </label>
-                <div className="mt-2 text-xs text-[var(--muted)]">Includes anomaly counters and a small sample when enabled.</div>
-              </div>
             </aside>
           </div>
-
-          {/* Location cards: map placeholder + tabular lists */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">Total engagements by location</div>
-                <div className="text-xs text-[var(--muted)]">World Map</div>
-              </div>
-              <WorldMapChoropleth
-                items={
-                  (data?.countriesHuman && Array.isArray(data.countriesHuman) && data.countriesHuman.length > 0)
-                    ? data.countriesHuman.map((c: { name: string; code: string; count: number }) => ({ name: c.name, value: c.count }))
-                    : (data?.countries ?? []).map(c => ({ name: normalizeCountryName(c.country), value: c.count }))
-                }
-              />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">Total engagements by location</div>
-              </div>
-              <LocationTabs
-                countries={
-                  (data?.countriesHuman && Array.isArray(data.countriesHuman) && data.countriesHuman.length > 0)
-                    ? data.countriesHuman.map((x: { name: string; code: string; count: number }, i: number) => ({ idx: i + 1, name: x.name, value: x.count }))
-                    : (data?.countries ?? []).map((x, i) => ({ idx: i + 1, name: normalizeCountryName(x.country), value: x.count }))
-                }
-                regions={(data?.regions ?? []).map((x, i) => ({ idx: i + 1, name: x.region, value: x.count }))}
-                cities={(data?.cities ?? []).map((x, i) => ({ idx: i + 1, name: x.city, value: x.count }))}
-              />
-            </section>
-          </div>
-          {/* Diagnostics panel */}
-          {data?.diagnostics && (
-            <section className="rounded-xl glass p-5">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">Diagnostics</div>
-                <div className="text-xs text-[var(--muted)]">Debug {debug ? 'on' : 'off'}</div>
-              </div>
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div className="rounded border p-3 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
-                  <div className="text-xs text-[var(--muted)]">Resolved User</div>
-                  <div className="mt-1">{String(data.diagnostics.resolvedUserId ?? 'null')}</div>
-                </div>
-                <div className="rounded border p-3 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
-                  <div className="text-xs text-[var(--muted)]">Links / Clicks</div>
-                  <div className="mt-1 tabular-nums">{data.diagnostics.linkCount} / {data.diagnostics.clickCount}</div>
-                </div>
-                <div className="rounded border p-3 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)]">
-                  <div className="text-xs text-[var(--muted)]">Anomalies</div>
-                  <ul className="mt-1 space-y-1">
-                    {data.diagnostics.anomalies && (
-                      <>
-                        <li>Parsed referrer_domain: <span className="tabular-nums">{data.diagnostics.anomalies.parsedRefDomainFromReferrer ?? 0}</span></li>
-                        <li>Malformed referrer: <span className="tabular-nums">{data.diagnostics.anomalies.malformedReferrer ?? 0}</span></li>
-                        <li>Unknown fields:
-                          <span> country {data.diagnostics.anomalies.unknown?.country ?? 0},</span>
-                          <span> region {data.diagnostics.anomalies.unknown?.region ?? 0},</span>
-                          <span> city {data.diagnostics.anomalies.unknown?.city ?? 0},</span>
-                          <span> device {data.diagnostics.anomalies.unknown?.device ?? 0},</span>
-                          <span> browser {data.diagnostics.anomalies.unknown?.browser ?? 0},</span>
-                          <span> os {data.diagnostics.anomalies.unknown?.os ?? 0}</span>
-                        </li>
-                      </>
-                    )}
-                    {!data.diagnostics.anomalies && <li className="text-[var(--muted)]">No anomaly data</li>}
-                  </ul>
-                </div>
-              </div>
-              {debug && Array.isArray(data.diagnostics.sample) && data.diagnostics.sample.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-sm font-medium mb-2">Sample (first {Math.min(20, data.diagnostics.sample.length)} rows)</div>
-                  <div className="rounded border overflow-x-auto">
-                    <pre className="text-xs p-3 whitespace-pre-wrap">{JSON.stringify(data.diagnostics.sample, null, 2)}</pre>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-=======
-
-          <section className="rounded-xl glass p-5">
-            <div className="p-0 pb-3 font-medium">Clicks over time (30 days)</div>
-            <DailyBars fromPairs={dailySeries} height={120} />
-          </section>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Clicks by Hour (last 24h)</div>
-              <DailyBars fromPairs={hourlySeries} height={100} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Clicks by Weekday</div>
-              <DailyBars fromPairs={weekdaySeries} height={100} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Top Links</div>
-              <RankedBars
-                items={(data?.topLinks ?? []).map((x: any) => ({ label: `/${x.code}`, count: x.count }))}
-              />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Top Referrers</div>
-              <RankedBars items={(data?.topReferrers ?? []).map((x: any) => ({ label: x.referrer, count: x.count }))} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Countries</div>
-              <RankedBars items={(data?.countries ?? []).map((x: any) => ({ label: x.country, count: x.count }))} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Devices</div>
-              <RankedBars items={(data?.devices ?? []).map((x: any) => ({ label: x.device, count: x.count }))} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Browsers</div>
-              <RankedBars items={(data?.browsers ?? []).map((x: any) => ({ label: x.browser, count: x.count }))} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Operating Systems</div>
-              <RankedBars items={(data?.oses ?? []).map((x: any) => ({ label: x.os, count: x.count }))} />
-            </section>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Referrer Domains</div>
-              <RankedBars items={(data?.referrerDomains ?? []).map((x: any) => ({ label: x.domain, count: x.count }))} />
-            </section>
-            <section className="rounded-xl glass p-5">
-              <div className="p-0 pb-3 font-medium">Regions</div>
-              <RankedBars items={(data?.regions ?? []).map((x: any) => ({ label: x.region, count: x.count }))} />
-            </section>
-          </div>
-
-          <section className="rounded-xl glass p-5">
-            <div className="p-0 pb-3 font-medium">Cities</div>
-            <RankedBars items={(data?.cities ?? []).map((x: any) => ({ label: x.city, count: x.count }))} />
-          </section>
->>>>>>> 0e1f9ed (Initial commit)
-        </>
-      )}
+          </>
+        )}
     </div>
   );
 }
 
-<<<<<<< HEAD
 // Vertical column chart (with gridlines) for referrers
 function ColumnChart({ items, height = 240 }: { items: Array<{ label: string; value: number }>; height?: number }) {
   const labels = items.map(i => i.label);
@@ -672,44 +398,6 @@ function TopDay({ fromPairs }: { fromPairs: Array<[string, number]> }) {
   );
 }
 
-// Tabbed table for Countries / Regions / Cities
-function LocationTabs({ countries, regions, cities }: { countries: Array<{ idx: number; name: string; value: number }>; regions: Array<{ idx: number; name: string; value: number }>; cities: Array<{ idx: number; name: string; value: number }>; }) {
-  const [tab, setTab] = useState<'countries' | 'regions' | 'cities'>('countries');
-  const data = tab === 'countries' ? countries : tab === 'regions' ? regions : cities;
-  return (
-    <div>
-      <div className="inline-flex items-center rounded border p-1 gap-1 bg-[color-mix(in_oklab,var(--surface)_85%,transparent)] text-sm">
-        {(['countries','regions','cities'] as const).map(k => (
-          <button key={k} onClick={() => setTab(k)} className={`px-3 py-1 rounded ${tab===k? 'bg-[var(--surface)] border': ''}`}>{k[0].toUpperCase()+k.slice(1)}</button>
-        ))}
-      </div>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-[color-mix(in_oklab,var(--foreground)_65%,#64748b)]">
-            <tr>
-              <th className="p-2 w-10">#</th>
-              <th className="p-2">Name</th>
-              <th className="p-2 w-28 text-right">Engagements</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((r) => (
-              <tr key={r.idx} className="border-t border-[var(--border)]">
-                <td className="p-2">{r.idx}</td>
-                <td className="p-2">{r.name}</td>
-                <td className="p-2 text-right tabular-nums">{r.value}</td>
-              </tr>
-            ))}
-            {data.length === 0 && (
-              <tr><td colSpan={3} className="p-3 text-sm text-[var(--muted)] text-center">No data</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function RangeBtn({ current, value, label, onClick }: { current: 7 | 30 | 90; value: 7 | 30 | 90; label: string; onClick: () => void }) {
   const active = current === value;
   return (
@@ -729,41 +417,21 @@ function RangeBtn({ current, value, label, onClick }: { current: 7 | 30 | 90; va
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl glass p-5" title={`${label}: ${value}`}>
-=======
-function StatCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl glass p-5">
->>>>>>> 0e1f9ed (Initial commit)
-      <div className="text-sm text-[var(--muted)]">{label}</div>
-      <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
-    </div>
-  );
-}
-
-<<<<<<< HEAD
 function avgClicks(summary?: Partial<Summary> | null) {
-=======
-function avgClicks(summary: any) {
->>>>>>> 0e1f9ed (Initial commit)
   const total = summary?.totalClicks ?? 0;
   const links = summary?.totalLinks ?? 0;
   if (!links) return 0;
   return Math.round((total / links) * 10) / 10;
 }
 
-<<<<<<< HEAD
 function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: Array<[string, number]>; height?: number; withLabels?: boolean }) {
   const max = Math.max(1, ...fromPairs.map(([, v]) => v));
-  const labelEvery = Math.max(1, Math.ceil(fromPairs.length / 14));
   return (
     <div className="flex flex-col gap-2">
       <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${fromPairs.length || 1}, minmax(0,1fr))`, height }}>
         {fromPairs.map(([key, v]) => {
           const h = (v / max) * height;
-          const innerH = v > 0 ? Math.max(2, Math.round(h)) : 0; // ensure visibility for small non-zero values
+          const innerH = v > 0 ? Math.max(2, Math.round(h)) : 0;
           return (
             <div
               key={key}
@@ -785,8 +453,7 @@ function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: 
       {withLabels && (
         <div className="grid gap-1 text-[10px] leading-3 text-[var(--muted)]" style={{ gridTemplateColumns: `repeat(${fromPairs.length || 1}, minmax(0,1fr))` }}>
           {fromPairs.map(([key], idx) => {
-            const show = idx % labelEvery === 0 || idx === fromPairs.length - 1;
-            // For YYYY-MM-DD use DD, for hour "0..23" use same, else use key
+            const show = idx % Math.max(1, Math.ceil(fromPairs.length / 14)) === 0 || idx === fromPairs.length - 1;
             const dd = /\d{4}-\d{2}-\d{2}/.test(key) ? key.slice(8, 10) : key;
             return (
               <div key={`lbl-${key}`} className="text-center tabular-nums">
@@ -796,28 +463,10 @@ function DailyBars({ fromPairs, height = 100, withLabels = true }: { fromPairs: 
           })}
         </div>
       )}
-=======
-function DailyBars({ fromPairs, height = 100 }: { fromPairs: Array<[string, number]>; height?: number }) {
-  const max = Math.max(1, ...fromPairs.map(([, v]) => v));
-  return (
-    <div className="flex items-end gap-1" style={{ height }}>
-      {fromPairs.map(([day, v]) => (
-        <div key={day} className="flex-1 min-w-[4px] bg-gray-100 rounded relative" title={`${day}: ${v}`}>
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
-            style={{ height: `${(v / max) * 100}%` }}
-          />
-        </div>
-      ))}
->>>>>>> 0e1f9ed (Initial commit)
     </div>
   );
 }
 
-<<<<<<< HEAD
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-=======
->>>>>>> 0e1f9ed (Initial commit)
 function RankedBars({ items }: { items: Array<{ label: string; count: number }> }) {
   const max = Math.max(1, ...items.map((i) => i.count));
   return (
@@ -828,11 +477,7 @@ function RankedBars({ items }: { items: Array<{ label: string; count: number }> 
         items.map((i) => (
           <li key={i.label} className="flex items-center gap-3">
             <div className="w-48 truncate" title={i.label}>{i.label}</div>
-<<<<<<< HEAD
             <div className="flex-1 h-2 rounded" style={{ background: 'color-mix(in oklab, var(--surface) 92%, var(--foreground))' }}>
-=======
-            <div className="flex-1 h-2 bg-gray-100 rounded">
->>>>>>> 0e1f9ed (Initial commit)
               <div className="h-2 rounded bg-[var(--accent)]" style={{ width: `${(i.count / max) * 100}%` }} />
             </div>
             <div className="w-12 text-right tabular-nums">{i.count}</div>

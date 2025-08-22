@@ -1,21 +1,16 @@
 "use client";
 import Link from "next/link";
-<<<<<<< HEAD
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-=======
-import { useEffect, useState } from "react";
->>>>>>> 0e1f9ed (Initial commit)
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
 
-export default function DashboardHome() {
+export default function DashboardPage() {
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-<<<<<<< HEAD
   const [showQR, setShowQR] = useState(false);
   const [qrFor, setQrFor] = useState<string>("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -23,34 +18,24 @@ export default function DashboardHome() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
-=======
->>>>>>> 0e1f9ed (Initial commit)
 
   useEffect(() => {
     (async () => {
       try {
         const { data } = await supabaseClient.auth.getSession();
         const token = data.session?.access_token;
-        const res = await fetch("/api/links", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const res = await fetch("/api/links", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
         const payload = await res.json();
         if (!res.ok) throw new Error(payload?.error || "Failed to load links");
         setLinks(payload.links || []);
-<<<<<<< HEAD
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load links");
-=======
-      } catch (e: any) {
-        setError(e?.message ?? "Failed to load links");
->>>>>>> 0e1f9ed (Initial commit)
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-<<<<<<< HEAD
   // Dark mode detection for QR color
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -61,7 +46,6 @@ export default function DashboardHome() {
     return () => mql?.removeEventListener?.('change', update);
   }, []);
 
-  // Generate QR when target changes or theme changes
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -81,53 +65,41 @@ export default function DashboardHome() {
     return () => { cancelled = true; };
   }, [qrFor, prefersDark]);
 
-=======
->>>>>>> 0e1f9ed (Initial commit)
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">
           Dashboard
         </h1>
-<<<<<<< HEAD
         <Link href="/dashboard/create" className="btn btn-primary h-9">
-=======
-        <Link href="/dashboard/create" className="btn btn-primary">
->>>>>>> 0e1f9ed (Initial commit)
           Create Short Link
         </Link>
       </header>
 
-      <section className="rounded-xl glass overflow-x-auto">
-        <div className="p-4 border-b/0 font-medium">Recent Links</div>
+      <section className="rounded-xl glass p-5">
         {loading ? (
-          <div className="p-4 text-sm text-[var(--muted)]">Loading…</div>
+          <div className="p-3 text-sm text-[var(--muted)]">Loading…</div>
         ) : error ? (
-          <div className="p-4 text-sm text-red-600">{error}</div>
+          <div className="p-3 text-sm text-red-600">{error}</div>
         ) : links.length === 0 ? (
-          <div className="p-4 text-sm text-[var(--muted)]">No links yet. Create your first one!</div>
+          <div className="p-3 text-sm text-[var(--muted)]">No links yet. Create your first one.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-left text-[color-mix(in_oklab,var(--foreground)_65%,#64748b)]">
               <tr>
-                <th className="p-3">Code</th>
+                <th className="p-3">Short</th>
                 <th className="p-3">Target</th>
                 <th className="p-3">Created</th>
-                <th className="p-3"></th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {links.map((r) => (
-<<<<<<< HEAD
                 <tr key={r.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_8%,var(--surface))] transition-colors">
-=======
-                <tr key={r.short_code} className="border-t border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--accent)_4%,#fff)]">
->>>>>>> 0e1f9ed (Initial commit)
                   <td className="p-3 font-mono">{r.short_code}</td>
                   <td className="p-3 max-w-[520px] truncate">{r.target_url}</td>
                   <td className="p-3">{new Date(r.created_at).toLocaleString()}</td>
                   <td className="p-3 text-right">
-<<<<<<< HEAD
                     <div className="inline-flex items-center gap-2">
                       <button
                         className="btn btn-secondary h-9 inline-flex items-center gap-1 transition hover:opacity-90 tip"
@@ -137,7 +109,7 @@ export default function DashboardHome() {
                         }}
                         data-tip="Show QR"
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm6-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h-2v2h2v-2zm2 0v2h2v-2h-2zm-4 4h-2v2h2v-2zm4 0h-2v2h2v-2zm2 0v2h2v-2h-2z"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm6-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h-2v2h2v-2zm2 0v2h2v-2h-2zm-4 4h-2v2h2v-2zm4 0h-2v2h2v-2zm2 0v2h2v-2h-2z"/></svg>
                         QR
                       </button>
                       <Link href={`/dashboard/links/${r.short_code}`} className="btn btn-ghost h-9">View</Link>
@@ -150,11 +122,6 @@ export default function DashboardHome() {
                         data-tip="Copy link"
                       >{copied === r.short_code ? "Copied" : "Copy"}</button>
                     </div>
-=======
-                    <Link href={`/dashboard/links/${r.short_code}`} className="btn btn-secondary h-8">
-                      View
-                    </Link>
->>>>>>> 0e1f9ed (Initial commit)
                   </td>
                 </tr>
               ))}
@@ -162,7 +129,6 @@ export default function DashboardHome() {
           </table>
         )}
       </section>
-<<<<<<< HEAD
 
       {showQR && (
         <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: 'color-mix(in oklab, var(--surface) 60%, transparent)' }}>
@@ -206,8 +172,6 @@ export default function DashboardHome() {
           </div>
         </div>
       )}
-=======
->>>>>>> 0e1f9ed (Initial commit)
     </div>
   );
 }

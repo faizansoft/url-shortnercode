@@ -11,7 +11,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-<<<<<<< HEAD
     const check = async () => {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (!mounted) return;
@@ -35,18 +34,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       sub.subscription?.unsubscribe();
       document.removeEventListener('visibilitychange', onVis);
     };
-=======
-    (async () => {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!mounted) return;
-      if (user) {
-        setStatus("authed");
-      } else {
-        setStatus("guest");
-      }
-    })();
-    return () => { mounted = false; };
->>>>>>> 0e1f9ed (Initial commit)
   }, [pathname]);
 
   useEffect(() => {

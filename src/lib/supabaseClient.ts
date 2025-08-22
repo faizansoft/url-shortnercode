@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 let cachedClient: SupabaseClient | null = null
@@ -43,12 +42,3 @@ export const supabaseClient = new Proxy({} as SupabaseClient, {
     return value
   },
 })
-=======
-import { createClient } from '@supabase/supabase-js'
-
-// Browser/client-side Supabase instance (uses public anon key)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
->>>>>>> 0e1f9ed (Initial commit)
