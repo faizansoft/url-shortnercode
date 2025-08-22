@@ -2,7 +2,6 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
@@ -17,7 +16,7 @@ export default function LinksIndexPage() {
   const [error, setError] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [qrFor, setQrFor] = useState("");
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrSvg, setQrSvg] = useState<string | null>(null);
   const [showShareLink, setShowShareLink] = useState(false);
   const [shareFor, setShareFor] = useState("");
   
@@ -59,8 +58,7 @@ export default function LinksIndexPage() {
   // Dark mode detection removed (not used)
   // Dark mode detection removed (not used)
 
-  // Generate preview when modal opens or target changes.
-  // Prefer stored thumbnailUrl; if missing, render styled/default and auto-backfill thumbnail.
+  // Generate SVG preview when modal opens or target changes.
   // Helper functions placed before the effect and memoized to keep stable deps
   const isDataUrl = useCallback((u: string): boolean => (typeof u === 'string' && u.startsWith('data:')), []);
 
@@ -196,111 +194,36 @@ export default function LinksIndexPage() {
     (async () => {
       try {
         const code = qrFor.startsWith(origin + "/") ? qrFor.slice(origin.length + 1) : qrFor.split("/").pop() || "";
-        // 1) Try stored options to use thumbnailUrl fast
-        try {
-          const { data } = await supabaseClient.auth.getSession();
-          const token = data.session?.access_token;
-          if (token) {
-            const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(code)}`, { headers: { Authorization: `Bearer ${token}` } });
-            if (resStyle.ok) {
-              const { options } = await resStyle.json();
-              const thumb = options?.thumbnailUrl as unknown;
-              if (typeof thumb === 'string' && thumb) {
-                if (!cancelled) setQrDataUrl(thumb);
-                return;
-              }
-              // Generate styled SVG preview, rasterize to PNG for UI immediately
-              const svgText = await generateStyledSvgString(qrFor, (options || {} as SavedOptions));
-              if (svgText) {
-                try {
-                  const pngDataUrl = await rasterizeSvgToPng(svgText, 128);
-                  if (!cancelled) setQrDataUrl(pngDataUrl);
-                  // Auto-backfill thumbnail in background
-                  try {
-                    const blob = dataUrlToBlob(pngDataUrl);
-                    const uid = data.session?.user?.id || '';
-                    if (uid) {
-                      const bucket = 'qr-thumbs';
-                      const path = `thumbs/${uid}/${code}.png`;
-                      const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '31536000' });
-                      if (!up.error) {
-                        const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
-                        const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
-                        if (pubUrl) {
-                          const thumbUrl = `${pubUrl}?v=${Date.now()}`;
-                          if (!cancelled) setQrDataUrl(thumbUrl);
-                          // Update options with thumbnailUrl
-                          try {
-                            await fetch('/api/qr', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({ short_code: code, options: { ...(options || {}), thumbnailUrl: thumbUrl } }),
-                            });
-                          } catch {}
-                        }
-                      }
-                    }
-                  } catch {}
-                  return;
-                } catch {}
-              }
-            }
-          }
-        } catch {}
-
-        // 2) Fallback: build default or styled SVG via helper and show; also try to backfill thumbnail
         const svgText = await buildStyledSvgOrDefault(qrFor, code);
-        // Prefer PNG for UI responsiveness
-        try {
-          const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
-          if (!cancelled) setQrDataUrl(pngDataUrl);
-        } catch {
-          const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
-          if (!cancelled) setQrDataUrl(dataUrl);
-        }
-        // Backfill thumbnail from whatever we have (default or styled)
-        try {
-          const { data } = await supabaseClient.auth.getSession();
-          const token = data.session?.access_token;
-          const uid = data.session?.user?.id || '';
-          if (uid && token) {
-            const pngDataUrl = await rasterizeSvgToPng(svgText, 256);
-            const blob = dataUrlToBlob(pngDataUrl);
-            const bucket = 'qr-thumbs';
-            const path = `thumbs/${uid}/${code}.png`;
-            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '31536000' });
-            if (!up.error) {
-              const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
-              const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
-              if (pubUrl) {
-                const thumbUrl = `${pubUrl}?v=${Date.now()}`;
-                if (!cancelled) setQrDataUrl(thumbUrl);
-                try {
-                  await fetch('/api/qr', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ short_code: code, options: { thumbnailUrl: thumbUrl } }),
-                  });
-                } catch {}
-              }
-            }
-          }
-        } catch {}
+        if (!cancelled) setQrSvg(normalizeSvgSize(svgText, 256));
       } catch {
         try {
-          const fallback = await QRCode.toDataURL(qrFor, { errorCorrectionLevel: "M", margin: 1, color: { dark: "#0b1220", light: "#ffffff" }, width: 200 });
-          if (!cancelled) setQrDataUrl(fallback);
+          const svg = await QRCode.toString(qrFor, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' } });
+          if (!cancelled) setQrSvg(normalizeSvgSize(svg, 256));
         } catch {
-          if (!cancelled) setQrDataUrl(null);
+          if (!cancelled) setQrSvg(null);
         }
       }
     })();
     return () => { cancelled = true; };
-  }, [showQR, qrFor, origin, buildStyledSvgOrDefault, generateStyledSvgString]);
+  }, [showQR, qrFor, origin, buildStyledSvgOrDefault]);
+
+  // Ensure width/height on inline SVG for consistent preview sizing
+  function normalizeSvgSize(svgText: string, size: number): string {
+    try {
+      const hasWidth = /\bwidth=\"?\d+/.test(svgText);
+      const hasHeight = /\bheight=\"?\d+/.test(svgText);
+      const dimAttr = `width=\"${size}\" height=\"${size}\"`;
+      if (hasWidth && hasHeight) return svgText;
+      return svgText.replace(/<svg(\s[^>]*)?>/i, (m) => {
+        return m.replace(/<svg/i, `<svg ${dimAttr}`);
+      });
+    } catch { return svgText; }
+  }
 
   async function handleShareQR() {
     try {
-      if (!qrDataUrl || !qrFor) return;
+      if (!qrSvg || !qrFor) return;
       const file = await preparePngFileFromPreview();
       if (navigator.share) {
         await navigator.share({ files: [file], text: `Scan or open: ${qrFor}`, url: qrFor, title: "Share QR" });
@@ -311,18 +234,8 @@ export default function LinksIndexPage() {
   }
 
   async function preparePngFileFromPreview(): Promise<File> {
-    if (!qrDataUrl || !qrFor) throw new Error('no data');
-    let pngDataUrl = qrDataUrl;
-    if (qrDataUrl.startsWith('data:image/svg')) {
-      try {
-        const svgText = decodeURIComponent(qrDataUrl.split(',')[1]);
-        pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
-      } catch {
-        const res = await fetch(qrDataUrl);
-        const svgText = await res.text();
-        pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
-      }
-    }
+    if (!qrSvg || !qrFor) throw new Error('no data');
+    const pngDataUrl = await rasterizeSvgToPng(qrSvg, 2048);
     const res = await fetch(pngDataUrl);
     const blob = await res.blob();
     return new File([blob], "qr.png", { type: "image/png" });
@@ -426,21 +339,26 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
+  function handleDownloadSvg() {
+    try {
+      if (!qrSvg || !qrFor) return;
+      const blob = new Blob([qrSvg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qr-${qrFor.replace(`${origin}/`, '')}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }
+
   async function handleDownloadPngFromPreview() {
     setDownloading(true);
     try {
-      if (!qrDataUrl || !qrFor) return;
-      let pngDataUrl = qrDataUrl;
-      if (qrDataUrl.startsWith('data:image/svg')) {
-        try {
-          const svgText = decodeURIComponent(qrDataUrl.split(',')[1]);
-          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
-        } catch {
-          const res = await fetch(qrDataUrl);
-          const svgText = await res.text();
-          pngDataUrl = await rasterizeSvgToPng(svgText, 2048);
-        }
-      }
+      if (!qrSvg || !qrFor) return;
+      const pngDataUrl = await rasterizeSvgToPng(qrSvg, 2048);
       const a = document.createElement('a');
       a.href = pngDataUrl;
       a.download = `qr-${qrFor.replace(`${origin}/`, '')}@2x.png`;
@@ -593,15 +511,9 @@ function dataUrlToBlob(dataUrl: string): Blob {
               <button className="btn btn-ghost h-9" onClick={() => { setShowQR(false); setQrFor(""); }}>Close</button>
             </div>
             <div className="rounded-md p-4 flex flex-col items-center gap-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-              {qrDataUrl ? (
+              {qrSvg ? (
                 <>
-                  {/^https?:/i.test(qrDataUrl)
-                    ? (
-                        <img src={qrDataUrl} alt="QR" width={128} height={128} className="w-32 h-32" loading="lazy" decoding="async" fetchPriority="low" sizes="128px" />
-                      )
-                    : (
-                        <Image src={qrDataUrl} alt="QR" width={128} height={128} className="w-32 h-32" loading="lazy" />
-                      )}
+                  <div className="w-32 h-32" dangerouslySetInnerHTML={{ __html: qrSvg }} />
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <div className="flex gap-2">
                       <button
@@ -627,6 +539,17 @@ function dataUrlToBlob(dataUrl: string): Blob {
                             Download PNG
                           </>
                         )}
+                      </button>
+                      <button
+                        className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2"
+                        onClick={handleDownloadSvg}
+                        aria-label="Download SVG"
+                      >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <path d="M12 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 8.707 10.293L11 12.586V4a1 1 0 0 1 1-1Z"/>
+                          <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2a1 1 0 1 0-2 0v2H7v-2a1 1 0 1 0-2 0v2Z"/>
+                        </svg>
+                        Download SVG
                       </button>
                       <button
                         className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"

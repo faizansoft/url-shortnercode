@@ -2,9 +2,8 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
-import type { QRCodeToStringOptions, QRCodeToDataURLOptions } from "qrcode";
+import type { QRCodeToStringOptions } from "qrcode";
 import Link from "next/link";
-import Image from "next/image";
 import QRCode from "qrcode";
 import { supabaseClient } from "@/lib/supabaseClient";
 import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
@@ -12,7 +11,7 @@ import QRCodeStyling, { type Options as QRStyleOptions } from "qr-code-styling";
 
 type LinkRow = { short_code: string; target_url: string; created_at: string };
 
-type QRItem = LinkRow & { short_url: string; qr_data_url: string | null };
+type QRItem = LinkRow & { short_url: string; qr_svg: string | null };
 
 // (formerly used by modal customizer)
 
@@ -52,91 +51,63 @@ export default function QRCodesPage() {
         const withShort = links.map((l) => ({
           ...l,
           short_url: `${origin}/${l.short_code}`,
-          qr_data_url: null as string | null,
+          qr_svg: null as string | null,
         }));
 
-        // Generate or resolve QR previews in parallel (prefer stored thumbnails)
+        // Generate SVG previews in parallel (use saved styling when available)
         const generated = await Promise.all(
           withShort.map(async (it) => {
-            // Try to fetch saved style for this short_code
-            let styledDataUrl: string | null = null;
+            // Try to fetch saved style for this short_code and render SVG
+            let styledSvg: string | null = null;
             try {
               if (token) {
                 const resStyle = await fetch(`/api/qr?code=${encodeURIComponent(it.short_code)}` , { headers: { Authorization: `Bearer ${token}` } });
                 if (resStyle.ok) {
                   const { options } = await resStyle.json();
                   if (options && typeof options === 'object') {
-                    // If we have a stored thumbnail URL, use it directly (fast path)
-                    const thumb = (options as { thumbnailUrl?: unknown }).thumbnailUrl;
-                    if (typeof thumb === 'string' && thumb) {
-                      // Ensure we bypass stale CDN/browser cache after a save by appending a short cache-buster
-                      const hasV = /[?&]v=/.test(thumb);
-                      if (hasV) {
-                        styledDataUrl = thumb;
-                      } else {
-                        const cb = `v=${Math.floor(Date.now()/1000)}`;
-                        styledDataUrl = thumb.includes('?') ? `${thumb}&${cb}` : `${thumb}?${cb}`;
-                      }
-                    } else {
-                      // Fallback: generate styled SVG, rasterize to PNG for immediate UI
-                      const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
-                      if (svg) {
-                        const pngDataUrl = await rasterizeSvgToPng(svg, 128);
-                        styledDataUrl = pngDataUrl;
-                        // Auto-backfill: create/upload PNG thumbnail, then update options
-                        try {
-                          const blob = dataUrlToBlob(pngDataUrl);
-                          if (uid) {
-                            const bucket = 'qr-thumbs';
-                            const path = `thumbs/${uid}/${it.short_code}.png`;
-                            const up = await supabaseClient.storage.from(bucket).upload(path, blob, { upsert: true, contentType: 'image/png', cacheControl: '31536000' });
-                            if (!up.error) {
-                              const pub = supabaseClient.storage.from(bucket).getPublicUrl(path);
-                              const pubUrl = (pub && pub.data && typeof pub.data.publicUrl === 'string') ? pub.data.publicUrl : '';
-                              if (pubUrl) {
-                                const thumbUrl = `${pubUrl}?v=${Date.now()}`;
-                                styledDataUrl = thumbUrl;
-                                // Merge and update options with thumbnailUrl
-                                try {
-                                  await fetch('/api/qr', {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'Authorization': `Bearer ${token}`,
-                                    },
-                                    body: JSON.stringify({ short_code: it.short_code, options: { ...(options as object), thumbnailUrl: thumbUrl } }),
-                                  });
-                                } catch {}
-                              }
-                            }
-                          }
-                        } catch {}
-                      }
-                    }
+                    // Always generate inline SVG using saved options
+                    const svg = await generateStyledSvgString(it.short_url, options as SavedOptions);
+                    if (svg) styledSvg = normalizeSvgSize(svg, 128);
                   }
                 }
               }
             } catch {}
 
+// Normalize SVG root width/height to a target square size for consistent previews
+function normalizeSvgSize(svgText: string, sizePx: number): string {
+  try {
+    let s = svgText.replace(/<\?xml[^>]*>/, '').replace(/<!DOCTYPE[^>]*>/, '');
+    const hasWidth = /\swidth="[^"]*"/i.test(s);
+    const hasHeight = /\sheight="[^"]*"/i.test(s);
+    if (hasWidth) s = s.replace(/width="[^"]*"/i, `width="${sizePx}"`);
+    if (hasHeight) s = s.replace(/height="[^"]*"/i, `height="${sizePx}"`);
+    if (!hasWidth) s = s.replace('<svg', `<svg width="${sizePx}"`);
+    if (!hasHeight) s = s.replace('<svg', `<svg height="${sizePx}"`);
+    return s;
+  } catch {
+    return svgText;
+  }
+}
+
             // LocalStorage fallback per short code
-            if (!styledDataUrl) {
+            if (!styledSvg) {
               try {
                 const raw = window.localStorage.getItem(`qrDesigner:${it.short_code}`);
                 if (raw) {
                   const opts = JSON.parse(raw);
                   if (opts && typeof opts === 'object') {
                     const svg = await generateStyledSvgString(it.short_url, opts as SavedOptions);
-                    if (svg) styledDataUrl = await rasterizeSvgToPng(svg, 128);
+                    if (svg) styledSvg = normalizeSvgSize(svg, 128);
                   }
                 }
               } catch {}
             }
 
-            if (styledDataUrl) return { ...it, qr_data_url: styledDataUrl };
+            if (styledSvg) return { ...it, qr_svg: styledSvg };
 
-            // Fallback to default simple QR if no style exists or failed
-            const dataUrl = await robustDefaultDataUrl(it.short_url);
-            return { ...it, qr_data_url: dataUrl };
+            // Fallback to default simple QR SVG if no style exists or failed
+            const svg = await QRCode.toString(it.short_url, { type: 'svg', errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' } } as QRCodeToStringOptions);
+            return { ...it, qr_svg: normalizeSvgSize(svg, 128) };
           })
         );
 
@@ -216,21 +187,12 @@ async function handleDownloadPng(shortUrl: string, code: string) {
               </div>
               <div className="truncate text-sm" title={it.target_url}>{it.target_url}</div>
               <div className="rounded-md p-3 self-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                {it.qr_data_url ? (
-                  /^https?:/i.test(it.qr_data_url)
-                    ? (
-                        <img src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={128} height={128} className="w-32 h-32" loading="lazy" decoding="async" fetchPriority="low" sizes="128px" />
-                      )
-                    : (
-                        <Image src={it.qr_data_url} alt={`QR for ${it.short_url}`} width={128} height={128} className="w-32 h-32" loading="lazy" />
-                      )
+                {it.qr_svg ? (
+                  <div className="w-32 h-32" dangerouslySetInnerHTML={{ __html: it.qr_svg }} />
                 ) : (
                   <div className="w-32 h-32 grid place-items-center text-sm text-[var(--muted)]">QR</div>
                 )}
               </div>
-              {it.qr_data_url && /^https?:/i.test(it.qr_data_url) && justUpdated(it.qr_data_url) && (
-                <div className="-mt-2 text-center text-[10px] text-[var(--muted)]" title={`Updated at ${updatedAtFromUrl(it.qr_data_url)}`}>Updated just now</div>
-              )}
               <div className="mt-auto pt-1 grid grid-cols-3 gap-2">
                 <button
                   type="button"
@@ -343,55 +305,7 @@ interface SavedOptions {
   ecLevel?: 'L' | 'M' | 'Q' | 'H';
   margin?: number;
 }
-
-// Ensure we can always render a basic QR data URL
-async function robustDefaultDataUrl(data: string): Promise<string> {
-  const attempt = async (opts: QRCodeToDataURLOptions) => {
-    return await QRCode.toDataURL(data, opts);
-  };
-  try {
-    return await attempt({ errorCorrectionLevel: 'M', margin: 1, color: { dark: '#0b1220', light: '#ffffff' }, width: 200 });
-  } catch {}
-  try {
-    return await attempt({ errorCorrectionLevel: 'M', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 200 });
-  } catch {}
-  try {
-    return await attempt({ errorCorrectionLevel: 'L', margin: 0, color: { dark: '#000000', light: '#ffffff' }, width: 160 });
-  } catch {}
-  // last resort: transparent pixel
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"/>');
-}
-
 function isDataUrl(u: string): boolean { return typeof u === 'string' && u.startsWith('data:'); }
-
-// Parse cache-busting timestamp from thumbnail URLs and detect recent updates
-function cacheBusterAgeSec(u: string): number | null {
-  if (!/^https?:/i.test(u)) return null;
-  try {
-    const url = new URL(u);
-    const v = url.searchParams.get('v');
-    if (!v) return null;
-    const sec = Number(v);
-    if (!Number.isFinite(sec)) return null;
-    return Math.floor(Date.now() / 1000) - sec;
-  } catch { return null; }
-}
-function justUpdated(u: string): boolean {
-  const age = cacheBusterAgeSec(u);
-  return age !== null && age <= 180; // within last 3 minutes
-}
-
-function updatedAtFromUrl(u: string): string {
-  try {
-    const url = new URL(u);
-    const v = url.searchParams.get('v');
-    if (!v) return '';
-    const sec = Number(v);
-    if (!Number.isFinite(sec)) return '';
-    const d = new Date(sec * 1000);
-    return d.toLocaleString();
-  } catch { return ''; }
-}
 
 // Convert a URL (same-origin recommended) to a data URL
 async function toDataUrl(src: string): Promise<string | null> {
@@ -522,15 +436,15 @@ async function buildStyledSvgOrDefault(shortUrl: string, shortCode: string): Pro
   return svg;
 }
 
-// Rasterize SVG XML into a PNG data URL
+// Rasterize SVG XML into a PNG data URL for downloads
 async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<string> {
   const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);
   try {
-    const img = new window.Image();
+    const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = url;
-    await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
+    await new Promise<void>((res, rej) => { img.onload = () => res(); (img as any).onerror = rej; });
     const canvas = document.createElement('canvas');
     canvas.width = exportOuter; canvas.height = exportOuter;
     const ctx = canvas.getContext('2d');
@@ -542,16 +456,4 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
   } finally {
     URL.revokeObjectURL(url);
   }
-}
-
-// Convert a data URL (e.g., PNG) into a Blob without refetching
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [meta, base64] = dataUrl.split(',');
-  const mimeMatch = /data:([^;]+);/.exec(meta || '');
-  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-  const binary = atob(base64 || '');
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
 }
