@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -29,6 +29,7 @@ export default function LinkDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<Record<string, number>>({});
   const [topReferrers, setTopReferrers] = useState<Array<{ referrer: string; count: number }>>([]);
+  const [rangeDays, setRangeDays] = useState<7 | 30 | 90>(30);
 
   useEffect(() => {
     (async () => {
@@ -84,8 +85,11 @@ export default function LinkDetailsPage() {
           </section>
 
           <section className="rounded-xl glass p-5">
-            <div className="p-0 pb-3 font-medium">Daily Clicks (last 30 days)</div>
-            <DailyLineChart daily={daily} />
+            <div className="flex items-center justify-between">
+              <div className="p-0 pb-3 font-medium">Daily Clicks</div>
+              <RangeSelector value={rangeDays} onChange={setRangeDays} />
+            </div>
+            <DailyLineChart daily={daily} rangeDays={rangeDays} />
           </section>
 
           <section className="rounded-xl glass p-5">
@@ -141,14 +145,18 @@ export default function LinkDetailsPage() {
   );
 }
 
-function DailyLineChart({ daily }: { daily: Record<string, number> }) {
-  const entries = Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0]));
-  const total = entries.reduce((s, [, v]) => s + v, 0);
+function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; rangeDays: 7 | 30 | 90 }) {
+  // Hooks must be called unconditionally at the top level
+  const [hover, setHover] = useState<number | null>(null);
+
+  const entries = useMemo(() => Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0])), [daily]);
+  const sliced = useMemo(() => entries.slice(-rangeDays), [entries, rangeDays]);
+  const total = useMemo(() => sliced.reduce((s, [, v]) => s + v, 0), [sliced]);
   if (entries.length === 0 || total === 0) {
-    return <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the last 30 days</div>;
+    return <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the selected range</div>;
   }
-  const labels = entries.map(([d]) => d);
-  const values = entries.map(([, v]) => v);
+  const labels = sliced.map(([d]) => d);
+  const values = sliced.map(([, v]) => v);
   const max = Math.max(1, ...values);
 
   const w = Math.max(360, Math.min(1200, labels.length * 24));
@@ -163,9 +171,24 @@ function DailyLineChart({ daily }: { daily: Record<string, number> }) {
     return [x, y] as const;
   });
 
-  const path = pts.map((p, i) => (i === 0 ? `M ${p[0]},${p[1]}` : `L ${p[0]},${p[1]}`)).join(' ');
-
-  const [hover, setHover] = useState<number | null>(null);
+  // Smooth quadratic path via midpoints
+  const path = useMemo(() => {
+    if (pts.length === 0) return '';
+    if (pts.length === 1) return `M ${pts[0][0]},${pts[0][1]}`;
+    let d = '';
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i];
+      const [x1, y1] = pts[i + 1];
+      const mx = (x0 + x1) / 2;
+      const my = (y0 + y1) / 2;
+      if (i === 0) d += `M ${x0},${y0} Q ${x0},${y0} ${mx},${my}`;
+      else d += ` T ${mx},${my}`;
+    }
+    // end at last point
+    const [xe, ye] = pts[pts.length - 1];
+    d += ` T ${xe},${ye}`;
+    return d;
+  }, [pts.map(p => p.join(',')).join('|')]);
 
   const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect();
@@ -245,10 +268,43 @@ function DailyLineChart({ daily }: { daily: Record<string, number> }) {
             borderColor: 'var(--border)'
           }}
         >
-          <div className="font-medium">{labels[hover]}</div>
+          <div className="font-medium">
+            {new Date(labels[hover]).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' })}
+          </div>
           <div className="tabular-nums">{values[hover]} clicks</div>
+          {hover > 0 && (
+            (() => {
+              const prev = values[hover - 1] ?? 0;
+              const diff = values[hover] - prev;
+              const pct = prev > 0 ? (diff / prev) * 100 : (values[hover] > 0 ? 100 : 0);
+              const sign = diff > 0 ? '+' : diff < 0 ? '' : '';
+              return (
+                <div className="tabular-nums text-[var(--muted)]">{sign}{diff} ({pct.toFixed(0)}%) vs prev day</div>
+              );
+            })()
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function RangeSelector({ value, onChange }: { value: 7 | 30 | 90; onChange: (v: 7 | 30 | 90) => void }) {
+  const options: Array<7 | 30 | 90> = [7, 30, 90];
+  return (
+    <div className="inline-flex items-center gap-1 rounded border px-1 py-1" style={{ borderColor: 'var(--border)' }}>
+      {options.map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={
+            `px-2 py-0.5 rounded text-xs ${v === value ? 'bg-[var(--accent)] text-white' : 'hover:bg-[color-mix(in_oklab,var(--accent)_10%,var(--surface))]'}`
+          }
+        >
+          {v}d
+        </button>
+      ))}
     </div>
   );
 }
