@@ -85,7 +85,7 @@ export default function LinkDetailsPage() {
 
           <section className="rounded-xl glass p-5">
             <div className="p-0 pb-3 font-medium">Daily Clicks (last 30 days)</div>
-            <DailyBars daily={daily} />
+            <DailyLineChart daily={daily} />
           </section>
 
           <section className="rounded-xl glass p-5">
@@ -141,45 +141,114 @@ export default function LinkDetailsPage() {
   );
 }
 
-function DailyBars({ daily }: { daily: Record<string, number> }) {
+function DailyLineChart({ daily }: { daily: Record<string, number> }) {
   const entries = Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0]));
   const total = entries.reduce((s, [, v]) => s + v, 0);
   if (entries.length === 0 || total === 0) {
-    return <div className="text-sm text-[var(--muted)] h-[140px] grid place-items-center">No clicks in the last 30 days</div>;
+    return <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the last 30 days</div>;
   }
-  const max = Math.max(1, ...entries.map(([, v]) => v));
-  const height = 96; // px
+  const labels = entries.map(([d]) => d);
+  const values = entries.map(([, v]) => v);
+  const max = Math.max(1, ...values);
+
+  const w = Math.max(360, Math.min(1200, labels.length * 24));
+  const h = 220;
+  const pad = { l: 28, r: 16, t: 16, b: 28 };
+  const innerW = w - pad.l - pad.r;
+  const innerH = h - pad.t - pad.b;
+
+  const pts = values.map((v, i) => {
+    const x = pad.l + (labels.length === 1 ? innerW / 2 : (i / (labels.length - 1)) * innerW);
+    const y = pad.t + innerH - (v / max) * innerH;
+    return [x, y] as const;
+  });
+
+  const path = pts.map((p, i) => (i === 0 ? `M ${p[0]},${p[1]}` : `L ${p[0]},${p[1]}`)).join(' ');
+
+  const [hover, setHover] = useState<number | null>(null);
+
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = (e.target as SVGElement).closest('svg')!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    // find nearest x
+    let idx = 0;
+    let best = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const dx = Math.abs(pts[i][0] - x);
+      if (dx < best) { best = dx; idx = i; }
+    }
+    setHover(idx);
+  };
+
+  const onLeave = () => setHover(null);
+
+  const gradientId = `grad-${Math.random().toString(36).slice(2, 8)}`;
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-end gap-1" style={{ height }}>
-        {entries.map(([day, v]) => {
-          const hPct = (v / max) * 100;
-          const minPx = v > 0 ? 2 : 0;
+    <div className="relative overflow-x-auto">
+      <svg width={w} height={h} className="block" onMouseMove={onMove} onMouseLeave={onLeave}>
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        <rect x={0} y={0} width={w} height={h} fill="transparent" />
+
+        {/* gridlines */}
+        {Array.from({ length: 5 }).map((_, i) => {
+          const y = pad.t + (i / 4) * innerH;
           return (
-            <div
-              key={day}
-              className="flex-1 min-w-[4px] rounded relative border"
-              style={{ background: 'color-mix(in oklab, var(--surface) 88%, var(--foreground))', borderColor: 'var(--border)' }}
-              title={`${day}: ${v}`}
-            >
-              <div
-                className="absolute bottom-0 left-0 right-0 bg-[var(--accent)] rounded"
-                style={{ height: `max(${hPct}%, ${minPx}px)` }}
-              />
-            </div>
+            <line key={`g-${i}`} x1={pad.l} x2={w - pad.r} y1={y} y2={y} stroke="color-mix(in oklab, var(--surface) 85%, var(--foreground))" strokeWidth={1} />
           );
         })}
-      </div>
-      <div className="grid gap-1 text-[10px] leading-3 text-[var(--muted)]" style={{ gridTemplateColumns: `repeat(${entries.length || 1}, minmax(0,1fr))` }}>
-        {entries.map(([day], idx) => {
-          const show = idx % Math.max(1, Math.ceil(entries.length / 14)) === 0 || idx === entries.length - 1;
+
+        {/* area fill */}
+        <path d={`${path} L ${pad.l + innerW},${pad.t + innerH} L ${pad.l},${pad.t + innerH} Z`} fill={`url(#${gradientId})`} />
+
+        {/* line */}
+        <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} />
+
+        {/* points */}
+        {pts.map(([x, y], i) => (
+          <circle key={`p-${i}`} cx={x} cy={y} r={2.5} fill="var(--accent)" />
+        ))}
+
+        {/* x labels (sparse) */}
+        {labels.map((d, i) => {
+          const show = i % Math.max(1, Math.ceil(labels.length / 10)) === 0 || i === labels.length - 1;
+          if (!show) return null;
+          const x = pts[i][0];
           return (
-            <div key={`lbl-${day}`} className="text-center tabular-nums">
-              {show ? day.slice(8, 10) : ''}
-            </div>
+            <text key={`x-${i}`} x={x} y={h - 8} textAnchor="middle" fontSize={10} fill="var(--muted)">{d.slice(8, 10)}</text>
           );
         })}
-      </div>
+
+        {/* hover crosshair */}
+        {hover !== null && (
+          <g>
+            <line x1={pts[hover][0]} x2={pts[hover][0]} y1={pad.t} y2={pad.t + innerH} stroke="var(--border)" strokeDasharray="3,3" />
+            <circle cx={pts[hover][0]} cy={pts[hover][1]} r={4} fill="var(--background)" stroke="var(--accent)" />
+          </g>
+        )}
+      </svg>
+
+      {/* tooltip */}
+      {hover !== null && (
+        <div
+          className="absolute px-2 py-1 rounded border text-xs shadow-sm"
+          style={{
+            left: Math.min(Math.max(pts[hover][0] - 40, 0), w - 100),
+            top: Math.max(pts[hover][1] - 38, 0),
+            background: 'var(--surface)',
+            borderColor: 'var(--border)'
+          }}
+        >
+          <div className="font-medium">{labels[hover]}</div>
+          <div className="tabular-nums">{values[hover]} clicks</div>
+        </div>
+      )}
     </div>
   );
 }
