@@ -14,11 +14,17 @@ type Block =
   | { id: string; type: "text"; text: string }
   | { id: string; type: "button"; label: string; href: string };
 
+// Deep partial helper for strong typing without using `any`
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
+}
+
 // Normalize and deep-merge a potentially partial/malformed theme from DB
 function normalizeTheme(input: unknown): Theme {
-  const t = (typeof input === 'object' && input !== null ? input as any : {})
+  const t: DeepPartial<Theme> = (typeof input === 'object' && input !== null ? (input as DeepPartial<Theme>) : {})
   const allowedFonts = ['system','inter','poppins','outfit','merriweather','space-grotesk','lora'] as const
   type FontKey = typeof allowedFonts[number]
+  const isAllowedWeight = (x: unknown): x is 400|500|600|700 => x === 400 || x === 500 || x === 600 || x === 700
   const normFont = (f: unknown): FontKey => {
     if (typeof f !== 'string') return 'system'
     const s = f.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')
@@ -34,12 +40,14 @@ function normalizeTheme(input: unknown): Theme {
     border: typeof t?.palette?.border === 'string' ? t.palette.border : defaultTheme.palette.border,
   }
 
-  const rawStops: any[] = Array.isArray(t?.gradient?.stops) ? t.gradient.stops : defaultTheme.gradient.stops
+  const rawStops: Array<{ color?: unknown; at?: unknown }> = Array.isArray(t?.gradient?.stops)
+    ? (t.gradient!.stops as Array<{ color?: unknown; at?: unknown }>)
+    : defaultTheme.gradient.stops
   const stops = rawStops
     .slice(0, 4)
     .map(s => ({
       color: typeof s?.color === 'string' ? s.color : defaultTheme.gradient.stops[0].color,
-      at: Math.max(0, Math.min(100, typeof s?.at === 'number' ? s.at : 0))
+      at: Math.max(0, Math.min(100, typeof s?.at === 'number' ? (s.at as number) : 0))
     }))
   const gradient = {
     angle: Math.max(0, Math.min(360, typeof t?.gradient?.angle === 'number' ? t.gradient.angle : defaultTheme.gradient.angle)),
@@ -47,9 +55,9 @@ function normalizeTheme(input: unknown): Theme {
   }
 
   const typography = {
-    font: normFont(t?.typography?.font),
-    baseSize: Math.max(12, Math.min(22, typeof t?.typography?.baseSize === 'number' ? t.typography.baseSize : defaultTheme.typography.baseSize)),
-    weight: ([400,500,600,700] as const).includes(t?.typography?.weight) ? t.typography.weight as 400|500|600|700 : defaultTheme.typography.weight,
+    font: normFont(t?.typography?.font as unknown),
+    baseSize: Math.max(12, Math.min(22, typeof t?.typography?.baseSize === 'number' ? (t.typography.baseSize as number) : defaultTheme.typography.baseSize)),
+    weight: isAllowedWeight(t?.typography?.weight) ? t.typography.weight : defaultTheme.typography.weight,
   }
 
   const radius = Math.max(6, Math.min(24, typeof t?.radius === 'number' ? t.radius : defaultTheme.radius))
