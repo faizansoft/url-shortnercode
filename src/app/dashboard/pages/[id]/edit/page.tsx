@@ -153,6 +153,7 @@ export default function PageEditor() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Edit Page</h1>
         <div className="flex items-center gap-2">
+          <a className="btn btn-secondary h-9" href={`/dashboard/pages/${id}/templates`}>Select template</a>
           <a className="btn btn-secondary h-9" href={publicUrl} target="_blank" rel="noreferrer">View</a>
           <button className="btn btn-primary h-9" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
         </div>

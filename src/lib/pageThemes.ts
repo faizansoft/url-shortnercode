@@ -39,7 +39,19 @@ export const defaultTheme: Theme = {
   layout: { maxWidth: 768, sectionGap: 24, align: 'left' },
 }
 
-export type ThemePreset = { id: string; name: string; theme: Theme }
+import type { Branding } from './pageBranding'
+
+export type ThemePreset = {
+  id: string
+  name: string
+  theme: Theme
+  // Optional metadata for gallery
+  useCases?: string[] // e.g., ['Link-in-bio','Products','Event']
+  styles?: string[]   // e.g., ['Minimal','Bold','Gradient','Photo-heavy']
+  popularity?: number // higher appears first when sorting by popularity
+  preview?: string    // static path to preview image
+  starterBranding?: Partial<Branding>
+}
 
 export const themePresets: ThemePreset[] = [
   {
@@ -51,7 +63,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'inter', baseSize: 16, weight: 500 },
       radius: 14,
       layout: { maxWidth: 880, sectionGap: 28, align: 'center' },
-    }
+    },
+    useCases: ['Link-in-bio','Digital business card'],
+    styles: ['Bold','Gradient'],
+    popularity: 95,
+    preview: '/next.svg'
   },
   {
     id: 'sunset',
@@ -62,7 +78,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'poppins', baseSize: 16, weight: 600 },
       radius: 20,
       layout: { maxWidth: 820, sectionGap: 26, align: 'center' },
-    }
+    },
+    useCases: ['Promotions','Products'],
+    styles: ['Warm','Gradient','Photo-heavy'],
+    popularity: 90,
+    preview: '/next.svg'
   },
   {
     id: 'business',
@@ -73,7 +93,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'outfit', baseSize: 16, weight: 500 },
       radius: 12,
       layout: { maxWidth: 900, sectionGap: 30, align: 'left' },
-    }
+    },
+    useCases: ['Digital business card','Products','SaaS'],
+    styles: ['Professional','Minimal'],
+    popularity: 98,
+    preview: '/next.svg'
   },
   {
     id: 'pastel',
@@ -84,7 +108,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'lora', baseSize: 17, weight: 500 },
       radius: 18,
       layout: { maxWidth: 760, sectionGap: 22, align: 'center' },
-    }
+    },
+    useCases: ['Portfolio','Link-in-bio'],
+    styles: ['Soft','Minimal'],
+    popularity: 80,
+    preview: '/next.svg'
   },
   {
     id: 'mono',
@@ -95,7 +123,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'system', baseSize: 15, weight: 500 },
       radius: 10,
       layout: { maxWidth: 840, sectionGap: 24, align: 'left' },
-    }
+    },
+    useCases: ['Portfolio','Digital business card'],
+    styles: ['Minimal','Monochrome'],
+    popularity: 75,
+    preview: '/next.svg'
   },
   {
     id: 'warm',
@@ -106,7 +138,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'merriweather', baseSize: 17, weight: 500 },
       radius: 16,
       layout: { maxWidth: 820, sectionGap: 26, align: 'center' },
-    }
+    },
+    useCases: ['Promotions','Event'],
+    styles: ['Warm','Gradient'],
+    popularity: 82,
+    preview: '/next.svg'
   },
   {
     id: 'mint',
@@ -117,7 +153,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'inter', baseSize: 16, weight: 500 },
       radius: 14,
       layout: { maxWidth: 800, sectionGap: 24, align: 'left' },
-    }
+    },
+    useCases: ['Products','Restaurant'],
+    styles: ['Fresh','Minimal'],
+    popularity: 70,
+    preview: '/next.svg'
   },
   {
     id: 'royal',
@@ -128,7 +168,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'poppins', baseSize: 16, weight: 600 },
       radius: 22,
       layout: { maxWidth: 860, sectionGap: 28, align: 'center' },
-    }
+    },
+    useCases: ['Event','Portfolio'],
+    styles: ['Luxury','Bold'],
+    popularity: 78,
+    preview: '/next.svg'
   },
   {
     id: 'ocean',
@@ -139,7 +183,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'outfit', baseSize: 16, weight: 500 },
       radius: 12,
       layout: { maxWidth: 900, sectionGap: 30, align: 'left' },
-    }
+    },
+    useCases: ['Link-in-bio','SaaS'],
+    styles: ['Cool','Gradient'],
+    popularity: 85,
+    preview: '/next.svg'
   },
   {
     id: 'forest',
@@ -150,7 +198,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'lora', baseSize: 17, weight: 500 },
       radius: 18,
       layout: { maxWidth: 780, sectionGap: 22, align: 'center' },
-    }
+    },
+    useCases: ['Nonprofit','Event'],
+    styles: ['Nature','Soft'],
+    popularity: 72,
+    preview: '/next.svg'
   },
   {
     id: 'playful',
@@ -161,7 +213,11 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'poppins', baseSize: 16, weight: 600 },
       radius: 20,
       layout: { maxWidth: 760, sectionGap: 24, align: 'center' },
-    }
+    },
+    useCases: ['Promotions','Link-in-bio'],
+    styles: ['Playful','Bold'],
+    popularity: 77,
+    preview: '/next.svg'
   },
   {
     id: 'pastel-green',
@@ -172,6 +228,10 @@ export const themePresets: ThemePreset[] = [
       typography: { font: 'merriweather', baseSize: 17, weight: 500 },
       radius: 16,
       layout: { maxWidth: 820, sectionGap: 26, align: 'center' },
-    }
+    },
+    useCases: ['Products','Portfolio'],
+    styles: ['Soft','Pastel'],
+    popularity: 68,
+    preview: '/next.svg'
   },
 ]
