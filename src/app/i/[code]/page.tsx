@@ -50,7 +50,7 @@ export default function InterstitialPage({ params }: { params: { code: string } 
           // navigate
           window.location.replace(url);
         };
-      } catch (e) {
+      } catch {
         setError('Link not found');
       }
     })();

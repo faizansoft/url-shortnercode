@@ -224,11 +224,13 @@ export async function GET(req: NextRequest) {
         .in('link_id', linkIds)
         .limit(50000)
       if (sessions && sessions.length) {
-        const durations = sessions.map((s: any) => Number(s.duration_ms) || 0)
+        type SessionRow = { duration_ms: number | null; bounced: boolean | null }
+        const typedSessions = sessions as unknown as SessionRow[]
+        const durations = typedSessions.map((s) => (typeof s.duration_ms === 'number' ? s.duration_ms : Number(s.duration_ms) || 0))
         const total = durations.reduce((a: number, b: number) => a + b, 0)
         avgTimeOnPageSec = durations.length ? Math.round((total / durations.length) / 1000) : 0
-        const bounces = sessions.filter((s: any) => !!s.bounced).length
-        const rate = sessions.length ? bounces / sessions.length : 0
+        const bounces = typedSessions.filter((s) => Boolean(s.bounced)).length
+        const rate = typedSessions.length ? bounces / typedSessions.length : 0
         bounceRate = Number((rate * 100).toFixed(1))
       }
       // funnel_events: { link_id, session_id, step, ts }

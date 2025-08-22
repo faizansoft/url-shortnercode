@@ -12,10 +12,10 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   try {
     const supabaseServer = getSupabaseServer()
-    const body = await req.json().catch(() => ({})) as Record<string, any>
-    const type = String(body.type || '')
-    let link_id: string | null = typeof body.link_id === 'string' ? body.link_id : null
-    const link_code: string | null = typeof body.link_code === 'string' ? body.link_code : null
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    const type = String((body as Record<string, unknown>).type || '')
+    let link_id: string | null = typeof body.link_id === 'string' ? (body.link_id as string) : null
+    const link_code: string | null = typeof body.link_code === 'string' ? (body.link_code as string) : null
 
     // Resolve link_id by code if necessary
     if (!link_id && link_code) {
@@ -24,24 +24,24 @@ export async function POST(req: NextRequest) {
         .select('id')
         .eq('short_code', link_code)
         .maybeSingle()
-      link_id = (row as any)?.id ?? null
+      link_id = (row?.id as string | undefined) ?? null
     }
 
     if (!link_id) return NextResponse.json({ ok: false, error: 'link not found' }, { status: 400, headers: { 'Cache-Control': 'no-store' } })
 
     if (type === 'session') {
-      const session_id = typeof body.session_id === 'string' ? body.session_id : null
+      const session_id = typeof body.session_id === 'string' ? (body.session_id as string) : null
       if (!session_id) return NextResponse.json({ ok: false, error: 'session_id required' }, { status: 400 })
-      const started_at = body.started_at ? new Date(body.started_at).toISOString() : null
-      const ended_at = body.ended_at ? new Date(body.ended_at).toISOString() : null
-      const duration_ms = Number.isFinite(body.duration_ms) ? Math.max(0, Number(body.duration_ms)) : null
-      const bounced = !!body.bounced
+      const started_at = body.started_at ? new Date(String(body.started_at)).toISOString() : null
+      const ended_at = body.ended_at ? new Date(String(body.ended_at)).toISOString() : null
+      const duration_ms = typeof body.duration_ms === 'number' && Number.isFinite(body.duration_ms) ? Math.max(0, Number(body.duration_ms)) : (typeof body.duration_ms === 'string' && Number.isFinite(Number(body.duration_ms)) ? Math.max(0, Number(body.duration_ms)) : null)
+      const bounced = Boolean(body.bounced)
       try {
         // Upsert by (link_id, session_id)
         const payload = { link_id, session_id, started_at, ended_at, duration_ms, bounced }
         await supabaseServer
           .from('engagement_sessions')
-          .upsert(payload, { onConflict: 'link_id,session_id' } as any)
+          .upsert(payload, { onConflict: 'link_id,session_id' })
         return NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } })
       } catch (e) {
         return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (type === 'event') {
-      const session_id = typeof body.session_id === 'string' ? body.session_id : null
-      const step = typeof body.step === 'string' ? body.step : null
+      const session_id = typeof body.session_id === 'string' ? (body.session_id as string) : null
+      const step = typeof body.step === 'string' ? (body.step as string) : null
       if (!session_id || !step) return NextResponse.json({ ok: false, error: 'session_id and step required' }, { status: 400 })
-      const ts = body.ts ? new Date(body.ts).toISOString() : new Date().toISOString()
+      const ts = body.ts ? new Date(String(body.ts)).toISOString() : new Date().toISOString()
       try {
         await supabaseServer
           .from('funnel_events')
