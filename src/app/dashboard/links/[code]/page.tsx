@@ -199,7 +199,8 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
     return points.map((p, i) => (i === 0 ? `M ${p[0]},${p[1]}` : `L ${p[0]},${p[1]}`)).join(' ');
   };
 
-  // Catmull–Rom to cubic Bézier: curve interpolates THROUGH all points (no visual gaps)
+  // Catmull–Rom to cubic Bézier: curve interpolates THROUGH all points
+  // Clamp control points to avoid over/undershoot (e.g., below zero between flat segments)
   const buildSmoothPath = (points: ReadonlyArray<readonly [number, number]>) => {
     const n = points.length;
     if (n === 0) return '';
@@ -212,9 +213,17 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
       const p3 = points[Math.min(n - 1, i + 2)];
       // Uniform Catmull-Rom with tension = 0.5 => factor = 1/6
       const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      let c1y = p1[1] + (p2[1] - p0[1]) / 6;
       const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      let c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      // Clamp control Y within the segment's Y-range and chart bounds to prevent dips/peaks
+      const segMin = Math.min(p1[1], p2[1]);
+      const segMax = Math.max(p1[1], p2[1]);
+      const chartMinY = pad.t; // top
+      const chartMaxY = pad.t + innerH; // bottom
+      const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+      c1y = clamp(c1y, Math.max(segMin, chartMinY), Math.min(segMax, chartMaxY));
+      c2y = clamp(c2y, Math.max(segMin, chartMinY), Math.min(segMax, chartMaxY));
       d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
     }
     return d;
