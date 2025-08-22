@@ -104,12 +104,12 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
         color: (theme?.palette.foreground ?? 'var(--foreground)'),
         fontFamily: 'var(--font)',
         fontSize: 'var(--font-size)',
-        fontWeight: Number(theme?.typography.weight ?? 500) as any
+        fontWeight: (theme?.typography.weight ?? 500)
       }}
     >
       <div
         className="rounded-xl mb-6"
-        style={{ background: theme ? 'var(--gradient)' : undefined, padding: '24px', textAlign: (theme?.layout.align ?? 'left') as any }}
+        style={{ background: theme ? 'var(--gradient)' : undefined, padding: '24px', textAlign: (theme?.layout.align ?? 'left') }}
       >
         <h1 className="text-3xl font-bold" style={{ margin: 0 }}>{row.title}</h1>
       </div>
@@ -132,7 +132,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
           }
           if (b?.type === 'button') {
             return (
-              <div key={b.id ?? idx} style={{ textAlign: (theme?.layout.align ?? 'left') as any }}>
+              <div key={b.id ?? idx} style={{ textAlign: (theme?.layout.align ?? 'left') }}>
                 <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--primary)', borderRadius: 'var(--radius)' }}>{b.label}</a>
               </div>
             )
