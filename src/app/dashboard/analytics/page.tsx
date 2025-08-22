@@ -23,6 +23,7 @@ type AnalyticsData = {
   oses: Os[];
   referrerDomains: ReferrerDomain[];
   range?: { days: number };
+  engagement?: { avgTimeOnPageSec: number | null; bounceRate: number | null; funnel: Array<{ step: string; count: number }>; };
 };
 
 // Aggregate daily series into weekly/monthly/yearly buckets
@@ -119,6 +120,46 @@ export default function AnalyticsDashboard() {
             <StatCard label="Total Links" value={data?.summary?.totalLinks ?? 0} />
             <StatCard label="Avg Clicks / Link" value={avgClicks(data?.summary)} />
           </div>
+
+          {/* Engagement metrics */}
+          <section className="rounded-xl glass p-5">
+            <div className="p-0 pb-3 font-medium">Engagement (all links)</div>
+            {data?.engagement ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <MetricCard title="Avg Time on Page" value={
+                  data.engagement.avgTimeOnPageSec == null ? '—' : `${data.engagement.avgTimeOnPageSec}s`
+                } />
+                <MetricCard title="Bounce Rate" value={
+                  data.engagement.bounceRate == null ? '—' : `${data.engagement.bounceRate}%`
+                } />
+                <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border)' }}>
+                  <div className="text-xs text-[var(--muted)] mb-2">Funnel</div>
+                  {(!data.engagement.funnel || data.engagement.funnel.length === 0) ? (
+                    <div className="text-sm text-[var(--muted)]">No funnel events yet.</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-[color-mix(in_oklab,var(--foreground)_65%,#64748b)]">
+                        <tr>
+                          <th className="py-1">Step</th>
+                          <th className="py-1 text-right">Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.engagement.funnel.map((f) => (
+                          <tr key={f.step} className="border-t border-[var(--border)]">
+                            <td className="py-1 capitalize">{f.step.replace(/_/g,' ')}</td>
+                            <td className="py-1 text-right tabular-nums">{f.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-[var(--muted)]">No engagement data yet.</div>
+            )}
+          </section>
           {/* Top row: top day + device donut */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <section className="rounded-xl glass p-5 lg:col-span-2">
@@ -216,6 +257,16 @@ function StatCard({ label, value }: { label: string; value: number }) {
     <div className="rounded-xl glass p-5">
       <div className="text-sm text-[var(--muted)]">{label}</div>
       <div className="text-2xl font-bold tabular-nums mt-1">{value}</div>
+    </div>
+  );
+}
+
+// Small metric display card for strings (e.g., formatted seconds, percentage)
+function MetricCard({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border)' }}>
+      <div className="text-xs text-[var(--muted)] mb-1">{title}</div>
+      <div className="text-xl font-semibold">{value}</div>
     </div>
   );
 }

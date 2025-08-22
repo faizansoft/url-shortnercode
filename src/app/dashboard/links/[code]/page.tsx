@@ -19,6 +19,12 @@ type ClickRow = {
   ip: string | null;
 };
 
+type EngagementPayload = {
+  avgTimeOnPageSec: number | null;
+  bounceRate: number | null; // percentage 0-100
+  funnel: Array<{ step: string; count: number }>;
+} | null;
+
 export default function LinkDetailsPage() {
   const params = useParams<{ code: string }>();
   const code = params.code;
@@ -30,6 +36,7 @@ export default function LinkDetailsPage() {
   const [daily, setDaily] = useState<Record<string, number>>({});
   const [topReferrers, setTopReferrers] = useState<Array<{ referrer: string; count: number }>>([]);
   const [rangeDays, setRangeDays] = useState<7 | 30 | 90>(30);
+  const [engagement, setEngagement] = useState<EngagementPayload>(null);
 
   useEffect(() => {
     (async () => {
@@ -45,6 +52,7 @@ export default function LinkDetailsPage() {
         setClicks(payload.clicks || []);
         setDaily(payload.daily || {});
         setTopReferrers(payload.topReferrers || []);
+        setEngagement(payload.engagement || null);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load link");
       } finally {
@@ -82,6 +90,46 @@ export default function LinkDetailsPage() {
             <div className="truncate">{link.target_url}</div>
             <div className="text-sm text-[var(--muted)]">Created</div>
             <div>{new Date(link.created_at).toLocaleString()}</div>
+          </section>
+
+          {/* Engagement widgets */}
+          <section className="rounded-xl glass p-5">
+            <div className="p-0 pb-3 font-medium">Engagement</div>
+            {engagement ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <MetricCard title="Avg Time on Page" value={
+                  engagement.avgTimeOnPageSec == null ? '—' : `${engagement.avgTimeOnPageSec}s`
+                }/>
+                <MetricCard title="Bounce Rate" value={
+                  engagement.bounceRate == null ? '—' : `${engagement.bounceRate}%`
+                }/>
+                <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border)' }}>
+                  <div className="text-xs text-[var(--muted)] mb-2">Funnel</div>
+                  {(!engagement.funnel || engagement.funnel.length === 0) ? (
+                    <div className="text-sm text-[var(--muted)]">No funnel events yet.</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-[color-mix(in_oklab,var(--foreground)_65%,#64748b)]">
+                        <tr>
+                          <th className="py-1">Step</th>
+                          <th className="py-1 text-right">Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {engagement.funnel.map((f) => (
+                          <tr key={f.step} className="border-t border-[var(--border)]">
+                            <td className="py-1 capitalize">{f.step.replace(/_/g,' ')}</td>
+                            <td className="py-1 text-right tabular-nums">{f.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-[var(--muted)]">No engagement data yet.</div>
+            )}
           </section>
 
           <section className="rounded-xl glass p-5">
@@ -141,6 +189,15 @@ export default function LinkDetailsPage() {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function MetricCard({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border)' }}>
+      <div className="text-xs text-[var(--muted)] mb-1">{title}</div>
+      <div className="text-xl font-semibold">{value}</div>
     </div>
   );
 }

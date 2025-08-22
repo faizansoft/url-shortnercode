@@ -166,9 +166,47 @@ export async function GET(req: NextRequest) {
         .slice(0, 10)
         .map(([referrer, count]) => ({ referrer, count }))
 
+      // Engagement metrics for this link (best-effort; if tables missing, defaults apply)
+      let avgTimeOnPageSec: number | null = null
+      let bounceRate: number | null = null
+      let funnel: Array<{ step: string; count: number }> = []
+      try {
+        const { data: sessions } = await supabaseServer
+          .from('engagement_sessions')
+          .select('duration_ms, bounced')
+          .eq('link_id', link.id)
+          .limit(20000)
+        if (sessions && sessions.length) {
+          type SessionRow = { duration_ms: number | null; bounced: boolean | null }
+          const typedSessions = sessions as unknown as SessionRow[]
+          const durations = typedSessions.map((s) => (typeof s.duration_ms === 'number' ? s.duration_ms : Number(s.duration_ms) || 0))
+          const total = durations.reduce((a: number, b: number) => a + b, 0)
+          avgTimeOnPageSec = durations.length ? Math.round((total / durations.length) / 1000) : 0
+          const bounces = typedSessions.filter((s) => Boolean(s.bounced)).length
+          const rate = typedSessions.length ? bounces / typedSessions.length : 0
+          bounceRate = Number((rate * 100).toFixed(1))
+        }
+
+        const { data: fe } = await supabaseServer
+          .from('funnel_events')
+          .select('step')
+          .eq('link_id', link.id)
+          .limit(20000)
+        if (fe && fe.length) {
+          const counts: Record<string, number> = {}
+          for (const r of fe as Array<{ step: string }>) {
+            const k = String(r.step || 'unknown')
+            counts[k] = (counts[k] || 0) + 1
+          }
+          funnel = Object.entries(counts)
+            .map(([step, count]) => ({ step, count }))
+            .sort((a, b) => a.step.localeCompare(b.step))
+        }
+      } catch { /* ignore */ }
+
       const tookMs = Date.now() - startedAt
       return NextResponse.json(
-        { link, clicks: clicks.slice(0, 20), daily, topReferrers, ...(debug ? { diagnostics: { tookMs, clicksCount: rawClicks?.length ?? 0 } } : {}) },
+        { link, clicks: clicks.slice(0, 20), daily, topReferrers, engagement: { avgTimeOnPageSec, bounceRate, funnel }, ...(debug ? { diagnostics: { tookMs, clicksCount: rawClicks?.length ?? 0 } } : {}) },
         { headers: { 'Cache-Control': 'no-store' } }
       )
     }
