@@ -210,6 +210,16 @@ export default function AnalyticsDashboard() {
   );
 }
 
+// Simple stat card for summary metrics
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl glass p-5">
+      <div className="text-sm text-[var(--muted)]">{label}</div>
+      <div className="text-2xl font-bold tabular-nums mt-1">{value}</div>
+    </div>
+  );
+}
+
 // Vertical column chart (with gridlines) for referrers
 function ColumnChart({ items, height = 240 }: { items: Array<{ label: string; value: number }>; height?: number }) {
   const labels = items.map(i => i.label);
