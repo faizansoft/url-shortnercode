@@ -7,14 +7,11 @@ import { defaultTheme, themePresets } from "@/lib/pageThemes";
 import type { Theme } from "@/lib/pageThemes";
 import type { Branding } from "@/lib/pageBranding";
 import { defaultBranding, normalizeBranding } from "@/lib/pageBranding";
+import type { Block } from "@/types/pageBlocks";
 
 export const runtime = 'edge'
 
-// Very simple block system
-type Block =
-  | { id: string; type: "hero"; heading: string; subheading?: string }
-  | { id: string; type: "text"; text: string }
-  | { id: string; type: "button"; label: string; href: string };
+// Uses shared Block type defined in src/types/pageBlocks.ts
 
 // Deep partial helper for strong typing without using `any`
 type DeepPartial<T> = {
@@ -244,14 +241,46 @@ function BlockEditor({ block, onChange, onRemove }: { block: Block; onChange: (b
       </div>
     )
   }
-  return (
-    <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-      <div className="text-xs text-[var(--muted)]">Button</div>
-      <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.label} onChange={(e)=> onChange({ ...block, label: e.target.value })} placeholder="Label" />
-      <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.href} onChange={(e)=> onChange({ ...block, href: e.target.value })} placeholder="https://…" />
-      <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-    </div>
-  )
+  if (block.type === 'button') {
+    return (
+      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
+        <div className="text-xs text-[var(--muted)]">Button</div>
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.label} onChange={(e)=> onChange({ ...block, label: e.target.value })} placeholder="Label" />
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.href} onChange={(e)=> onChange({ ...block, href: e.target.value })} placeholder="https://…" />
+        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
+      </div>
+    )
+  }
+  if (block.type === 'image') {
+    return (
+      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
+        <div className="text-xs text-[var(--muted)]">Image</div>
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.src} onChange={(e)=> onChange({ ...block, src: e.target.value })} placeholder="https://…/image.jpg" />
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.alt ?? ''} onChange={(e)=> onChange({ ...block, alt: e.target.value })} placeholder="Alt text" />
+        <label className="inline-flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={!!block.rounded} onChange={(e)=> onChange({ ...block, rounded: e.target.checked })} />
+          Rounded corners
+        </label>
+        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
+      </div>
+    )
+  }
+  if (block.type === 'product-card') {
+    return (
+      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
+        <div className="text-xs text-[var(--muted)]">Product Card</div>
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.image} onChange={(e)=> onChange({ ...block, image: e.target.value })} placeholder="https://…/product.jpg" />
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.title} onChange={(e)=> onChange({ ...block, title: e.target.value })} placeholder="Title" />
+        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.subtitle ?? ''} onChange={(e)=> onChange({ ...block, subtitle: e.target.value })} placeholder="Subtitle" />
+        <div className="grid grid-cols-2 gap-2">
+          <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.ctaLabel ?? ''} onChange={(e)=> onChange({ ...block, ctaLabel: e.target.value })} placeholder="CTA label" />
+          <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.ctaHref ?? ''} onChange={(e)=> onChange({ ...block, ctaHref: e.target.value })} placeholder="https://…" />
+        </div>
+        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
+      </div>
+    )
+  }
+  return null
 }
 
 function Tabs({
@@ -405,11 +434,33 @@ function PagePreview({ title, blocks }: { title: string; blocks: Block[] }) {
         if (b.type === 'text') {
           return <div key={b.id} className="prose prose-invert max-w-none" style={{ color: 'var(--foreground)' }}>{b.text}</div>
         }
-        return (
-          <div key={b.id}>
-            <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-9">{b.label}</a>
-          </div>
-        )
+        if (b.type === 'button') {
+          return (
+            <div key={b.id}>
+              <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-9">{b.label}</a>
+            </div>
+          )
+        }
+        if (b.type === 'image') {
+          return (
+            <div key={b.id} className="rounded overflow-hidden" style={{ borderRadius: b.rounded ? 12 : 6 }}>
+              <img src={b.src} alt={b.alt || ''} className="w-full h-auto" />
+            </div>
+          )
+        }
+        if (b.type === 'product-card') {
+          return (
+            <div key={b.id} className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3" style={{ borderColor: 'var(--border)' }}>
+              <div className="rounded overflow-hidden"><img src={b.image} alt={b.title} className="w-full h-auto" /></div>
+              <div>
+                <div className="font-medium">{b.title}</div>
+                {b.subtitle && <div className="text-xs text-[var(--muted)] mb-2">{b.subtitle}</div>}
+                {b.ctaHref && b.ctaLabel && <a href={b.ctaHref} className="btn btn-secondary h-8">{b.ctaLabel}</a>}
+              </div>
+            </div>
+          )
+        }
+        return null
       })}
     </div>
   )

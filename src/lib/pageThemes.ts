@@ -40,6 +40,7 @@ export const defaultTheme: Theme = {
 }
 
 import type { Branding } from './pageBranding'
+import type { Block } from '@/types/pageBlocks'
 
 export type ThemePreset = {
   id: string
@@ -51,6 +52,7 @@ export type ThemePreset = {
   popularity?: number // higher appears first when sorting by popularity
   preview?: string    // static path to preview image
   starterBranding?: Partial<Branding>
+  starterBlocks?: Block[]
 }
 
 export const themePresets: ThemePreset[] = [
@@ -67,7 +69,18 @@ export const themePresets: ThemePreset[] = [
     useCases: ['Link-in-bio','Digital business card'],
     styles: ['Bold','Gradient'],
     popularity: 95,
-    preview: '/next.svg'
+    preview: '/next.svg',
+    starterBranding: {
+      brandColor: '#22d3ee',
+      accentColor: '#a78bfa',
+      hero: { height: 360, align: 'center' },
+    },
+    starterBlocks: [
+      { id: 'h1', type: 'hero', heading: 'The Grand Hotel', subheading: 'Your new escape awaits' },
+      { id: 'b1', type: 'button', label: 'Website', href: 'https://example.com' },
+      { id: 'b2', type: 'button', label: 'Book your stay', href: 'https://example.com/book' },
+      { id: 't1', type: 'text', text: 'Follow us on Instagram, YouTube, and X for updates.' },
+    ]
   },
   {
     id: 'sunset',

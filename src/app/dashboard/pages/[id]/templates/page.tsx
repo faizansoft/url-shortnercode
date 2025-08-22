@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { themePresets, type ThemePreset } from "@/lib/pageThemes";
 import { supabaseClient } from "@/lib/supabaseClient";
+import Image from "next/image";
 
 export const runtime = "edge";
 
@@ -71,7 +72,7 @@ export default function TemplateGalleryPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ theme: preset.theme, branding: preset.starterBranding ?? undefined }),
+        body: JSON.stringify({ theme: preset.theme, branding: preset.starterBranding ?? undefined, blocks: preset.starterBlocks ?? undefined }),
       });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload?.error || "Failed to apply template");
@@ -157,9 +158,14 @@ export default function TemplateGalleryPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map((p) => (
               <article key={p.id} className="rounded border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-                <div className="aspect-[4/3] bg-[var(--surface-2)] flex items-center justify-center">
-                  {/* Placeholder preview; replace with real preview asset when available */}
-                  <div className="w-10 h-10 rounded" style={{ background: p.theme.palette.primary }} />
+                <div className="aspect-[4/3] bg-[var(--surface-2)] relative">
+                  {p.preview ? (
+                    <Image src={p.preview} alt={`${p.name} preview`} fill style={{ objectFit: 'cover' }} unoptimized />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded" style={{ background: p.theme.palette.primary }} />
+                    </div>
+                  )}
                 </div>
                 <div className="p-3 space-y-2">
                   <div className="font-medium">{p.name}</div>

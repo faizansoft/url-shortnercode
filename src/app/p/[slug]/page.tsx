@@ -5,6 +5,7 @@ import type { Theme } from '@/lib/pageThemes'
 import { defaultTheme } from '@/lib/pageThemes'
 import type { Branding } from '@/lib/pageBranding'
 import { defaultBranding, normalizeBranding } from '@/lib/pageBranding'
+import type { Block as SharedBlock } from '@/types/pageBlocks'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
 type HeroBlock = { id?: string; type: 'hero'; heading: string; subheading?: string }
 type TextBlock = { id?: string; type: 'text'; text: string }
 type ButtonBlock = { id?: string; type: 'button'; label: string; href: string }
-type Block = HeroBlock | TextBlock | ButtonBlock
+type Block = HeroBlock | TextBlock | ButtonBlock | SharedBlock
 
 type PublicPageRow = { title: string; blocks: unknown; published: boolean; theme?: Theme | null; branding?: Branding | null }
 
@@ -197,6 +198,31 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
             return (
               <div key={b.id ?? idx} style={{ textAlign: (t.layout.align ?? 'left') }}>
                 <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}>{b.label}</a>
+              </div>
+            )
+          }
+          if (b?.type === 'image') {
+            const rounded = (b as any).rounded ? 'var(--radius)' : '8px'
+            return (
+              <div key={b.id ?? idx} className="overflow-hidden" style={{ borderRadius: rounded }}>
+                <Image src={(b as any).src} alt={(b as any).alt || ''} width={1200} height={675} style={{ width: '100%', height: 'auto', objectFit: 'cover' }} unoptimized />
+              </div>
+            )
+          }
+          if (b?.type === 'product-card') {
+            const pb = b as any
+            return (
+              <div key={pb.id ?? idx} className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-4 items-center rounded-xl p-4" style={{ background: 'color-mix(in oklab, var(--surface) 94%, var(--brand) 6%)', borderRadius: 'var(--radius)' }}>
+                <div className="overflow-hidden rounded-lg">
+                  <Image src={pb.image} alt={pb.title || ''} width={800} height={800} style={{ width: '100%', height: 'auto', objectFit: 'cover' }} unoptimized />
+                </div>
+                <div>
+                  <div className="text-xl font-semibold mb-1">{pb.title}</div>
+                  {pb.subtitle && <div className="text-sm mb-3" style={{ color: 'var(--muted)' }}>{pb.subtitle}</div>}
+                  {pb.ctaHref && pb.ctaLabel && (
+                    <a href={pb.ctaHref} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-10 px-4" style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}>{pb.ctaLabel}</a>
+                  )}
+                </div>
               </div>
             )
           }
