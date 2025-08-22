@@ -149,6 +149,24 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
   // Hooks must be called unconditionally at the top level
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerW, setContainerW] = useState<number>(600);
+
+  // Observe container width for responsiveness
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const cw = Math.max(0, Math.floor(entry.contentRect.width));
+        if (cw && cw !== containerW) setContainerW(cw);
+      }
+    });
+    ro.observe(el);
+    // initial
+    setContainerW(el.clientWidth || 600);
+    return () => ro.disconnect();
+  }, []);
 
   const entries = useMemo(() => Object.entries(daily).sort((a, b) => a[0].localeCompare(b[0])), [daily]);
   const sliced = useMemo(() => entries.slice(-rangeDays), [entries, rangeDays]);
@@ -157,9 +175,13 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
   const values = useMemo(() => sliced.map(([, v]) => v), [sliced]);
   const max = Math.max(1, ...values);
 
-  const w = Math.max(360, Math.min(1200, labels.length * 24));
   const h = 220;
   const pad = { l: 28, r: 16, t: 16, b: 28 };
+  // Ensure reasonable per-point spacing but fill available container width
+  const minPerPoint = 28;
+  const minContentW = labels.length > 1 ? (labels.length - 1) * minPerPoint + 1 : minPerPoint;
+  const desiredW = pad.l + Math.max(minContentW, 0) + pad.r;
+  const w = Math.max(containerW, desiredW);
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
 
@@ -231,7 +253,7 @@ function DailyLineChart({ daily, rangeDays }: { daily: Record<string, number>; r
   const noData = entries.length === 0 || total === 0;
 
   return (
-    <div className="relative overflow-x-auto">
+    <div ref={containerRef} className="relative overflow-x-auto">
       {noData ? (
         <div className="text-sm text-[var(--muted)] h-[220px] grid place-items-center">No clicks in the selected range</div>
       ) : (
