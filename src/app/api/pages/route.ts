@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString()
     const { data: inserted, error } = await supabase
       .from('pages')
-      .insert({ user_id, title, slug, blocks: [], theme: {}, published: false, created_at: now, updated_at: now })
+      .insert({ user_id, title, slug, blocks: [], published: false, created_at: now, updated_at: now })
       .select('id, title, slug, published, created_at')
       .single()
 

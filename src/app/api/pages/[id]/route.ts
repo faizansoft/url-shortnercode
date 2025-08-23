@@ -51,8 +51,6 @@ export async function PUT(req: NextRequest) {
       input.slug = slug
     }
     if (obj.blocks && typeof obj.blocks === 'object') input.blocks = obj.blocks
-    if (obj.theme && typeof obj.theme === 'object') input.theme = obj.theme
-    if (obj.branding && typeof obj.branding === 'object') input.branding = obj.branding
     if (typeof obj.published === 'boolean') input.published = obj.published
 
     input.updated_at = new Date().toISOString()
@@ -78,24 +76,12 @@ export async function PUT(req: NextRequest) {
       if (dup) return NextResponse.json({ error: 'Slug already exists' }, { status: 409 })
     }
 
-    let updateRes = await supabase
+    const updateRes = await supabase
       .from('pages')
       .update(input)
       .eq('id', id)
       .select('*')
       .single()
-
-    // If branding column does not exist yet, retry without branding to remain backward compatible
-    if (updateRes.error && /column\s+"?branding"?\s+does not exist/i.test(updateRes.error.message)) {
-      const fallbackInput: Record<string, unknown> = { ...input }
-      delete (fallbackInput as Record<string, unknown>)['branding']
-      updateRes = await supabase
-        .from('pages')
-        .update(fallbackInput)
-        .eq('id', id)
-        .select('*')
-        .single()
-    }
 
     if (updateRes.error) return NextResponse.json({ error: updateRes.error.message }, { status: 500 })
     return NextResponse.json({ page: updateRes.data })

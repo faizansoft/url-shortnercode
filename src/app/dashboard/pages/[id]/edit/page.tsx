@@ -8,8 +8,6 @@ import Palette from "./builder/Palette";
 import Canvas from "./builder/Canvas";
 import Inspector from "./builder/Inspector";
 import type React from "react";
-import type { Theme } from "@/lib/pageThemes";
-import { defaultTheme } from "@/lib/pageThemes";
 
 export const runtime = 'edge'
 
@@ -19,7 +17,6 @@ interface PageData {
   slug: string;
   published: boolean;
   blocks: Block[] | null;
-  theme?: Partial<Theme> | null;
 }
 
 export default function PageEditor() {
@@ -37,8 +34,7 @@ export default function PageEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Block[][]>([]);
   const [future, setFuture] = useState<Block[][]>([]);
-  // Theme state (branding removed). We still render with selected theme.
-  const [theme, setTheme] = useState<Theme>(defaultTheme);
+  // Neutral styling (theme/branding removed)
 
   useEffect(() => {
     if (!id) return;
@@ -56,24 +52,7 @@ export default function PageEditor() {
         setHistory([]);
         setFuture([]);
         setSelectedId(null);
-        // Load theme if present, merge with defaults for safety
-        if (p.theme && typeof p.theme === 'object') {
-          const t = p.theme as Partial<Theme>;
-          const merged: Theme = {
-            ...defaultTheme,
-            ...t,
-            palette: { ...defaultTheme.palette, ...(t.palette ?? {}) },
-            gradient: {
-              angle: t.gradient?.angle ?? defaultTheme.gradient.angle,
-              stops: t.gradient?.stops ?? defaultTheme.gradient.stops,
-            },
-            typography: { ...defaultTheme.typography, ...(t.typography ?? {}) },
-            layout: { ...defaultTheme.layout, ...(t.layout ?? {}) },
-          };
-          setTheme(merged);
-        } else {
-          setTheme(defaultTheme);
-        }
+        // Theme removed: no-op
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -198,23 +177,19 @@ export default function PageEditor() {
 
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${slug}` : `/p/${slug}`;
 
-  // Compute CSS variables from theme for Canvas WYSIWYG
+  // Neutral CSS variables for WYSIWYG Canvas
   const themeVars: Record<string, string> = {
-    '--primary': theme.palette.primary,
-    '--secondary': theme.palette.secondary,
-    '--surface': theme.palette.surface,
-    '--foreground': theme.palette.foreground,
-    '--muted': theme.palette.muted,
-    '--border': theme.palette.border,
-    '--radius': `${theme.radius}px`,
-    '--maxw': `${theme.layout.maxWidth}px`,
-    '--section-gap': `${theme.layout.sectionGap}px`,
-    '--gradient': `linear-gradient(${theme.gradient.angle}deg, ${theme.gradient.stops.map((s: { color: string; at: number }) => `${s.color} ${s.at}%`).join(', ')})`,
+    '--surface': '#0b0f1a',
+    '--foreground': '#e5e7eb',
+    '--muted': '#94a3b8',
+    '--border': '#1f2937',
+    '--radius': '12px',
+    '--gradient': 'none',
     '--font': 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
-    '--font-size': `${theme.typography.baseSize}px`,
-    '--brand': theme.palette.primary,
-    '--accent': theme.palette.secondary,
-    '--accent-2': theme.palette.primary,
+    '--font-size': '16px',
+    '--brand': '#3b82f6',
+    '--accent': '#22d3ee',
+    '--accent-2': '#3b82f6',
   };
 
   return (
@@ -222,7 +197,7 @@ export default function PageEditor() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Edit Page</h1>
         <div className="flex items-center gap-2">
-          <a className="btn btn-secondary h-9" href={`/dashboard/pages/${id}/templates`}>Select template</a>
+          {/* Templates removed */}
           <a className="btn btn-secondary h-9 inline-flex items-center gap-1" href={publicUrl} target="_blank" rel="noreferrer">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 5C6 5 2 12 2 12s4 7 10 7 10-7 10-7-4-7-10-7Zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Z"/>
