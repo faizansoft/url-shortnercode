@@ -1,18 +1,16 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Block } from '@/types/pageBlocks';
 
 type BlockToolboxProps = {
-  onAddBlock: (type: string) => void;
+  onAddBlock: (type: Block['type']) => void;
 };
 
-const blockTypes = [
+const blockTypes: Array<{ type: Block['type']; label: string; icon: string }> = [
   { type: 'text', label: 'Text', icon: 'T' },
   { type: 'button', label: 'Button', icon: '🆒' },
   { type: 'image', label: 'Image', icon: '🖼️' },
   { type: 'divider', label: 'Divider', icon: '―' },
-  { type: 'spacer', label: 'Spacer', icon: '↕️' },
-  { type: 'social', label: 'Social Links', icon: '🔗' },
 ];
 
 export function BlockToolbox({ onAddBlock }: BlockToolboxProps) {
@@ -31,16 +29,7 @@ export function BlockToolbox({ onAddBlock }: BlockToolboxProps) {
           </button>
         ))}
       </div>
-      <div className="pt-4 border-t border-gray-200">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Templates</h3>
-        <button
-          onClick={() => onAddBlock('header')}
-          className="w-full flex items-center justify-between p-3 text-sm text-left border border-gray-200 rounded-lg hover:bg-gray-50"
-        >
-          <span>Header Section</span>
-          <Plus size={16} className="text-gray-400" />
-        </button>
-      </div>
+      {/* Templates section removed to avoid unsupported block types */}
     </div>
   );
 }

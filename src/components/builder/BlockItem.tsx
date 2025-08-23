@@ -3,7 +3,8 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X } from 'lucide-react';
-import { Block } from '@/types/pageBlocks';
+import { Block, TextBlock, ButtonBlock, ImageBlock } from '@/types/pageBlocks';
+import type { FocusEvent } from 'react';
 
 type BlockItemProps = {
   block: Block;
@@ -37,19 +38,19 @@ export function BlockItem({ block, isSelected, onClick, onUpdate, onDelete }: Bl
             className="min-h-[100px] w-full p-4"
             contentEditable={isSelected}
             suppressContentEditableWarning
-            onBlur={(e) => onUpdate?.({ content: e.currentTarget.textContent || '' })}
-            dangerouslySetInnerHTML={{ __html: block.content || '' }}
+            onBlur={(e: FocusEvent<HTMLDivElement>) => onUpdate?.({ text: e.currentTarget.textContent || '' } as Partial<TextBlock>)}
+            children={(block as TextBlock).text || ''}
           />
         );
       case 'button':
         return (
           <div className="p-4">
             <a
-              href={block.href || '#'}
+              href={(block as ButtonBlock).href || '#'}
               className="inline-block px-6 py-2 rounded-md text-white bg-blue-500 hover:bg-blue-600 transition-colors"
-              style={block.styles}
+              style={(block as ButtonBlock).styles}
             >
-              {block.label || 'Button'}
+              {(block as ButtonBlock).label || 'Button'}
             </a>
           </div>
         );
@@ -57,8 +58,8 @@ export function BlockItem({ block, isSelected, onClick, onUpdate, onDelete }: Bl
         return (
           <div className="relative">
             <img
-              src={block.src || '/placeholder-image.jpg'}
-              alt={block.alt || ''}
+              src={(block as ImageBlock).src || '/placeholder-image.jpg'}
+              alt={(block as ImageBlock).alt || ''}
               className="w-full h-auto rounded-lg"
             />
           </div>

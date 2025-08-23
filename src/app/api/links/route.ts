@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabaseServer'
 import { generateShortCode, isValidUrl } from '@/lib/shortCode'
 
@@ -140,7 +141,7 @@ export async function GET(req: NextRequest) {
           const ip = (c['ip'] ?? null) as string | null
           return { created_at, referrer, ip }
         })
-        .sort((a, b) => (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+        .sort((a: { created_at: string }, b: { created_at: string }) => (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
 
       // Build daily counts for last 30 days
       const dayKey = (d: Date) => d.toISOString().slice(0, 10)

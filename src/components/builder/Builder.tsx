@@ -42,29 +42,35 @@ export function Builder({ initialBlocks = [], onBlocksChange }: BuilderProps) {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      setBlocks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        const newBlocks = arrayMove(items, oldIndex, newIndex);
-        onBlocksChange(newBlocks);
-        return newBlocks;
-      });
+      const oldIndex = blocks.findIndex((item: Block) => item.id === active.id);
+      const newIndex = blocks.findIndex((item: Block) => item.id === over.id);
+      const newBlocks = arrayMove(blocks, oldIndex, newIndex) as Block[];
+      setBlocks(newBlocks);
+      onBlocksChange(newBlocks);
     }
 
     setActiveId(null);
   };
 
-  const addBlock = (type: string) => {
-    const newBlock: Block = {
-      id: `block-${uuidv4()}`,
-      type,
-      content: type === 'text' ? 'Edit this text...' : '',
-      styles: {},
-    };
-
-    if (type === 'button') {
-      newBlock.href = '#';
-      newBlock.label = 'Click Me';
+  const addBlock = (type: Block['type']) => {
+    let newBlock: Block;
+    switch (type) {
+      case 'text':
+        newBlock = { id: `block-${uuidv4()}`, type: 'text', text: 'Edit this text...', styles: {} } as Block;
+        break;
+      case 'button':
+        newBlock = { id: `block-${uuidv4()}`, type: 'button', label: 'Click Me', href: '#', styles: {} } as Block;
+        break;
+      case 'image':
+        newBlock = { id: `block-${uuidv4()}`, type: 'image', src: '/placeholder-image.jpg', alt: '', styles: {} } as Block;
+        break;
+      case 'divider':
+        newBlock = { id: `block-${uuidv4()}`, type: 'divider' } as Block;
+        break;
+      default:
+        // Fallback to a simple text block if an unsupported type is requested
+        newBlock = { id: `block-${uuidv4()}`, type: 'text', text: 'Edit this text...', styles: {} } as Block;
+        break;
     }
 
     const newBlocks = [...blocks, newBlock];
@@ -74,15 +80,15 @@ export function Builder({ initialBlocks = [], onBlocksChange }: BuilderProps) {
   };
 
   const updateBlock = (id: string, updates: Partial<Block>) => {
-    const newBlocks = blocks.map((block) =>
-      block.id === id ? { ...block, ...updates } : block
-    );
+    const newBlocks = blocks.map((block: Block) =>
+      (block.id === id ? ({ ...block, ...updates } as Block) : block)
+    ) as Block[];
     setBlocks(newBlocks);
     onBlocksChange(newBlocks);
   };
 
   const deleteBlock = (id: string) => {
-    const newBlocks = blocks.filter((block) => block.id !== id);
+    const newBlocks = blocks.filter((block: Block) => block.id !== id) as Block[];
     setBlocks(newBlocks);
     onBlocksChange(newBlocks);
     if (selectedBlockId === id) {
@@ -90,7 +96,7 @@ export function Builder({ initialBlocks = [], onBlocksChange }: BuilderProps) {
     }
   };
 
-  const selectedBlock = blocks.find((block) => block.id === selectedBlockId);
+  const selectedBlock = blocks.find((block: Block) => block.id === selectedBlockId);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -109,13 +115,13 @@ export function Builder({ initialBlocks = [], onBlocksChange }: BuilderProps) {
           >
             <SortableContext items={blocks} strategy={rectSortingStrategy}>
               <div className="space-y-4">
-                {blocks.map((block) => (
+                {blocks.map((block: Block) => (
                   <BlockItem
                     key={block.id}
                     block={block}
                     isSelected={selectedBlockId === block.id}
                     onClick={() => setSelectedBlockId(block.id)}
-                    onUpdate={(updates) => updateBlock(block.id, updates)}
+                    onUpdate={(updates: Partial<Block>) => updateBlock(block.id, updates)}
                     onDelete={() => deleteBlock(block.id)}
                   />
                 ))}
@@ -125,7 +131,7 @@ export function Builder({ initialBlocks = [], onBlocksChange }: BuilderProps) {
               {activeId ? (
                 <div className="opacity-75">
                   <BlockItem
-                    block={blocks.find((b) => b.id === activeId)!}
+                    block={blocks.find((b: Block) => b.id === activeId)!}
                     isSelected={false}
                   />
                 </div>
@@ -146,7 +152,7 @@ export function Builder({ initialBlocks = [], onBlocksChange }: BuilderProps) {
         {selectedBlock ? (
           <BlockSettings
             block={selectedBlock}
-            onUpdate={(updates) => updateBlock(selectedBlock.id, updates)}
+            onUpdate={(updates: Partial<Block>) => updateBlock(selectedBlock.id, updates)}
           />
         ) : (
           <div className="text-gray-500">
