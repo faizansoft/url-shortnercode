@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Builder } from '@/components/builder/Builder';
+import type { Block, HeroBlock, TextBlock, ButtonBlock } from '@/types/pageBlocks';
 
 // Define PagePreview component at the top level
 const PagePreview = ({ title = 'Untitled Page', blocks = [] }: { title?: string; blocks?: Block[] }) => {
@@ -34,7 +34,7 @@ const PagePreview = ({ title = 'Untitled Page', blocks = [] }: { title?: string;
     </div>
   );
 };
-import { Block, HeroBlock, TextBlock, ButtonBlock, ImageBlock, ProductCardBlock } from '@/types/pageBlocks';
+// Types are already imported at the top
 
 // UI Components
 const Button = ({ children, onClick, disabled, variant = 'default', size = 'default', className = '' }: { 
@@ -186,8 +186,8 @@ interface PageData {
   slug: string;
   published: boolean;
   blocks: Block[];
-  theme?: any;
-  branding?: any;
+  theme?: Record<string, unknown>;
+  branding?: Record<string, unknown>;
 }
 
 export default function PageEditor() {

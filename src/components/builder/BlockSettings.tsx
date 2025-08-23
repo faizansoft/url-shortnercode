@@ -1,22 +1,67 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Block } from '@/types/pageBlocks';
+import { Block, TextBlock, ButtonBlock, ImageBlock } from '@/types/pageBlocks';
+
+type BlockWithStyles = Block & {
+  styles?: {
+    fontSize?: string;
+    color?: string;
+    backgroundColor?: string;
+    borderRadius?: string;
+    width?: string;
+    maxWidth?: string;
+    height?: string;
+  };
+};
 
 type BlockSettingsProps = {
-  block: Block;
+  block: BlockWithStyles;
   onUpdate: (updates: Partial<Block>) => void;
 };
 
 export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
-  const [localBlock, setLocalBlock] = useState(block);
+  const [localBlock, setLocalBlock] = useState<BlockWithStyles>(block);
 
   useEffect(() => {
     setLocalBlock(block);
   }, [block]);
 
-  const handleChange = (field: string, value: any) => {
-    const updates = { ...localBlock, [field]: value };
+  const handleChange = (
+    field: string,
+    value: string | undefined
+  ) => {
+    const updates = { ...localBlock, [field]: value } as BlockWithStyles;
+    setLocalBlock(updates);
+    onUpdate(updates);
+  };
+
+  const handleStyleChange = (
+    field: keyof NonNullable<BlockWithStyles['styles']>,
+    value: string
+  ) => {
+    const currentStyles = localBlock.styles || {};
+    const newStyles = {
+      ...currentStyles,
+      [field]: value,
+    };
+    
+    // Special handling for image dimensions
+    if (field === 'width' && localBlock.type === 'image') {
+      if (value === '100%') {
+        newStyles.maxWidth = '100%';
+        newStyles.height = 'auto';
+      } else {
+        newStyles.maxWidth = '100%';
+        newStyles.height = 'auto';
+      }
+    }
+
+    const updates = {
+      ...localBlock,
+      styles: newStyles,
+    };
+    
     setLocalBlock(updates);
     onUpdate(updates);
   };
@@ -31,8 +76,8 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
                 Text Content
               </label>
               <textarea
-                value={localBlock.content || ''}
-                onChange={(e) => handleChange('content', e.target.value)}
+                value={(block as TextBlock).text}
+                onChange={(e) => handleChange('text', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
                 rows={4}
               />
@@ -43,12 +88,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <select
                 value={localBlock.styles?.fontSize || '16px'}
-                onChange={(e) =>
-                  handleChange('styles', {
-                    ...localBlock.styles,
-                    fontSize: e.target.value,
-                  })
-                }
+                onChange={(e) => handleStyleChange('fontSize', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
                 <option value="14px">Small</option>
@@ -64,12 +104,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               <input
                 type="color"
                 value={localBlock.styles?.color || '#000000'}
-                onChange={(e) =>
-                  handleChange('styles', {
-                    ...localBlock.styles,
-                    color: e.target.value,
-                  })
-                }
+                onChange={(e) => handleStyleChange('color', e.target.value)}
                 className="w-full h-10"
               />
             </div>
@@ -85,7 +120,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <input
                 type="text"
-                value={localBlock.label || ''}
+                value={(block as ButtonBlock).label}
                 onChange={(e) => handleChange('label', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
               />
@@ -96,7 +131,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <input
                 type="text"
-                value={localBlock.href || ''}
+                value={(block as ButtonBlock).href}
                 onChange={(e) => handleChange('href', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
                 placeholder="https://example.com"
@@ -109,12 +144,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               <input
                 type="color"
                 value={localBlock.styles?.backgroundColor || '#3b82f6'}
-                onChange={(e) =>
-                  handleChange('styles', {
-                    ...localBlock.styles,
-                    backgroundColor: e.target.value,
-                  })
-                }
+                onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
                 className="w-full h-10"
               />
             </div>
@@ -125,12 +155,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               <input
                 type="color"
                 value={localBlock.styles?.color || '#ffffff'}
-                onChange={(e) =>
-                  handleChange('styles', {
-                    ...localBlock.styles,
-                    color: e.target.value,
-                  })
-                }
+                onChange={(e) => handleStyleChange('color', e.target.value)}
                 className="w-full h-10"
               />
             </div>
@@ -140,12 +165,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <select
                 value={localBlock.styles?.borderRadius || '0.375rem'}
-                onChange={(e) =>
-                  handleChange('styles', {
-                    ...localBlock.styles,
-                    borderRadius: e.target.value,
-                  })
-                }
+                onChange={(e) => handleStyleChange('borderRadius', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
                 <option value="0">None</option>
@@ -167,7 +187,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <input
                 type="text"
-                value={localBlock.src || ''}
+                value={(block as ImageBlock).src}
                 onChange={(e) => handleChange('src', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
                 placeholder="https://example.com/image.jpg"
@@ -179,8 +199,8 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <input
                 type="text"
-                value={localBlock.alt || ''}
-                onChange={(e) => handleChange('alt', e.target.value)}
+                value={(block as ImageBlock).alt || ''}
+                onChange={(e) => handleChange('alt', e.target.value || undefined)}
                 className="w-full p-2 border border-gray-300 rounded-md"
                 placeholder="Description of the image"
               />
@@ -191,14 +211,7 @@ export function BlockSettings({ block, onUpdate }: BlockSettingsProps) {
               </label>
               <select
                 value={localBlock.styles?.width || '100%'}
-                onChange={(e) =>
-                  handleChange('styles', {
-                    ...localBlock.styles,
-                    width: e.target.value,
-                    maxWidth: '100%',
-                    height: 'auto',
-                  })
-                }
+                onChange={(e) => handleStyleChange('width', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
                 <option value="100%">Full Width</option>
