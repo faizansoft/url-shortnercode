@@ -7,6 +7,8 @@ import type { Block } from "@/types/pageBlocks";
 import Palette from "./builder/Palette";
 import Canvas from "./builder/Canvas";
 import Inspector from "./builder/Inspector";
+import type { Theme } from "@/lib/pageThemes";
+import { defaultTheme } from "@/lib/pageThemes";
 
 export const runtime = 'edge'
 
@@ -16,6 +18,7 @@ interface PageData {
   slug: string;
   published: boolean;
   blocks: Block[] | null;
+  theme?: Partial<Theme> | null;
 }
 
 export default function PageEditor() {
@@ -33,7 +36,8 @@ export default function PageEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Block[][]>([]);
   const [future, setFuture] = useState<Block[][]>([]);
-  // Theme & Branding removed from editor
+  // Theme state (branding removed). We still render with selected theme.
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
 
   useEffect(() => {
     if (!id) return;
@@ -51,7 +55,24 @@ export default function PageEditor() {
         setHistory([]);
         setFuture([]);
         setSelectedId(null);
-        // Theme & Branding removed
+        // Load theme if present, merge with defaults for safety
+        if (p.theme && typeof p.theme === 'object') {
+          const t = p.theme as Partial<Theme>;
+          const merged: Theme = {
+            ...defaultTheme,
+            ...t,
+            palette: { ...defaultTheme.palette, ...(t.palette ?? {}) },
+            gradient: {
+              angle: t.gradient?.angle ?? defaultTheme.gradient.angle,
+              stops: t.gradient?.stops ?? defaultTheme.gradient.stops,
+            },
+            typography: { ...defaultTheme.typography, ...(t.typography ?? {}) },
+            layout: { ...defaultTheme.layout, ...(t.layout ?? {}) },
+          };
+          setTheme(merged);
+        } else {
+          setTheme(defaultTheme);
+        }
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -176,6 +197,24 @@ export default function PageEditor() {
 
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${slug}` : `/p/${slug}`;
 
+  // Compute CSS variables from theme for Canvas WYSIWYG
+  const cssVars = {
+    ['--primary' as any]: theme.palette.primary,
+    ['--secondary' as any]: theme.palette.secondary,
+    ['--surface' as any]: theme.palette.surface,
+    ['--foreground' as any]: theme.palette.foreground,
+    ['--muted' as any]: theme.palette.muted,
+    ['--border' as any]: theme.palette.border,
+    ['--radius' as any]: `${theme.radius}px`,
+    ['--maxw' as any]: `${theme.layout.maxWidth}px`,
+    ['--section-gap' as any]: `${theme.layout.sectionGap}px`,
+    ['--gradient' as any]: `linear-gradient(${theme.gradient.angle}deg, ${theme.gradient.stops.map(s=>`${s.color} ${s.at}%`).join(', ')})`,
+    ['--font' as any]: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
+    ['--font-size' as any]: `${theme.typography.baseSize}px`,
+    ['--brand' as any]: theme.palette.primary,
+    ['--accent' as any]: theme.palette.secondary,
+  } as React.CSSProperties;
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
@@ -228,13 +267,15 @@ export default function PageEditor() {
               setSelectedId(nb.id);
             }} />
 
-            <Canvas
-              blocks={blocks}
-              selectedId={selectedId}
-              onSelect={(id)=> setSelectedId(id)}
-              onReorder={handleReorder}
-              onDropNew={handleDropNew}
-            />
+            <div style={{ ...cssVars, fontFamily: 'var(--font)', color: 'var(--foreground)' }}>
+              <Canvas
+                blocks={blocks}
+                selectedId={selectedId}
+                onSelect={(id)=> setSelectedId(id)}
+                onReorder={handleReorder}
+                onDropNew={handleDropNew}
+              />
+            </div>
             <div className="space-y-4">
               <Inspector
                 block={blocks.find(b=> b.id === selectedId) || null}
