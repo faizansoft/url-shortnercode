@@ -107,6 +107,17 @@ html.theme-dark .btn-chrome:hover {
     --font-sans: "Segoe UI Variable Text", "Inter", ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
   }
 
+  /* Center the QR preview SVG reliably */
+  .qr-preview { overflow: hidden; }
+  .qr-preview > svg {
+    display: block;
+    margin: 0 auto;
+    width: 256px;
+    height: 256px;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
   /* Dark theme: unify hover to match View link style across the site */
   a:hover {
     color: color-mix(in oklab, var(--accent) 90%, var(--foreground) 10%);

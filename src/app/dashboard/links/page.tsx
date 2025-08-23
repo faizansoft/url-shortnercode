@@ -521,8 +521,8 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
             <div className="rounded-md p-4 flex flex-col items-center gap-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               {qrSvg ? (
                 <>
-                  {/* Match container to normalizeSvgSize(..., 256) to avoid overflow/overlap */}
-                  <div className="w-64 h-64" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+                  {/* Match container to normalizeSvgSize(..., 256) and center inner SVG */}
+                  <div className="w-64 h-64 grid place-items-center qr-preview" dangerouslySetInnerHTML={{ __html: qrSvg }} />
                   {/* Actions */}
                   <div className="flex flex-wrap justify-center gap-2 w-full mt-1">
                     <div className="flex gap-2">
