@@ -112,7 +112,7 @@ export default function DashboardLayout({
             type="button"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => setCollapsed((v: boolean) => !v)}
-            className="btn btn-chrome btn-icon-lg"
+            className="btn btn-chrome btn-icon"
             title={collapsed ? "Expand" : "Collapse"}
           >
             {collapsed ? (
@@ -232,7 +232,7 @@ export default function DashboardLayout({
             <button
               aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
               title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-              className="btn btn-chrome btn-icon-lg"
+              className="btn btn-chrome btn-icon"
               onClick={toggleTheme}
             >
               {theme === 'dark' ? (
@@ -250,12 +250,9 @@ export default function DashboardLayout({
             </button>
             <button
               aria-label="Notifications"
-              className="btn btn-ghost h-9 w-9 p-0 rounded-full"
-              style={{ color: 'var(--muted)' }}
+              className="btn btn-chrome btn-icon"
             >
               <svg
-                width="24"
-                height="24"
                 viewBox="0 0 24 24"
                 fill="none"
                 className="block"
