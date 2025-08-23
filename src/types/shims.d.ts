@@ -8,15 +8,6 @@ declare namespace JSX {
   }
 }
 
-// React (very minimal)
-declare module 'react' {
-  export type FocusEvent<T = Element> = any;
-  export type SetStateAction<T> = T | ((prevState: T) => T);
-  export function useState<T>(initialState: T | (() => T)): [T, (value: SetStateAction<T>) => void];
-  export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
-  const React: any;
-  export default React;
-}
 
 // React namespace for types like React.ReactNode
 declare namespace React {
