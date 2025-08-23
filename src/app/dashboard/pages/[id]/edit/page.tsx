@@ -1,74 +1,15 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import Image from 'next/image'
-import { supabaseClient } from "@/lib/supabaseClient";
-import { defaultTheme, themePresets } from "@/lib/pageThemes";
-import type { Theme } from "@/lib/pageThemes";
-import type { Branding } from "@/lib/pageBranding";
-import { defaultBranding, normalizeBranding } from "@/lib/pageBranding";
-import type { Block } from "@/types/pageBlocks";
-
-export const runtime = 'edge'
-
-// Uses shared Block type defined in src/types/pageBlocks.ts
-
-// Deep partial helper for strong typing without using `any`
-type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
-}
-
-// Normalize and deep-merge a potentially partial/malformed theme from DB
-function normalizeTheme(input: unknown): Theme {
-  const t: DeepPartial<Theme> = (typeof input === 'object' && input !== null ? (input as DeepPartial<Theme>) : {})
-  const allowedFonts = ['system','inter','poppins','outfit','merriweather','space-grotesk','lora'] as const
-  type FontKey = typeof allowedFonts[number]
-  const isAllowedWeight = (x: unknown): x is 400|500|600|700 => x === 400 || x === 500 || x === 600 || x === 700
-  const normFont = (f: unknown): FontKey => {
-    if (typeof f !== 'string') return 'system'
-    const s = f.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')
-    return (allowedFonts as readonly string[]).includes(s as FontKey) ? (s as FontKey) : 'system'
-  }
-
-  const palette = {
-    primary: typeof t?.palette?.primary === 'string' ? t.palette.primary : defaultTheme.palette.primary,
-    secondary: typeof t?.palette?.secondary === 'string' ? t.palette.secondary : defaultTheme.palette.secondary,
-    surface: typeof t?.palette?.surface === 'string' ? t.palette.surface : defaultTheme.palette.surface,
-    foreground: typeof t?.palette?.foreground === 'string' ? t.palette.foreground : defaultTheme.palette.foreground,
-    muted: typeof t?.palette?.muted === 'string' ? t.palette.muted : defaultTheme.palette.muted,
-    border: typeof t?.palette?.border === 'string' ? t.palette.border : defaultTheme.palette.border,
-  }
-
-  const rawStops: Array<{ color?: unknown; at?: unknown }> = Array.isArray(t?.gradient?.stops)
-    ? (t.gradient!.stops as Array<{ color?: unknown; at?: unknown }>)
-    : defaultTheme.gradient.stops
-  const stops = rawStops
-    .slice(0, 4)
-    .map(s => ({
-      color: typeof s?.color === 'string' ? s.color : defaultTheme.gradient.stops[0].color,
-      at: Math.max(0, Math.min(100, typeof s?.at === 'number' ? (s.at as number) : 0))
-    }))
-  const gradient = {
-    angle: Math.max(0, Math.min(360, typeof t?.gradient?.angle === 'number' ? t.gradient.angle : defaultTheme.gradient.angle)),
-    stops: stops.length >= 2 ? stops : defaultTheme.gradient.stops,
-  }
-
-  const typography = {
-    font: normFont(t?.typography?.font as unknown),
-    baseSize: Math.max(12, Math.min(22, typeof t?.typography?.baseSize === 'number' ? (t.typography.baseSize as number) : defaultTheme.typography.baseSize)),
-    weight: isAllowedWeight(t?.typography?.weight) ? t.typography.weight : defaultTheme.typography.weight,
-  }
-
-  const radius = Math.max(6, Math.min(24, typeof t?.radius === 'number' ? t.radius : defaultTheme.radius))
-  const layout = {
-    maxWidth: Math.max(480, Math.min(1200, typeof t?.layout?.maxWidth === 'number' ? t.layout.maxWidth : defaultTheme.layout.maxWidth)),
-    sectionGap: Math.max(12, Math.min(48, typeof t?.layout?.sectionGap === 'number' ? t.layout.sectionGap : defaultTheme.layout.sectionGap)),
-    align: t?.layout?.align === 'center' || t?.layout?.align === 'left' ? t.layout.align : defaultTheme.layout.align,
-  }
-
-  return { palette, gradient, typography, radius, layout }
-}
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Builder } from '@/components/builder/Builder';
+import { Block } from '@/types/pageBlocks';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { supabaseClient } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 interface PageData {
   id: string;
@@ -76,77 +17,208 @@ interface PageData {
   slug: string;
   published: boolean;
   blocks: Block[] | null;
-  theme?: Theme | null;
-  branding?: Branding | null;
+  theme?: any;
+  branding?: any;
 }
 
 export default function PageEditor() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = params?.id as string;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pageData, setPageData] = useState<PageData>({
+    id: '',
+    title: 'Untitled Page',
+    slug: '',
+    published: false,
+    blocks: [],
+    theme: {},
+    branding: {},
+  });
 
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [published, setPublished] = useState(false);
-  const [blocks, setBlocks] = useState<Block[]>([]);
-  const [theme, setTheme] = useState<Theme>(defaultTheme);
-  const [branding, setBranding] = useState<Branding>(defaultBranding);
-
+  // Load page data
   useEffect(() => {
-    if (!id) return;
-    (async () => {
+    if (!id) {
+      router.push('/dashboard/pages');
+      return;
+    }
+
+    const loadPage = async () => {
       try {
-        const res = await fetch(`/api/pages/${id}`, { cache: 'no-store' });
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload?.error || 'Failed to load page');
-        const p = payload.page as PageData;
-        setTitle(p.title || "");
-        setSlug(p.slug || "");
-        setPublished(!!p.published);
-        setBlocks(Array.isArray(p.blocks) ? p.blocks as Block[] : []);
-        setTheme(normalizeTheme(p.theme));
-        setBranding(normalizeBranding(p.branding));
-      } catch (e) {
-        setError((e as Error).message);
+        setLoading(true);
+        const { data, error } = await supabaseClient
+          .from('pages')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        
+        setPageData({
+          id: data.id,
+          title: data.title || 'Untitled Page',
+          slug: data.slug || '',
+          published: data.published || false,
+          blocks: data.blocks || [],
+          theme: data.theme || {},
+          branding: data.branding || {},
+        });
+      } catch (error) {
+        console.error('Error loading page:', error);
+        toast.error('Failed to load page');
       } finally {
         setLoading(false);
       }
-    })();
-  }, [id]);
+    };
 
-  function addBlock(t: Block["type"]) {
-    const nid = Math.random().toString(36).slice(2);
-    if (t === 'hero') setBlocks((p) => [...p, { id: nid, type: 'hero', heading: 'Your Heading', subheading: '' }]);
-    if (t === 'text') setBlocks((p) => [...p, { id: nid, type: 'text', text: 'Your text here' }]);
-    if (t === 'button') setBlocks((p) => [...p, { id: nid, type: 'button', label: 'Call to Action', href: 'https://example.com' }]);
-  }
-  function rmBlock(id: string) { setBlocks((p) => p.filter(b => b.id !== id)); }
+    loadPage();
+  }, [id, router]);
 
-  async function handleSave() {
+  // Save page data
+  const savePage = async () => {
     try {
       setSaving(true);
-      const { data } = await supabaseClient.auth.getSession();
-      const token = data.session?.access_token;
-      const res = await fetch(`/api/pages/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ title, slug, published, blocks, theme, branding })
-      });
-      const payload = await res.json();
-      if (!res.ok) throw new Error(payload?.error || 'Save failed');
-    } catch (e) {
-      alert((e as Error).message);
+      const { error } = await supabaseClient
+        .from('pages')
+        .update({
+          title: pageData.title,
+          slug: pageData.slug,
+          published: pageData.published,
+          blocks: pageData.blocks,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast.success('Page saved successfully');
+    } catch (error) {
+      console.error('Error saving page:', error);
+      toast.error('Failed to save page');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleBlocksChange = (blocks: Block[]) => {
+    setPageData({ ...pageData, blocks });
+  };
+
+  const handlePublishToggle = async () => {
+    const newPublishedState = !pageData.published;
+    setPageData({ ...pageData, published: newPublishedState });
+    
+    try {
+      const { error } = await supabaseClient
+        .from('pages')
+        .update({ published: newPublishedState })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      toast.success(`Page ${newPublishedState ? 'published' : 'unpublished'} successfully`);
+    } catch (error) {
+      console.error('Error updating publish status:', error);
+      toast.error(`Failed to ${newPublishedState ? 'publish' : 'unpublish'} page`);
+      // Revert on error
+      setPageData({ ...pageData, published: !newPublishedState });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
-  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${slug}` : `/p/${slug}`;
-
   return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/dashboard/pages')}
+            >
+              ← Back to Pages
+            </Button>
+            <h1 className="text-xl font-semibold">
+              {pageData.title || 'Untitled Page'}
+            </h1>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="publish-toggle"
+                checked={pageData.published}
+                onCheckedChange={handlePublishToggle}
+              />
+              <Label htmlFor="publish-toggle">
+                {pageData.published ? 'Published' : 'Draft'}
+              </Label>
+            </div>
+            <Button onClick={savePage} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Page Settings */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3">
+        <div className="flex items-center space-x-4">
+          <div className="w-64">
+            <Input
+              type="text"
+              placeholder="Page Title"
+              value={pageData.title}
+              onChange={(e) =>
+                setPageData({ ...pageData, title: e.target.value })
+              }
+              className="w-full"
+            />
+          </div>
+          <div className="w-64">
+            <Input
+              type="text"
+              placeholder="Slug"
+              value={pageData.slug}
+              onChange={(e) =>
+                setPageData({ ...pageData, slug: e.target.value })
+              }
+              className="w-full"
+            />
+          </div>
+          {pageData.published && pageData.slug && (
+            <a
+              href={`/p/${pageData.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              View Live Page →
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Main Builder Area */}
+      <div className="flex-1 overflow-hidden">
+        <Builder
+          initialBlocks={pageData.blocks || []}
+          onBlocksChange={handleBlocksChange}
+        />
+      </div>
+    </div>
+  );
+}
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Edit Page</h1>
@@ -221,119 +293,6 @@ export default function PageEditor() {
     </div>
   );
 }
-
-function BlockEditor({ block, onChange, onRemove }: { block: Block; onChange: (b: Block) => void; onRemove: () => void }) {
-  if (block.type === 'hero') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Hero</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.heading} onChange={(e)=> onChange({ ...block, heading: e.target.value })} />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.subheading ?? ''} onChange={(e)=> onChange({ ...block, subheading: e.target.value })} placeholder="Subheading" />
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'text') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Text</div>
-        <textarea className="w-full min-h-[120px] p-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.text} onChange={(e)=> onChange({ ...block, text: e.target.value })} />
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'button') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Button</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.label} onChange={(e)=> onChange({ ...block, label: e.target.value })} placeholder="Label" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.href} onChange={(e)=> onChange({ ...block, href: e.target.value })} placeholder="https://…" />
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'image') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Image</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.src} onChange={(e)=> onChange({ ...block, src: e.target.value })} placeholder="https://…/image.jpg" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.alt ?? ''} onChange={(e)=> onChange({ ...block, alt: e.target.value })} placeholder="Alt text" />
-        <label className="inline-flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={!!block.rounded} onChange={(e)=> onChange({ ...block, rounded: e.target.checked })} />
-          Rounded corners
-        </label>
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'product-card') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Product Card</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.image} onChange={(e)=> onChange({ ...block, image: e.target.value })} placeholder="https://…/product.jpg" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.title} onChange={(e)=> onChange({ ...block, title: e.target.value })} placeholder="Title" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.subtitle ?? ''} onChange={(e)=> onChange({ ...block, subtitle: e.target.value })} placeholder="Subtitle" />
-        <div className="grid grid-cols-2 gap-2">
-          <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.ctaLabel ?? ''} onChange={(e)=> onChange({ ...block, ctaLabel: e.target.value })} placeholder="CTA label" />
-          <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.ctaHref ?? ''} onChange={(e)=> onChange({ ...block, ctaHref: e.target.value })} placeholder="https://…" />
-        </div>
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  return null
-}
-
-function Tabs({
-  theme: _theme,
-  onApplyPreset,
-  branding,
-  setBranding,
-  saving,
-  onSave,
-}: {
-  theme: Theme
-  onApplyPreset: (id: string) => void
-  branding: Branding
-  setBranding: (b: Branding) => void
-  saving: boolean
-  onSave: () => void
-}) {
-  const [active, setActive] = useState<'theme' | 'customize'>('theme')
-  return (
-    <div className="text-sm">
-      <div className="inline-flex rounded border overflow-hidden mb-4" style={{ borderColor: 'var(--border)' }}>
-        <button className={`px-3 h-8 ${active==='theme' ? 'bg-[var(--surface-2)]' : ''}`} onClick={()=> setActive('theme')}>Theme</button>
-        <button className={`px-3 h-8 ${active==='customize' ? 'bg-[var(--surface-2)]' : ''}`} onClick={()=> setActive('customize')}>Customize</button>
-      </div>
-
-      {active === 'theme' && (
-        <div className="space-y-3">
-          <div className="text-xs text-[var(--muted)]">Built-in Themes</div>
-          <div className="grid grid-cols-1 gap-2">
-            {themePresets.map(p => (
-              <div key={p.id} className="flex items-center justify-between rounded border p-3" style={{ borderColor: 'var(--border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded" style={{ background: p.theme.palette.primary }} />
-                  <div>
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-[var(--muted)]">Preset</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="btn btn-secondary h-8" onClick={()=> onApplyPreset(p.id)}>Apply</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {active === 'customize' && (
-        <div className="space-y-3">
-          <div className="font-medium">Branding</div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
               <div className="text-xs text-[var(--muted)] mb-1">Brand Color</div>
               <input type="color" className="h-9 w-full rounded border p-0" value={branding.brandColor} onChange={(e)=> setBranding({ ...branding, brandColor: e.target.value })} />
             </div>
