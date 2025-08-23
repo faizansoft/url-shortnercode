@@ -3,10 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { defaultTheme, themePresets } from "@/lib/pageThemes";
-import type { Theme } from "@/lib/pageThemes";
-import type { Branding } from "@/lib/pageBranding";
-import { defaultBranding, normalizeBranding } from "@/lib/pageBranding";
 import type { Block } from "@/types/pageBlocks";
 import Palette from "./builder/Palette";
 import Canvas from "./builder/Canvas";
@@ -14,72 +10,12 @@ import Inspector from "./builder/Inspector";
 
 export const runtime = 'edge'
 
-// Uses shared Block type defined in src/types/pageBlocks.ts
-
-// Deep partial helper for strong typing without using `any`
-type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
-}
-
-// Normalize and deep-merge a potentially partial/malformed theme from DB
-function normalizeTheme(input: unknown): Theme {
-  const t: DeepPartial<Theme> = (typeof input === 'object' && input !== null ? (input as DeepPartial<Theme>) : {})
-  const allowedFonts = ['system','inter','poppins','outfit','merriweather','space-grotesk','lora'] as const
-  type FontKey = typeof allowedFonts[number]
-  const isAllowedWeight = (x: unknown): x is 400|500|600|700 => x === 400 || x === 500 || x === 600 || x === 700
-  const normFont = (f: unknown): FontKey => {
-    if (typeof f !== 'string') return 'system'
-    const s = f.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')
-    return (allowedFonts as readonly string[]).includes(s as FontKey) ? (s as FontKey) : 'system'
-  }
-
-  const palette = {
-    primary: typeof t?.palette?.primary === 'string' ? t.palette.primary : defaultTheme.palette.primary,
-    secondary: typeof t?.palette?.secondary === 'string' ? t.palette.secondary : defaultTheme.palette.secondary,
-    surface: typeof t?.palette?.surface === 'string' ? t.palette.surface : defaultTheme.palette.surface,
-    foreground: typeof t?.palette?.foreground === 'string' ? t.palette.foreground : defaultTheme.palette.foreground,
-    muted: typeof t?.palette?.muted === 'string' ? t.palette.muted : defaultTheme.palette.muted,
-    border: typeof t?.palette?.border === 'string' ? t.palette.border : defaultTheme.palette.border,
-  }
-
-  const rawStops: Array<{ color?: unknown; at?: unknown }> = Array.isArray(t?.gradient?.stops)
-    ? (t.gradient!.stops as Array<{ color?: unknown; at?: unknown }>)
-    : defaultTheme.gradient.stops
-  const stops = rawStops
-    .slice(0, 4)
-    .map(s => ({
-      color: typeof s?.color === 'string' ? s.color : defaultTheme.gradient.stops[0].color,
-      at: Math.max(0, Math.min(100, typeof s?.at === 'number' ? (s.at as number) : 0))
-    }))
-  const gradient = {
-    angle: Math.max(0, Math.min(360, typeof t?.gradient?.angle === 'number' ? t.gradient.angle : defaultTheme.gradient.angle)),
-    stops: stops.length >= 2 ? stops : defaultTheme.gradient.stops,
-  }
-
-  const typography = {
-    font: normFont(t?.typography?.font as unknown),
-    baseSize: Math.max(12, Math.min(22, typeof t?.typography?.baseSize === 'number' ? (t.typography.baseSize as number) : defaultTheme.typography.baseSize)),
-    weight: isAllowedWeight(t?.typography?.weight) ? t.typography.weight : defaultTheme.typography.weight,
-  }
-
-  const radius = Math.max(6, Math.min(24, typeof t?.radius === 'number' ? t.radius : defaultTheme.radius))
-  const layout = {
-    maxWidth: Math.max(480, Math.min(1200, typeof t?.layout?.maxWidth === 'number' ? t.layout.maxWidth : defaultTheme.layout.maxWidth)),
-    sectionGap: Math.max(12, Math.min(48, typeof t?.layout?.sectionGap === 'number' ? t.layout.sectionGap : defaultTheme.layout.sectionGap)),
-    align: t?.layout?.align === 'center' || t?.layout?.align === 'left' ? t.layout.align : defaultTheme.layout.align,
-  }
-
-  return { palette, gradient, typography, radius, layout }
-}
-
 interface PageData {
   id: string;
   title: string;
   slug: string;
   published: boolean;
   blocks: Block[] | null;
-  theme?: Theme | null;
-  branding?: Branding | null;
 }
 
 export default function PageEditor() {
@@ -97,8 +33,7 @@ export default function PageEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<Block[][]>([]);
   const [future, setFuture] = useState<Block[][]>([]);
-  const [theme, setTheme] = useState<Theme>(defaultTheme);
-  const [branding, setBranding] = useState<Branding>(defaultBranding);
+  // Theme & Branding removed from editor
 
   useEffect(() => {
     if (!id) return;
@@ -116,8 +51,7 @@ export default function PageEditor() {
         setHistory([]);
         setFuture([]);
         setSelectedId(null);
-        setTheme(normalizeTheme(p.theme));
-        setBranding(normalizeBranding(p.branding));
+        // Theme & Branding removed
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -229,7 +163,7 @@ export default function PageEditor() {
       const res = await fetch(`/api/pages/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ title, slug, published, blocks, theme, branding })
+        body: JSON.stringify({ title, slug, published, blocks })
       });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload?.error || 'Save failed');
@@ -286,7 +220,7 @@ export default function PageEditor() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_0px] gap-4">
             <Palette onAdd={(t)=> {
               const nb = createBlock(t);
               const arr = [...blocks, nb];
@@ -301,7 +235,6 @@ export default function PageEditor() {
               onReorder={handleReorder}
               onDropNew={handleDropNew}
             />
-
             <div className="space-y-4">
               <Inspector
                 block={blocks.find(b=> b.id === selectedId) || null}
@@ -309,19 +242,6 @@ export default function PageEditor() {
                 onDelete={()=> selectedId && deleteBlock(selectedId)}
                 onDuplicate={()=> selectedId && duplicateBlock(selectedId)}
               />
-              <div className="rounded-xl glass p-4">
-                <div className="font-medium mb-2">Theme & Branding</div>
-                <Tabs
-                  onApplyPreset={(id: string)=> {
-                    const p = themePresets.find(x=> x.id === id)
-                    if (p) setTheme(p.theme)
-                  }}
-                  branding={branding}
-                  setBranding={setBranding}
-                  saving={saving}
-                  onSave={handleSave}
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -329,138 +249,4 @@ export default function PageEditor() {
     </div>
   );
 }
-
-function Tabs({
-  onApplyPreset,
-  branding,
-  setBranding,
-  saving,
-  onSave,
-}: {
-  onApplyPreset: (id: string) => void
-  branding: Branding
-  setBranding: (b: Branding) => void
-  saving: boolean
-  onSave: () => void
-}) {
-  const [active, setActive] = useState<'theme' | 'customize'>('theme')
-  return (
-    <div className="text-sm">
-      <div className="inline-flex rounded border overflow-hidden mb-4" style={{ borderColor: 'var(--border)' }}>
-        <button className={`px-3 h-8 ${active==='theme' ? 'bg-[var(--surface-2)]' : ''}`} onClick={()=> setActive('theme')}>Theme</button>
-        <button className={`px-3 h-8 ${active==='customize' ? 'bg-[var(--surface-2)]' : ''}`} onClick={()=> setActive('customize')}>Customize</button>
-      </div>
-
-      {active === 'theme' && (
-        <div className="space-y-3">
-          <div className="text-xs text-[var(--muted)]">Built-in Themes</div>
-          <div className="grid grid-cols-1 gap-2">
-            {themePresets.map(p => (
-              <div key={p.id} className="flex items-center justify-between rounded border p-3" style={{ borderColor: 'var(--border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded" style={{ background: p.theme.palette.primary }} />
-                  <div>
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-[var(--muted)]">Preset</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="btn btn-secondary h-8" onClick={()=> onApplyPreset(p.id)}>Apply</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {active === 'customize' && (
-        <div className="space-y-3">
-          <div className="font-medium">Branding</div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Brand Color</div>
-              <input type="color" className="h-9 w-full rounded border p-0" value={branding.brandColor} onChange={(e)=> setBranding({ ...branding, brandColor: e.target.value })} />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Accent Color</div>
-              <input type="color" className="h-9 w-full rounded border p-0" value={branding.accentColor} onChange={(e)=> setBranding({ ...branding, accentColor: e.target.value })} />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <div className="text-xs text-[var(--muted)]">Logo URL</div>
-            <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.logoUrl ?? ''} onChange={(e)=> setBranding({ ...branding, logoUrl: e.target.value || null })} placeholder="https://…/logo.png" />
-          </div>
-          <div className="grid gap-2">
-            <div className="text-xs text-[var(--muted)]">Cover Image URL</div>
-            <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.coverUrl ?? ''} onChange={(e)=> setBranding({ ...branding, coverUrl: e.target.value || null })} placeholder="https://…/cover.jpg" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Hero Height (px)</div>
-              <input type="number" min={200} max={600} className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.height} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, height: Number(e.target.value) } })} />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Hero Align</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.align} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, align: e.target.value as Branding['hero']['align'] } })}>
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Background Type</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.type} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, type: e.target.value as Branding['bg']['type'] } })}>
-                <option value="none">None</option>
-                <option value="image">Image</option>
-              </select>
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Image URL</div>
-              <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.imageUrl ?? ''} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, imageUrl: e.target.value || null } })} placeholder="https://…/background.jpg" />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Size</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.size} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, size: e.target.value as Branding['bg']['size'] } })}>
-                <option value="cover">Cover</option>
-                <option value="contain">Contain</option>
-                <option value="auto">Auto</option>
-              </select>
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Repeat</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.repeat} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, repeat: e.target.value as Branding['bg']['repeat'] } })}>
-                <option value="no-repeat">No repeat</option>
-                <option value="repeat">Repeat</option>
-                <option value="repeat-x">Repeat X</option>
-                <option value="repeat-y">Repeat Y</option>
-              </select>
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Position</div>
-              <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.position} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, position: e.target.value } })} placeholder="center" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Overlay Color</div>
-              <input type="color" className="h-9 w-full rounded border p-0" value={branding.bg.overlay.color} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, color: e.target.value } } })} />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Overlay Opacity</div>
-              <input type="range" min={0} max={1} step={0.05} value={branding.bg.overlay.opacity} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, opacity: Number(e.target.value) } } })} />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="btn btn-secondary h-8" onClick={()=> setBranding(defaultBranding)}>Reset</button>
-            <button className="btn btn-primary h-8" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // PagePreview removed in favor of interactive Canvas

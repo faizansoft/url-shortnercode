@@ -78,7 +78,7 @@ export default function Canvas({
 function BlockPreview({ block }: { block: Block }) {
   if (block.type === "hero") {
     return (
-      <div className="rounded-lg p-6" style={{ background: 'color-mix(in oklab, var(--accent) 12%, transparent)' }}>
+      <div className="rounded-lg p-6" style={{ background: 'color-mix(in oklab, var(--brand) 10%, transparent)' }}>
         <div className="text-xl font-semibold mb-1">{block.heading}</div>
         {block.subheading && <div className="text-sm text-[var(--muted)]">{block.subheading}</div>}
       </div>
@@ -86,19 +86,27 @@ function BlockPreview({ block }: { block: Block }) {
   }
   if (block.type === "heading") {
     const level = Math.min(6, Math.max(1, block.level ?? 2));
-    const size = level <= 2 ? 'text-2xl' : level <= 4 ? 'text-xl' : 'text-lg';
-    if (level === 1) return <h1 className={`${size} font-semibold`}>{block.text}</h1>;
-    if (level === 2) return <h2 className={`${size} font-semibold`}>{block.text}</h2>;
-    if (level === 3) return <h3 className={`${size} font-semibold`}>{block.text}</h3>;
-    if (level === 4) return <h4 className={`${size} font-semibold`}>{block.text}</h4>;
-    if (level === 5) return <h5 className={`${size} font-semibold`}>{block.text}</h5>;
-    return <h6 className={`${size} font-semibold`}>{block.text}</h6>;
+    if (level === 1) return <h1 className="text-3xl font-semibold">{block.text}</h1>;
+    if (level === 2) return <h2 className="text-2xl font-semibold">{block.text}</h2>;
+    if (level === 3) return <h3 className="text-xl font-semibold">{block.text}</h3>;
+    if (level === 4) return <h4 className="text-lg font-semibold">{block.text}</h4>;
+    if (level === 5) return <h5 className="text-base font-semibold">{block.text}</h5>;
+    return <h6 className="text-sm font-semibold">{block.text}</h6>;
   }
   if (block.type === "text") {
     return <div className="prose prose-invert max-w-none" style={{ color: 'var(--foreground)' }}>{block.text}</div>;
   }
   if (block.type === "button") {
-    return <div><span className="btn btn-primary h-9">{block.label}</span></div>;
+    return (
+      <div>
+        <span
+          className="inline-flex items-center justify-center h-10 px-4"
+          style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}
+        >
+          {block.label}
+        </span>
+      </div>
+    );
   }
   if (block.type === "link") {
     return (
@@ -116,12 +124,14 @@ function BlockPreview({ block }: { block: Block }) {
   }
   if (block.type === "product-card") {
     return (
-      <div className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3" style={{ background: 'color-mix(in oklab, var(--surface) 94%, var(--brand) 6%)', borderRadius: 'var(--radius)' }}>
         <div className="rounded overflow-hidden"><Image src={block.image} alt={block.title} width={600} height={600} className="w-full h-auto" unoptimized /></div>
         <div>
           <div className="font-medium">{block.title}</div>
           {block.subtitle && <div className="text-xs text-[var(--muted)] mb-2">{block.subtitle}</div>}
-          {block.ctaHref && block.ctaLabel && <span className="btn btn-secondary h-8">{block.ctaLabel}</span>}
+          {block.ctaHref && block.ctaLabel && (
+            <span className="inline-flex items-center justify-center h-9 px-3" style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}>{block.ctaLabel}</span>
+          )}
         </div>
       </div>
     );
