@@ -54,6 +54,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const isCustomize = pathname === "/dashboard/qrcodes/customize";
   const [collapsed, setCollapsed] = useState<boolean>(false);
+  type ThemeMode = 'light' | 'dark';
+  const [theme, setTheme] = useState<ThemeMode>('light');
 
   // Read persisted sidebar state
   useEffect(() => {
@@ -70,6 +72,33 @@ export default function DashboardLayout({
       localStorage.setItem("dash.sidebar.collapsed", collapsed ? "1" : "0");
     } catch {}
   }, [collapsed]);
+
+  // Initialize theme from storage or system preference
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ui.theme') as ThemeMode | null;
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial: ThemeMode = saved ?? (systemDark ? 'dark' : 'light');
+      setTheme(initial);
+      const html = document.documentElement;
+      html.classList.remove('theme-light', 'theme-dark');
+      html.classList.add(initial === 'dark' ? 'theme-dark' : 'theme-light');
+    } catch {}
+  }, []);
+
+  // Apply and persist theme on change
+  useEffect(() => {
+    try {
+      const html = document.documentElement;
+      html.classList.remove('theme-light', 'theme-dark');
+      html.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+      localStorage.setItem('ui.theme', theme);
+    } catch {}
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((t: ThemeMode) => (t === 'dark' ? 'light' : 'dark'));
+  };
   return (
     <div className={`${collapsed ? "grid-cols-[72px_1fr]" : "grid-cols-[240px_1fr]"} min-h-[100dvh] grid`}>
       <aside className={`glass text-sm ${collapsed ? "p-2" : "p-4"} flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-hidden`} style={{ borderRadius: 0 }}>
@@ -200,6 +229,25 @@ export default function DashboardLayout({
               </Suspense>
             </div>
             {/* Removed header Create button as requested */}
+            <button
+              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              className="btn btn-chrome h-9 w-9 p-0 rounded-md"
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? (
+                // Sun icon
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                </svg>
+              ) : (
+                // Moon icon
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
             <button
               aria-label="Notifications"
               className="btn btn-ghost h-9 w-9 p-0 rounded-full"

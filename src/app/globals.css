@@ -319,3 +319,29 @@ a:hover {
   }
   .tip[data-tip]::before { background: color-mix(in oklab, var(--surface) 92%, #000 8%); }
 }
+
+/* Runtime theme overrides (take precedence due to later order) */
+html.theme-light {
+  --background: #ffffff;
+  --foreground: #0b1220;
+  --muted: #1e4fa1;
+  --accent: #2563eb;
+  --accent-2: #10b981;
+  --accent-3: #f59e0b;
+  --surface: #f8fafc;
+  --border: #e5e7eb;
+  --selection-bg: #bfdbfe;
+  --selection-text: #0b1220;
+}
+html.theme-dark {
+  --background: #0a0f1a;
+  --foreground: #eaf2ff;
+  --muted: #76a8ff;
+  --accent: #60a5fa;
+  --accent-2: #34d399;
+  --accent-3: #fbbf24;
+  --surface: #0f1626;
+  --border: #21304d;
+  --selection-bg: #1f2a44;
+  --selection-text: #eaf2ff;
+}
