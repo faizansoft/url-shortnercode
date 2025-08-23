@@ -198,6 +198,47 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: SvgThemeBlock; onUpd
   const theme = getTheme(block.themeId)
   if (!theme) return null
   const keys = theme.slots
+  function isColorKey(name: string): boolean {
+    return /^(color|fill|stroke|bg|background|primary|secondary)/i.test(name)
+  }
+  function isColorValue(v: string | undefined): boolean {
+    if (!v) return false
+    return /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) || /^rgba?\(/i.test(v) || /^hsla?\(/i.test(v)
+  }
+  function isImageKey(name: string): boolean {
+    return /(image|img|logo|avatar|photo|picture|icon)/i.test(name)
+  }
+  function isImageValue(v: string | undefined): boolean {
+    if (!v) return false
+    return /^data:image\//.test(v) || /\.(png|jpe?g|gif|webp|svg)$/i.test(v) || /^https?:\/\//i.test(v)
+  }
+  function slotKind(name: string, value: string | undefined): 'color' | 'image' | 'text' {
+    if (isImageKey(name) || isImageValue(value)) return 'image'
+    if (isColorKey(name) || isColorValue(value)) return 'color'
+    return 'text'
+  }
+
+  function updateSlot(k: string, value: string) {
+    onUpdate(block.id, (prev) =>
+      prev.type === 'svg-theme'
+        ? { ...prev, slots: { ...(prev.slots || {}), [k]: value } }
+        : prev,
+    )
+  }
+
+  function onPickImage(k: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files && e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '')
+      if (dataUrl) updateSlot(k, dataUrl)
+    }
+    reader.readAsDataURL(file)
+    // reset so same file can be picked again
+    e.target.value = ''
+  }
+
   return (
     <div className="mt-3 p-3 rounded border grid gap-2" style={{ borderColor: 'var(--border)', background: 'rgba(0,0,0,0.15)' }}>
       <div className="text-xs text-[var(--muted)]">Inline editor</div>
@@ -208,7 +249,16 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: SvgThemeBlock; onUpd
           style={{ borderColor: 'var(--border)' }}
           value={block.themeId}
           onChange={(e) =>
-            onUpdate(block.id, (prev) => (prev.type === 'svg-theme' ? { ...prev, themeId: e.target.value } : prev))
+            onUpdate(block.id, (prev) => {
+              if (prev.type !== 'svg-theme') return prev
+              const nextTheme = getTheme(e.target.value)
+              if (!nextTheme) return { ...prev, themeId: e.target.value }
+              const normalizedSlots: Record<string, string> = {}
+              for (const key of nextTheme.slots) {
+                normalizedSlots[key] = (prev.slots || {})[key] || ''
+              }
+              return { ...prev, themeId: e.target.value, slots: normalizedSlots }
+            })
           }
         >
           {svgThemes.map((t) => (
@@ -216,24 +266,76 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: SvgThemeBlock; onUpd
           ))}
         </select>
       </label>
-      {keys.map((k: string) => (
-        <label key={k} className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
-          <span className="opacity-80">{k}</span>
-          <input
-            className="h-9 px-2 rounded border bg-transparent"
-            style={{ borderColor: 'var(--border)' }}
-            value={block.slots?.[k] || ''}
-            onChange={(e) =>
-              onUpdate(block.id, (prev) =>
-                prev.type === 'svg-theme'
-                  ? { ...prev, slots: { ...(prev.slots || {}), [k]: e.target.value } }
-                  : prev,
-              )
-            }
-            placeholder={k}
-          />
-        </label>
-      ))}
+      {keys.map((k: string) => {
+        const v = block.slots?.[k]
+        const kind = slotKind(k, v)
+        if (kind === 'color') {
+          const colorValue = v && isColorValue(v) && /^#/.test(v) ? v : (v || '#000000')
+          return (
+            <div key={k} className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
+              <span className="opacity-80">{k}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label={`${k} color`}
+                  value={/^#/.test(colorValue) ? colorValue : '#000000'}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSlot(k, e.target.value)}
+                  style={{ width: 36, height: 28, padding: 0, background: 'transparent', border: '1px solid var(--border)', borderRadius: 6 }}
+                />
+                <input
+                  className="h-9 px-2 rounded border bg-transparent flex-1"
+                  style={{ borderColor: 'var(--border)' }}
+                  value={v || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSlot(k, e.target.value)}
+                  placeholder="#000000 or css color"
+                />
+              </div>
+            </div>
+          )
+        }
+        if (kind === 'image') {
+          return (
+            <div key={k} className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
+              <span className="opacity-80">{k}</span>
+              <div className="flex items-center gap-2">
+                {v ? (
+                  <img src={v} alt={k} style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                ) : (
+                  <div style={{ width: 48, height: 36, borderRadius: 6, border: '1px solid var(--border)', display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 10 }}>no img</div>
+                )}
+                <input type="file" accept="image/*" onChange={(e: React.ChangeEvent<HTMLInputElement>) => onPickImage(k, e)} />
+                <button
+                  type="button"
+                  className="btn btn-secondary h-8"
+                  onClick={() => updateSlot(k, '')}
+                >Clear</button>
+              </div>
+              <div className="col-span-2 col-start-2">
+                <input
+                  className="h-9 w-full px-2 rounded border bg-transparent"
+                  style={{ borderColor: 'var(--border)' }}
+                  value={v || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSlot(k, e.target.value)}
+                  placeholder="Paste image URL or will use uploaded"
+                />
+              </div>
+            </div>
+          )
+        }
+        // text
+        return (
+          <label key={k} className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
+            <span className="opacity-80">{k}</span>
+            <input
+              className="h-9 px-2 rounded border bg-transparent"
+              style={{ borderColor: 'var(--border)' }}
+              value={v || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSlot(k, e.target.value)}
+              placeholder={k}
+            />
+          </label>
+        )
+      })}
     </div>
   )
 }
