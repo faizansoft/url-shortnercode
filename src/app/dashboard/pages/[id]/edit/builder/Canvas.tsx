@@ -240,13 +240,13 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: SvgThemeBlock; onUpd
   }
 
   return (
-    <div className="mt-3 p-3 rounded border grid gap-2" style={{ borderColor: 'var(--border)', background: 'rgba(0,0,0,0.15)' }}>
+    <div className="mt-3 p-3 rounded border grid gap-2" style={{ borderColor: 'var(--border)', background: 'color-mix(in oklab, var(--surface) 92%, transparent)' }}>
       <div className="text-xs text-[var(--muted)]">Inline editor</div>
       <label className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
         <span className="opacity-80">Theme</span>
         <select
-          className="h-9 px-2 rounded border bg-transparent"
-          style={{ borderColor: 'var(--border)' }}
+          className="h-9 px-2 rounded border"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
           value={block.themeId}
           onChange={(e) =>
             onUpdate(block.id, (prev) => {
@@ -262,7 +262,7 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: SvgThemeBlock; onUpd
           }
         >
           {svgThemes.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+            <option key={t.id} value={t.id} style={{ background: 'var(--surface)', color: 'var(--foreground)' }}>{t.name}</option>
           ))}
         </select>
       </label>

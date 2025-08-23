@@ -54,7 +54,7 @@ export default function Inspector({
             Level
             <select
               className="h-8 rounded border px-2"
-              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               value={String(block.level ?? 2)}
               onChange={(e)=> onChange({ ...block, level: Number(e.target.value) as 1|2|3|4|5|6 })}
             >
