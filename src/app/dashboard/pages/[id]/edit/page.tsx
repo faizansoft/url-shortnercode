@@ -6,7 +6,6 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import type { Block } from "@/types/pageBlocks";
 import Palette from "./builder/Palette";
 import Canvas from "./builder/Canvas";
-import Inspector from "./builder/Inspector";
 import type React from "react";
 
 export const runtime = 'edge'
@@ -109,6 +108,7 @@ export default function PageEditor() {
     if (t === 'link') return { id: nid, type: 'link', text: 'Visit link', href: 'https://example.com' } as Block;
     if (t === 'image') return { id: nid, type: 'image', src: 'https://picsum.photos/1200/675', alt: 'Image', rounded: true } as Block;
     if (t === 'product-card') return { id: nid, type: 'product-card', image: 'https://picsum.photos/800', title: 'Product title', subtitle: 'Subtitle', ctaLabel: 'Buy now', ctaHref: 'https://example.com' } as Block;
+    if (t === 'svg-theme') return { id: nid, type: 'svg-theme', themeId: 'theme-01', slots: {} } as unknown as Block;
     return { id: nid, type: 'text', text: 'New block' } as Block;
   }, []);
 
@@ -236,7 +236,7 @@ export default function PageEditor() {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_0px] gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
             <Palette onAdd={(t)=> {
               const nb = createBlock(t);
               const arr = [...blocks, nb];
@@ -251,14 +251,9 @@ export default function PageEditor() {
                 onSelect={(id: string)=> setSelectedId(id)}
                 onReorder={handleReorder}
                 onDropNew={handleDropNew}
-              />
-            </div>
-            <div className="space-y-4">
-              <Inspector
-                block={blocks.find((b: Block)=> b.id === selectedId) || null}
-                onChange={(b: Block)=> updateBlock(b.id, b)}
-                onDelete={()=> selectedId && deleteBlock(selectedId)}
-                onDuplicate={()=> selectedId && duplicateBlock(selectedId)}
+                onUpdate={updateBlock}
+                onDelete={deleteBlock}
+                onDuplicate={duplicateBlock}
               />
             </div>
           </div>

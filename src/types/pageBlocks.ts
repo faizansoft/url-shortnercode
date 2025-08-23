@@ -14,4 +14,13 @@ export type ProductCardBlock = {
   ctaHref?: string
 }
 
-export type Block = HeroBlock | TextBlock | HeadingBlock | ButtonBlock | LinkBlock | ImageBlock | ProductCardBlock
+// An SVG-based theme/template block rendered from a preset with editable slots.
+// slots: arbitrary key/value map for text, colors, image URLs, etc.
+export type SvgThemeBlock = {
+  id: string
+  type: 'svg-theme'
+  themeId: string
+  slots: Record<string, string>
+}
+
+export type Block = HeroBlock | TextBlock | HeadingBlock | ButtonBlock | LinkBlock | ImageBlock | ProductCardBlock | SvgThemeBlock

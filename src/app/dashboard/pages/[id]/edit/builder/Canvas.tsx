@@ -2,6 +2,7 @@
 import React from "react";
 import type { Block } from "@/types/pageBlocks";
 import Image from "next/image";
+import { SvgThemeRender, getTheme, svgThemes } from "@/lib/svgThemes";
 
 export default function Canvas({
   blocks,
@@ -9,12 +10,18 @@ export default function Canvas({
   onSelect,
   onReorder,
   onDropNew,
+  onUpdate,
+  onDelete,
+  onDuplicate,
 }: {
   blocks: Block[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onReorder: (from: number, to: number) => void;
   onDropNew: (type: Block["type"], atIndex: number | null) => void;
+  onUpdate: (id: string, partial: Partial<Block> | ((b: Block) => Block)) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }) {
   function handleDragStart(e: React.DragEvent, index: number) {
     e.dataTransfer.setData("text/x-drag-index", String(index));
@@ -50,7 +57,7 @@ export default function Canvas({
             onDragStart={(e) => handleDragStart(e, i)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => handleDrop(e, i)}
-            className={`rounded border p-3 cursor-move ${selectedId === b.id ? "ring-2 ring-[var(--accent)]" : ""}`}
+            className={`relative rounded border p-3 cursor-move ${selectedId === b.id ? "ring-2 ring-[var(--accent)]" : ""}`}
             style={{ borderColor: "var(--border)", background: "var(--surface)" }}
             onClick={() => onSelect(b.id)}
             role="button"
@@ -59,7 +66,47 @@ export default function Canvas({
               if (e.key === "Enter" || e.key === " ") onSelect(b.id);
             }}
           >
+            {/* Inline toolbar when selected */}
+            {selectedId === b.id && (
+              <div
+                className="absolute -top-3 right-3 z-10 flex items-center gap-1 px-2 py-1 rounded backdrop-blur border"
+                style={{ borderColor: 'var(--border)', background: 'color-mix(in oklab, black 20%, transparent)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {[
+                  { title: 'Duplicate', onClick: () => onDuplicate(b.id), icon: (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 8h10v10H8z" opacity=".5" /><path d="M6 6h10v10H6z" /></svg>) },
+                  { title: 'Delete', onClick: () => onDelete(b.id), icon: (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 11H7L6 9z" /></svg>) },
+                  { title: 'Move up', onClick: () => onReorder(i, Math.max(0, i - 1)), icon: (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5l7 7h-4v7H9v-7H5z" /></svg>), disabled: i === 0 },
+                  { title: 'Move down', onClick: () => onReorder(i, Math.min(blocks.length, i + 2)), icon: (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(180deg)' }}><path d="M12 5l7 7h-4v7H9v-7H5z" /></svg>), disabled: i === blocks.length - 1 },
+                ].map((btn, idx) => (
+                  <button
+                    key={idx}
+                    title={btn.title}
+                    onClick={btn.onClick}
+                    disabled={btn.disabled}
+                    style={{
+                      height: 26,
+                      width: 26,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: 'color-mix(in oklab, var(--surface) 80%, transparent)',
+                      color: 'var(--foreground)',
+                      opacity: btn.disabled ? 0.5 : 1,
+                    }}
+                  >
+                    {btn.icon}
+                  </button>
+                ))}
+              </div>
+            )}
             <BlockPreview block={b} />
+            {/* Inline editor for svg-theme when selected */}
+            {selectedId === b.id && (b as any).type === 'svg-theme' && (
+              <SvgThemeInlineEditor block={b as any} onUpdate={onUpdate} />
+            )}
           </div>
         ))}
         {blocks.length === 0 && (
@@ -136,5 +183,49 @@ function BlockPreview({ block }: { block: Block }) {
       </div>
     );
   }
+  if ((block as any).type === 'svg-theme') {
+    const b: any = block
+    return (
+      <div className="rounded overflow-hidden">
+        <SvgThemeRender themeId={b.themeId} slots={b.slots || {}} />
+      </div>
+    )
+  }
   return null;
+}
+
+function SvgThemeInlineEditor({ block, onUpdate }: { block: any; onUpdate: (id: string, partial: Partial<Block> | ((b: Block) => Block)) => void }) {
+  const theme = getTheme(block.themeId)
+  if (!theme) return null
+  const keys = theme.slots
+  return (
+    <div className="mt-3 p-3 rounded border grid gap-2" style={{ borderColor: 'var(--border)', background: 'rgba(0,0,0,0.15)' }}>
+      <div className="text-xs text-[var(--muted)]">Inline editor</div>
+      <label className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
+        <span className="opacity-80">Theme</span>
+        <select
+          className="h-9 px-2 rounded border bg-transparent"
+          style={{ borderColor: 'var(--border)' }}
+          value={block.themeId}
+          onChange={(e) => onUpdate(block.id, { ...(block as any), themeId: e.target.value })}
+        >
+          {svgThemes.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+      </label>
+      {keys.map((k: string) => (
+        <label key={k} className="grid grid-cols-[120px_1fr] items-center gap-2 text-sm">
+          <span className="opacity-80">{k}</span>
+          <input
+            className="h-9 px-2 rounded border bg-transparent"
+            style={{ borderColor: 'var(--border)' }}
+            value={block.slots?.[k] || ''}
+            onChange={(e) => onUpdate(block.id, (prev: any) => ({ ...prev, slots: { ...(prev.slots || {}), [k]: e.target.value } }))}
+            placeholder={k}
+          />
+        </label>
+      ))}
+    </div>
+  )
 }

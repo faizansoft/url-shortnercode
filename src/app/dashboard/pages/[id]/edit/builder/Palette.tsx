@@ -12,6 +12,7 @@ const items: PaletteItem[] = [
   { type: "link", label: "Link" },
   { type: "image", label: "Image" },
   { type: "product-card", label: "Product Card" },
+  { type: "svg-theme", label: "Theme (SVG)" },
 ];
 
 export default function Palette({ onAdd }: { onAdd: (t: Block["type"]) => void }) {
