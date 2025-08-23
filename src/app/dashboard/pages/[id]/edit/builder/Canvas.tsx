@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import type { Block } from "@/types/pageBlocks";
+import type { SvgThemeBlock } from "@/types/pageBlocks";
 import Image from "next/image";
 import { SvgThemeRender, getTheme, svgThemes } from "@/lib/svgThemes";
 
@@ -45,8 +46,8 @@ export default function Canvas({
   return (
     <section
       className="rounded-xl glass p-4"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => handleDrop(e, null)}
+      onDragOver={(e: React.DragEvent) => e.preventDefault()}
+      onDrop={(e: React.DragEvent) => handleDrop(e, null)}
     >
       <div className="text-sm text-[var(--muted)] mb-2">Canvas</div>
       <div className="space-y-3">
@@ -54,15 +55,15 @@ export default function Canvas({
           <div
             key={b.id}
             draggable
-            onDragStart={(e) => handleDragStart(e, i)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => handleDrop(e, i)}
+            onDragStart={(e: React.DragEvent) => handleDragStart(e, i)}
+            onDragOver={(e: React.DragEvent) => e.preventDefault()}
+            onDrop={(e: React.DragEvent) => handleDrop(e, i)}
             className={`relative rounded border p-3 cursor-move ${selectedId === b.id ? "ring-2 ring-[var(--accent)]" : ""}`}
             style={{ borderColor: "var(--border)", background: "var(--surface)" }}
             onClick={() => onSelect(b.id)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => {
+            onKeyDown={(e: React.KeyboardEvent) => {
               if (e.key === "Enter" || e.key === " ") onSelect(b.id);
             }}
           >
@@ -71,7 +72,7 @@ export default function Canvas({
               <div
                 className="absolute -top-3 right-3 z-10 flex items-center gap-1 px-2 py-1 rounded backdrop-blur border"
                 style={{ borderColor: 'var(--border)', background: 'color-mix(in oklab, black 20%, transparent)' }}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
               >
                 {[
                   { title: 'Duplicate', onClick: () => onDuplicate(b.id), icon: (<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 8h10v10H8z" opacity=".5" /><path d="M6 6h10v10H6z" /></svg>) },
@@ -104,8 +105,8 @@ export default function Canvas({
             )}
             <BlockPreview block={b} />
             {/* Inline editor for svg-theme when selected */}
-            {selectedId === b.id && (b as any).type === 'svg-theme' && (
-              <SvgThemeInlineEditor block={b as any} onUpdate={onUpdate} />
+            {selectedId === b.id && b.type === 'svg-theme' && (
+              <SvgThemeInlineEditor block={b} onUpdate={onUpdate} />
             )}
           </div>
         ))}
@@ -183,18 +184,17 @@ function BlockPreview({ block }: { block: Block }) {
       </div>
     );
   }
-  if ((block as any).type === 'svg-theme') {
-    const b: any = block
+  if (block.type === 'svg-theme') {
     return (
       <div className="rounded overflow-hidden">
-        <SvgThemeRender themeId={b.themeId} slots={b.slots || {}} />
+        <SvgThemeRender themeId={block.themeId} slots={block.slots || {}} />
       </div>
     )
   }
   return null;
 }
 
-function SvgThemeInlineEditor({ block, onUpdate }: { block: any; onUpdate: (id: string, partial: Partial<Block> | ((b: Block) => Block)) => void }) {
+function SvgThemeInlineEditor({ block, onUpdate }: { block: SvgThemeBlock; onUpdate: (id: string, partial: Partial<Block> | ((b: Block) => Block)) => void }) {
   const theme = getTheme(block.themeId)
   if (!theme) return null
   const keys = theme.slots
@@ -207,7 +207,9 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: any; onUpdate: (id: 
           className="h-9 px-2 rounded border bg-transparent"
           style={{ borderColor: 'var(--border)' }}
           value={block.themeId}
-          onChange={(e) => onUpdate(block.id, { ...(block as any), themeId: e.target.value })}
+          onChange={(e) =>
+            onUpdate(block.id, (prev) => (prev.type === 'svg-theme' ? { ...prev, themeId: e.target.value } : prev))
+          }
         >
           {svgThemes.map((t) => (
             <option key={t.id} value={t.id}>{t.name}</option>
@@ -221,7 +223,13 @@ function SvgThemeInlineEditor({ block, onUpdate }: { block: any; onUpdate: (id: 
             className="h-9 px-2 rounded border bg-transparent"
             style={{ borderColor: 'var(--border)' }}
             value={block.slots?.[k] || ''}
-            onChange={(e) => onUpdate(block.id, (prev: any) => ({ ...prev, slots: { ...(prev.slots || {}), [k]: e.target.value } }))}
+            onChange={(e) =>
+              onUpdate(block.id, (prev) =>
+                prev.type === 'svg-theme'
+                  ? { ...prev, slots: { ...(prev.slots || {}), [k]: e.target.value } }
+                  : prev,
+              )
+            }
             placeholder={k}
           />
         </label>

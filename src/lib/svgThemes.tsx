@@ -184,7 +184,7 @@ export const svgThemes: SvgTheme[] = [
             <g key={i} transform={`translate(${i*240},0)`}>
               <circle cx="0" cy="0" r="10" fill={safe(s.accent, '#22d3ee')} />
               {i<3 && <rect x="10" y="-2" width="220" height="4" fill="#111827" />}
-              <text x="0" y="36" fontSize="14" fill="#e5e7eb">{safe((s as any)[`step${i+1}`], `Step ${i+1}`)}</text>
+              <text x="0" y="36" fontSize="14" fill="#e5e7eb">{safe(s[`step${i+1}`], `Step ${i+1}`)}</text>
             </g>
           ))}
         </g>
@@ -202,8 +202,8 @@ export const svgThemes: SvgTheme[] = [
         {[0,1,2].map(i => (
           <g key={i} transform={`translate(120, ${120 + i*120})`}>
             <rect width="960" height="96" rx="12" fill="#111827" />
-            <text x="16" y="32" fontSize="16" fill="#e5e7eb">{safe((s as any)[`q${i+1}`], `Question ${i+1}`)}</text>
-            <text x="16" y="64" fontSize="14" fill="#9ca3af">{safe((s as any)[`a${i+1}`], 'Answer text...')}</text>
+            <text x="16" y="32" fontSize="16" fill="#e5e7eb">{safe(s[`q${i+1}`], `Question ${i+1}`)}</text>
+            <text x="16" y="64" fontSize="14" fill="#9ca3af">{safe(s[`a${i+1}`], 'Answer text...')}</text>
           </g>
         ))}
         <circle cx="1120" cy="60" r="8" fill={safe(s.accent, '#22d3ee')} />
@@ -257,7 +257,7 @@ export const svgThemes: SvgTheme[] = [
           <g key={i} transform={`translate(${120 + i*320}, 120)`}>
             <rect width="280" height="220" rx="16" fill="#111827" />
             <rect x="0" y="0" width="280" height="48" rx="16" fill={safe(s.accent, '#22d3ee')} opacity="0.2" />
-            <text x="20" y="32" fontSize="16" fill="#e5e7eb">{safe((s as any)[`col${i+1}`], `Column ${i+1}`)}</text>
+            <text x="20" y="32" fontSize="16" fill="#e5e7eb">{safe(s[`col${i+1}`], `Column ${i+1}`)}</text>
             <text x="20" y="80" fontSize="14" fill="#9ca3af">Key benefit</text>
             <text x="20" y="110" fontSize="14" fill="#9ca3af">Another point</text>
             <text x="20" y="140" fontSize="14" fill="#9ca3af">Support</text>
@@ -313,7 +313,7 @@ export const svgThemes: SvgTheme[] = [
           <g key={i} transform={`translate(120, ${120 + i*90})`}>
             <circle cx="0" cy="0" r="12" fill={safe(s.accent, '#22d3ee')} />
             <rect x="16" y="-12" width="860" height="40" rx="8" fill="#111827" />
-            <text x="28" y="12" fontSize="14" fill="#e5e7eb">{safe((s as any)[`s${i+1}`], `Step ${i+1} description`)}</text>
+            <text x="28" y="12" fontSize="14" fill="#e5e7eb">{safe(s[`s${i+1}`], `Step ${i+1} description`)}</text>
           </g>
         ))}
       </svg>
@@ -377,7 +377,7 @@ export const svgThemes: SvgTheme[] = [
           <g key={i} transform={`translate(120, ${110 + i*56})`}>
             <rect x="0" y="-16" width="24" height="24" rx="6" fill={safe(s.accent, '#22d3ee')} opacity="0.25" />
             <path d="M5 0 L10 8 L20 -6" transform="translate(2,8)" stroke={safe(s.accent, '#22d3ee')} strokeWidth="2" fill="none" />
-            <text x="36" y="0" fontSize="14" fill="#e5e7eb">{safe((s as any)[`i${i+1}`], `Checklist item ${i+1}`)}</text>
+            <text x="36" y="0" fontSize="14" fill="#e5e7eb">{safe(s[`i${i+1}`], `Checklist item ${i+1}`)}</text>
           </g>
         ))}
       </svg>

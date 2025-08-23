@@ -19,10 +19,11 @@
       }
     ],
     "typeRoots": ["./src/types", "./node_modules/@types"],
+    "types": ["react", "react-dom", "next", "next/image-types"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/types/**/*.d.ts", ".next/types/**/*.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "src/types/**/*.d.ts", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
