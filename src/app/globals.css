@@ -14,6 +14,54 @@
   --selection-text: #0b1220; /* selection text */
 }
 
+/* Explicit overrides so app theme wins over system appearance */
+html.theme-light a:hover {
+  color: color-mix(in oklab, var(--accent) 90%, var(--foreground) 10%);
+  background-color: color-mix(in oklab, #fff 94%, var(--accent) 6%);
+  text-shadow: 0 0 .01px currentColor;
+}
+html.theme-light .btn-secondary:hover {
+  background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%);
+  color: var(--accent);
+}
+html.theme-light .btn-ghost:hover {
+  background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%);
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--border) 40%, var(--accent) 60%);
+}
+html.theme-light .btn-chrome {
+  background: color-mix(in oklab, var(--surface) 96%, #fff 4%);
+  border-color: var(--border);
+}
+html.theme-light .btn-chrome:hover {
+  background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%);
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--border) 70%, var(--accent) 30%);
+}
+
+html.theme-dark a:hover {
+  color: color-mix(in oklab, var(--accent) 90%, var(--foreground) 10%);
+  background-color: color-mix(in oklab, #fff 94%, var(--accent) 6%);
+  text-shadow: 0 0 .01px currentColor;
+}
+html.theme-dark .btn-secondary:hover {
+  background: color-mix(in oklab, var(--surface) 90%, var(--accent) 10%);
+  color: var(--accent);
+}
+html.theme-dark .btn-ghost:hover {
+  background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%);
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--border) 40%, var(--accent) 60%);
+}
+html.theme-dark .btn-chrome {
+  background: color-mix(in oklab, var(--surface) 88%, #000 12%);
+  border-color: color-mix(in oklab, var(--border) 80%, var(--accent) 20%);
+}
+html.theme-dark .btn-chrome:hover {
+  background: color-mix(in oklab, var(--surface) 80%, var(--accent) 20%);
+  color: color-mix(in oklab, var(--accent) 85%, #fff 15%);
+}
+
 /* Themed scrollbars */
 .scrollbar {
   scrollbar-width: thin; /* Firefox */
@@ -166,6 +214,7 @@ a:hover {
   display: inline-flex; align-items: center; justify-content: center;
   gap: .5rem; height: 2.25rem; padding: 0 .875rem; border-radius: .6rem;
   font-weight: 600; letter-spacing: .01em; transition: all .2s ease;
+  -webkit-appearance: none; appearance: none; /* normalize across browsers */
 }
 .btn:disabled { opacity: .6; cursor: not-allowed; }
 
@@ -216,6 +265,11 @@ a:hover {
   border: 1px solid color-mix(in oklab, var(--border) 70%, var(--surface) 30%);
 }
 .btn-ghost:hover { background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%); }
+
+/* Icon button utilities to ensure consistent sizing */
+.btn-icon { height: 2.5rem; width: 2.5rem; padding: 0; border-radius: .6rem; }
+.btn-icon-lg { height: 2.75rem; width: 2.75rem; padding: 0; border-radius: .6rem; }
+.btn-icon > svg, .btn-icon-lg > svg, .btn > svg { width: 1.75rem; height: 1.75rem; display: block; }
 
 /* Header/Chrome action button for strong contrast in both themes */
 .btn-chrome {
@@ -322,6 +376,7 @@ a:hover {
 
 /* Runtime theme overrides (take precedence due to later order) */
 html.theme-light {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #0b1220;
   --muted: #1e4fa1;
@@ -334,6 +389,7 @@ html.theme-light {
   --selection-text: #0b1220;
 }
 html.theme-dark {
+  color-scheme: dark;
   --background: #0a0f1a;
   --foreground: #eaf2ff;
   --muted: #76a8ff;
