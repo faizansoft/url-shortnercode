@@ -47,6 +47,13 @@ declare module 'uuid' {
   export function v4(): string;
 }
 
+// Minimal Supabase types used across the app
+declare module '@supabase/supabase-js' {
+  export type User = any;
+  export type SupabaseClient = any;
+  export function createClient(...args: any[]): any;
+}
+
 declare module 'next/server' {
   export type NextRequest = any;
   export const NextResponse: any;

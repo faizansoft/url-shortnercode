@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
         if (short_code) update.short_code = short_code
         if (target_url) update.target_url = target_url
 
-        const q = supabase.from('links').update(update)
+        const q = supabase.from('links').update(update as any)
         const r = id ? await q.eq('id', id) : await q.eq('short_code', short_code)
         if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
         return NextResponse.json({ ok: true })
