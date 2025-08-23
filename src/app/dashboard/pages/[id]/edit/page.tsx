@@ -3,20 +3,143 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Builder } from '@/components/builder/Builder';
-import { Block } from '@/types/pageBlocks';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Block, HeroBlock, TextBlock, ButtonBlock, ImageBlock, ProductCardBlock } from '@/types/pageBlocks';
+
+// UI Components
+const Button = ({ children, onClick, disabled, variant = 'default', size = 'default', className = '' }: { 
+  children: React.ReactNode; 
+  onClick?: () => void; 
+  disabled?: boolean; 
+  variant?: 'default' | 'ghost' | 'outline'; 
+  size?: 'default' | 'sm'; 
+  className?: string;
+}) => (
+  <button 
+    onClick={onClick} 
+    disabled={disabled}
+    className={`px-4 py-2 rounded-md font-medium ${
+      variant === 'ghost' ? 'bg-transparent hover:bg-gray-100' : 'bg-blue-600 text-white hover:bg-blue-700'
+    } ${size === 'sm' ? 'text-sm' : 'text-base'} disabled:opacity-50 disabled:cursor-not-allowed`}
+  >
+    {children}
+  </button>
+);
+
+const Input = ({ value, onChange, placeholder, className = '', type = 'text' }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; className?: string; type?: string }) => (
+  <input
+    type={type}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    className={`px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
+  />
+);
+
+const Switch = ({ id, checked, onCheckedChange }: { id: string; checked: boolean; onCheckedChange: (checked: boolean) => void }) => (
+  <div className="relative inline-block w-10 mr-2 align-middle select-none">
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(e) => onCheckedChange(e.target.checked)}
+      className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+    />
+    <label
+      htmlFor={id}
+      className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${
+        checked ? 'bg-blue-600' : 'bg-gray-300'
+      }`}
+    ></label>
+  </div>
+);
+
+const Label = ({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) => (
+  <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
+    {children}
+  </label>
+);
 import { supabaseClient } from '@/lib/supabaseClient';
-import { toast } from 'sonner';
+// Toast notification helper
+const toast = {
+  success: (message: string) => console.log(`Success: ${message}`),
+  error: (message: string) => console.error(`Error: ${message}`),
+};
+
+// Define BlockEditor component
+const BlockEditor = ({ 
+  block, 
+  onChange, 
+  onRemove 
+}: { 
+  block: Block; 
+  onChange: (block: Block) => void; 
+  onRemove: () => void; 
+}) => {
+  return (
+    <div className="border rounded p-4 mb-4">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-medium capitalize">{block.type}</span>
+        <button 
+          onClick={onRemove}
+          className="text-red-500 hover:text-red-700"
+        >
+          Remove
+        </button>
+      </div>
+      {block.type === 'text' && (
+        <textarea
+          value={block.text || ''}
+          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          className="w-full p-2 border rounded"
+          rows={4}
+        />
+      )}
+      {block.type === 'button' && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={block.label || ''}
+            onChange={(e) => onChange({ ...block, label: e.target.value })}
+            placeholder="Button text"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="text"
+            value={block.href || ''}
+            onChange={(e) => onChange({ ...block, href: e.target.value })}
+            placeholder="Button URL"
+            className="w-full p-2 border rounded"
+          />
+        </div>
+      )}
+      {block.type === 'image' && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={block.src || ''}
+            onChange={(e) => onChange({ ...block, src: e.target.value })}
+            placeholder="Image URL"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            type="text"
+            value={block.alt || ''}
+            onChange={(e) => onChange({ ...block, alt: e.target.value })}
+            placeholder="Alt text"
+            className="w-full p-2 border rounded"
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface PageData {
   id: string;
   title: string;
   slug: string;
   published: boolean;
-  blocks: Block[] | null;
+  blocks: Block[];
   theme?: any;
   branding?: any;
 }
@@ -102,8 +225,8 @@ export default function PageEditor() {
     }
   };
 
-  const handleBlocksChange = (blocks: Block[]) => {
-    setPageData({ ...pageData, blocks });
+  const handleBlocksChange = (newBlocks: Block[]) => {
+    setPageData(prev => ({ ...prev, blocks: newBlocks }));
   };
 
   const handlePublishToggle = async () => {
@@ -209,219 +332,186 @@ export default function PageEditor() {
         </div>
       </div>
 
-      {/* Main Builder Area */}
-      <div className="flex-1 overflow-hidden">
-        <Builder
-          initialBlocks={pageData.blocks || []}
-          onBlocksChange={handleBlocksChange}
-        />
-      </div>
-    </div>
-  );
-}
-    <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Edit Page</h1>
-        <div className="flex items-center gap-2">
-          <a className="btn btn-secondary h-9" href={`/dashboard/pages/${id}/templates`}>Select template</a>
-          <a className="btn btn-secondary h-9" href={publicUrl} target="_blank" rel="noreferrer">View</a>
-          <button className="btn btn-primary h-9" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-        </div>
-      </header>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="space-y-6">
+          <header className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Edit Page</h1>
+            <div className="flex items-center gap-2">
+              <Button onClick={savePage} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </header>
 
-      {loading ? (
-        <div className="p-4 text-sm text-[var(--muted)]">Loading…</div>
-      ) : error ? (
-        <div className="p-4 text-sm text-red-600">{error}</div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
-          <section className="rounded-xl glass p-5 space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <div className="text-xs text-[var(--muted)] mb-1">Title</div>
-                <input className="h-10 w-full px-3 rounded border" value={title} onChange={(e) => setTitle(e.target.value)} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} />
-              </div>
-              <div>
-                <div className="text-xs text-[var(--muted)] mb-1">Slug</div>
-                <input className="h-10 w-full px-3 rounded border font-mono" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} />
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="page-title">Page Title</Label>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Switch
+                    id="published"
+                </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="page-slug">Page URL</Label>
+              <div className="flex rounded-md shadow-sm">
+                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm text-muted-foreground">
+                  /
+                </span>
+                <Input
+                  id="page-slug"
+                  value={pageData.slug}
+                  onChange={(e) => setPageData({ ...pageData, slug: e.target.value })}
+                  className="rounded-l-none"
+                  placeholder="page-slug"
+                />
               </div>
             </div>
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
-              <span>Published</span>
-            </label>
 
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-medium">Blocks</div>
-                <div className="inline-flex gap-2">
-                  <button className="btn btn-secondary h-8" onClick={() => addBlock('hero')}>Add Hero</button>
-                  <button className="btn btn-secondary h-8" onClick={() => addBlock('text')}>Add Text</button>
-                  <button className="btn btn-secondary h-8" onClick={() => addBlock('button')}>Add Button</button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Page Builder</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBlocksChange([...pageData.blocks, { type: 'hero', id: crypto.randomUUID(), heading: 'Hero Heading', subheading: 'Hero subheading' }])}
+                  >
+                    Add Hero
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBlocksChange([...pageData.blocks, { type: 'text', id: crypto.randomUUID(), text: 'Text block content' }])}
+                  >
+                    Add Text
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBlocksChange([...pageData.blocks, { type: 'button', id: crypto.randomUUID(), label: 'Click me', href: '#' }])}
+                  >
+                    Add Button
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-3">
-                {blocks.map((b) => (
-                  <BlockEditor key={b.id} block={b} onChange={(nb) => setBlocks((p) => p.map(x => x.id === b.id ? nb as Block : x))} onRemove={() => rmBlock(b.id)} />
+
+              <div className="space-y-4">
+                {pageData.blocks.map((b) => (
+                  <div key={b.id} className="relative group">
+                    <BlockEditor
+                      block={b}
+                      onChange={(nb) => handleBlocksChange(pageData.blocks.map(x => x.id === b.id ? nb : x))}
+                      onRemove={() => handleBlocksChange(pageData.blocks.filter(x => x.id !== b.id))}
+                    />
+                  </div>
                 ))}
-                {blocks.length === 0 && <div className="text-sm text-[var(--muted)]">No blocks yet. Use the buttons above to add content.</div>}
+                {pageData.blocks.length === 0 && (
+                  <div className="border-2 border-dashed rounded-lg p-12 text-center">
+                    <p className="text-muted-foreground">Add your first block to get started</p>
+                  </div>
+                )}
               </div>
             </div>
-          </section>
-
-          <aside className="rounded-xl glass p-5">
-            <div className="font-medium mb-2">Preview</div>
-            <div className="rounded border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-              <PagePreview title={title} blocks={blocks} />
+          </div>
+          
+          {/* Preview Pane */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6 space-y-4">
+              <h3 className="font-medium">Preview</h3>
+              <div className="rounded-lg border p-4 bg-white">
+                <PagePreview title={pageData.title} blocks={pageData.blocks} />
+              </div>
             </div>
-            <div className="h-px my-5" style={{ background: 'var(--border)' }} />
-            {/* Tabs: Theme | Customize */}
-            <Tabs
-              theme={theme}
-              onApplyPreset={(id: string)=> {
-                const p = themePresets.find(x=> x.id === id)
-                if (p) setTheme(p.theme)
-              }}
-              branding={branding}
-              setBranding={setBranding}
-              saving={saving}
-              onSave={handleSave}
-            />
-          </aside>
+          </div>
         </div>
       )}
     </div>
   );
 }
-              <div className="text-xs text-[var(--muted)] mb-1">Brand Color</div>
-              <input type="color" className="h-9 w-full rounded border p-0" value={branding.brandColor} onChange={(e)=> setBranding({ ...branding, brandColor: e.target.value })} />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Accent Color</div>
-              <input type="color" className="h-9 w-full rounded border p-0" value={branding.accentColor} onChange={(e)=> setBranding({ ...branding, accentColor: e.target.value })} />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <div className="text-xs text-[var(--muted)]">Logo URL</div>
-            <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.logoUrl ?? ''} onChange={(e)=> setBranding({ ...branding, logoUrl: e.target.value || null })} placeholder="https://…/logo.png" />
-          </div>
-          <div className="grid gap-2">
-            <div className="text-xs text-[var(--muted)]">Cover Image URL</div>
-            <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.coverUrl ?? ''} onChange={(e)=> setBranding({ ...branding, coverUrl: e.target.value || null })} placeholder="https://…/cover.jpg" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Hero Height (px)</div>
-              <input type="number" min={200} max={600} className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.height} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, height: Number(e.target.value) } })} />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Hero Align</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.hero.align} onChange={(e)=> setBranding({ ...branding, hero: { ...branding.hero, align: e.target.value as Branding['hero']['align'] } })}>
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Background Type</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.type} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, type: e.target.value as Branding['bg']['type'] } })}>
-                <option value="none">None</option>
-                <option value="image">Image</option>
-              </select>
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Image URL</div>
-              <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.imageUrl ?? ''} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, imageUrl: e.target.value || null } })} placeholder="https://…/background.jpg" />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Size</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.size} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, size: e.target.value as Branding['bg']['size'] } })}>
-                <option value="cover">Cover</option>
-                <option value="contain">Contain</option>
-                <option value="auto">Auto</option>
-              </select>
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Repeat</div>
-              <select className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.repeat} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, repeat: e.target.value as Branding['bg']['repeat'] } })}>
-                <option value="no-repeat">No repeat</option>
-                <option value="repeat">Repeat</option>
-                <option value="repeat-x">Repeat X</option>
-                <option value="repeat-y">Repeat Y</option>
-              </select>
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">BG Position</div>
-              <input className="h-9 w-full rounded border px-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={branding.bg.position} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, position: e.target.value } })} placeholder="center" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Overlay Color</div>
-              <input type="color" className="h-9 w-full rounded border p-0" value={branding.bg.overlay.color} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, color: e.target.value } } })} />
-            </div>
-            <div>
-              <div className="text-xs text-[var(--muted)] mb-1">Overlay Opacity</div>
-              <input type="range" min={0} max={1} step={0.05} value={branding.bg.overlay.opacity} onChange={(e)=> setBranding({ ...branding, bg: { ...branding.bg, overlay: { ...branding.bg.overlay, opacity: Number(e.target.value) } } })} />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="btn btn-secondary h-8" onClick={()=> setBranding(defaultBranding)}>Reset</button>
-            <button className="btn btn-primary h-8" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
-function PagePreview({ title, blocks }: { title: string; blocks: Block[] }) {
+const PagePreview = ({ title, blocks }: { title: string; blocks: Block[] }) => {
   return (
     <div className="space-y-6">
       <div className="text-2xl font-semibold">{title || 'Untitled Page'}</div>
-      {blocks.map((b) => {
-        if (b.type === 'hero') {
-          return (
-            <div key={b.id} className="rounded-lg p-6" style={{ background: 'color-mix(in oklab, var(--accent) 12%, transparent)' }}>
-              <div className="text-xl font-semibold mb-1">{b.heading}</div>
-              {b.subheading && <div className="text-sm text-[var(--muted)]">{b.subheading}</div>}
+      {blocks.map((b: Block) => (
+        <div key={b.id} className="border rounded-lg p-4">
+          {b.type === 'hero' && (
+            <div className="rounded-lg p-6 bg-accent/10">
+              <div className="text-xl font-semibold mb-1">{(b as HeroBlock).heading || 'Hero Heading'}</div>
+              {(b as HeroBlock).subheading && <div className="text-sm text-muted-foreground">{(b as HeroBlock).subheading}</div>}
             </div>
-          )
-        }
-        if (b.type === 'text') {
-          return <div key={b.id} className="prose prose-invert max-w-none" style={{ color: 'var(--foreground)' }}>{b.text}</div>
-        }
-        if (b.type === 'button') {
-          return (
-            <div key={b.id}>
-              <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-9">{b.label}</a>
+          )}
+          {b.type === 'text' && (
+            <div className="prose max-w-none">
+              {(b as TextBlock).text || 'Text content goes here...'}
             </div>
-          )
-        }
-        if (b.type === 'image') {
-          return (
-            <div key={b.id} className="rounded overflow-hidden" style={{ borderRadius: b.rounded ? 12 : 6 }}>
-              <Image src={b.src} alt={b.alt || ''} width={800} height={450} className="w-full h-auto" unoptimized />
+          )}
+          {b.type === 'button' && (
+            <div className="pt-2">
+              <a 
+                href={(b as ButtonBlock).href || '#'} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {(b as ButtonBlock).label || 'Button'}
+              </a>
             </div>
-          )
-        }
-        if (b.type === 'product-card') {
-          return (
-            <div key={b.id} className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3" style={{ borderColor: 'var(--border)' }}>
-              <div className="rounded overflow-hidden"><Image src={b.image} alt={b.title} width={600} height={600} className="w-full h-auto" unoptimized /></div>
+          )}
+          {b.type === 'image' && (b as ImageBlock).src && (
+            <div className="rounded-md overflow-hidden border">
+              <img 
+                src={(b as ImageBlock).src} 
+                alt={(b as ImageBlock).alt || ''} 
+                className="w-full h-auto"
+                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgNDAwIDIwMCIgZmlsbD0iI2YzZjRmNiI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyMDAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0iI2I4YjliYSI+SW1hZ2Ugbm90IGZvdW5kPC90ZXh0Pjwvc3ZnPg==';
+                }}
+              />
+            </div>
+          )}
+          {b.type === 'product-card' && (
+            <div className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
+              <div className="rounded overflow-hidden bg-gray-100 aspect-square flex items-center justify-center">
+                {(b as ProductCardBlock).image ? (
+                  <img 
+                    src={(b as ProductCardBlock).image} 
+                    alt={(b as ProductCardBlock).title || 'Product image'}
+                    className="w-full h-full object-cover"
+                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMjAwIiBmaWxsPSIjZjNmNGY2Ij48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSIjYjhiOWJhIj5JbWFnZSBub3QgZm91bmQ8L3RleHQ+PC9zdmc+'
+                    }}
+                  />
+                ) : (
+                  <div className="text-gray-400">No image</div>
+                )}
+              </div>
               <div>
-                <div className="font-medium">{b.title}</div>
-                {b.subtitle && <div className="text-xs text-[var(--muted)] mb-2">{b.subtitle}</div>}
-                {b.ctaHref && b.ctaLabel && <a href={b.ctaHref} className="btn btn-secondary h-8">{b.ctaLabel}</a>}
+                <div className="font-medium">{(b as ProductCardBlock).title || 'Product Title'}</div>
+                {(b as ProductCardBlock).subtitle && <div className="text-sm text-muted-foreground mt-1">{(b as ProductCardBlock).subtitle}</div>}
+                {(b as ProductCardBlock).ctaHref && (b as ProductCardBlock).ctaLabel && (
+                  <a 
+                    href={(b as ProductCardBlock).ctaHref} 
+                    className="inline-block mt-3 px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {(b as ProductCardBlock).ctaLabel}
+                  </a>
+                )}
               </div>
             </div>
-          )
-        }
-        return null
-      })}
+          )}
+        </div>
+      ))}
     </div>
-  )
-}
+  );
+};
