@@ -73,7 +73,7 @@ export async function GET(
             org: geo.org ?? null,
             asn: geo.asn ?? null,
             created_at: nowIso,
-          })
+          } as any)
       }
     } catch {
       // ignore
