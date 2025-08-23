@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import Image from 'next/image'
 import { supabaseClient } from "@/lib/supabaseClient";
 import { defaultTheme, themePresets } from "@/lib/pageThemes";
 import type { Theme } from "@/lib/pageThemes";
@@ -199,7 +198,7 @@ export default function PageEditor() {
   const updateBlock = useCallback((id: string, partial: Partial<Block> | ((b: Block)=>Block)) => {
     const arr = blocks.map((b: Block) => {
       if (b.id !== id) return b;
-      const next = typeof partial === 'function' ? (partial as any)(b) : { ...b, ...partial };
+      const next = typeof partial === 'function' ? (partial as (b: Block)=>Block)(b) : { ...b, ...partial };
       return next as Block;
     });
     commit(arr);

@@ -213,7 +213,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
             )
           }
           if (isHeading(b)) {
-            const lvl = Math.min(6, Math.max(1, Number((b as any).level ?? 2))) as 1|2|3|4|5|6
+            const lvl = Math.min(6, Math.max(1, Number(b.level ?? 2))) as 1|2|3|4|5|6
             const key = b.id ?? idx
             const commonProps = { className: 'font-semibold', style: { margin: 0, textAlign: (t.layout.align ?? 'left') as React.CSSProperties['textAlign'] } }
             if (lvl === 1) return (<h1 key={key} {...commonProps} className={`text-3xl ${commonProps.className}`}>{b.text}</h1>)
