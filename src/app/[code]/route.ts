@@ -43,12 +43,13 @@ export async function GET(
   try {
     const { error } = await supabaseServer
       .from('clicks')
-      .insert(minimalPayload)
+      // Cast to any to satisfy TS when schema generics resolve to never in CI
+      .insert(minimalPayload as any)
     if (error) {
       // Fallback: try with explicit created_at for schemas without default timestamp
       await supabaseServer
         .from('clicks')
-        .insert({ ...minimalPayload, created_at: nowIso })
+        .insert({ ...minimalPayload, created_at: nowIso } as any)
     }
   } catch {
     // Swallow errors to not block redirect
