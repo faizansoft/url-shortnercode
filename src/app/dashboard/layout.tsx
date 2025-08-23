@@ -77,6 +77,22 @@ export default function DashboardLayout({
           <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%)'}} />
           <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 60%)'}} />
         </div>
+        {/* Toggle inside sidebar */}
+        <div className={`flex ${collapsed ? 'justify-center' : 'justify-end'} mt-1`}>
+          <button
+            type="button"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed((v: boolean) => !v)}
+            className="btn btn-chrome h-11 w-11 p-0 rounded-md"
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6L2 12L8 18"/><path d="M2 12H22"/></svg>
+            ) : (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 6L22 12L16 18"/><path d="M2 12H22"/></svg>
+            )}
+          </button>
+        </div>
         {/* Logo moved to header; removed here */}
         {/* Removed standalone Create button as requested */}
         <nav className="flex flex-col gap-1 relative mt-1">
@@ -172,21 +188,8 @@ export default function DashboardLayout({
           style={{ borderRadius: 0 }}
         >
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-3">
-            {/* Sidebar toggle + Logo moved to header */}
+            {/* Logo in header */}
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                onClick={() => setCollapsed((v: boolean) => !v)}
-                className="btn btn-chrome h-9 w-9 p-0 rounded-md tip"
-                data-tip={collapsed ? "Expand" : "Collapse"}
-              >
-                {collapsed ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6L2 12L8 18"/><path d="M2 12H22"/></svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 6L22 12L16 18"/><path d="M2 12H22"/></svg>
-                )}
-              </button>
               <Link href="/" className="text-base font-semibold relative">
                 <span className="brand-text">URL Shortner</span>
               </Link>
