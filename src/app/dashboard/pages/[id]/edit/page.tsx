@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Block, HeroBlock, TextBlock, ButtonBlock } from '@/types/pageBlocks';
 
+export const runtime = 'edge';
+
 // Define PagePreview component at the top level
 const PagePreview = ({ title = 'Untitled Page', blocks = [] }: { title?: string; blocks?: Block[] }) => {
   return (
@@ -66,7 +68,7 @@ const Input = ({
 }: { 
   id?: string;
   value: string; 
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; 
+  onChange: (e: any) => void; 
   placeholder?: string; 
   className?: string; 
   type?: string 
@@ -87,7 +89,7 @@ const Switch = ({ id, checked, onCheckedChange }: { id: string; checked: boolean
       type="checkbox"
       id={id}
       checked={checked}
-      onChange={(e) => onCheckedChange(e.target.checked)}
+      onChange={(e: any) => onCheckedChange(e.target.checked)}
       className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
     />
     <label
@@ -135,7 +137,7 @@ const BlockEditor = ({
       {block.type === 'text' && (
         <textarea
           value={block.text || ''}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          onChange={(e: any) => onChange({ ...block, text: e.target.value })}
           className="w-full p-2 border rounded"
           rows={4}
         />
@@ -145,14 +147,14 @@ const BlockEditor = ({
           <input
             type="text"
             value={block.label || ''}
-            onChange={(e) => onChange({ ...block, label: e.target.value })}
+            onChange={(e: any) => onChange({ ...block, label: e.target.value })}
             placeholder="Button text"
             className="w-full p-2 border rounded"
           />
           <input
             type="text"
             value={block.href || ''}
-            onChange={(e) => onChange({ ...block, href: e.target.value })}
+            onChange={(e: any) => onChange({ ...block, href: e.target.value })}
             placeholder="Button URL"
             className="w-full p-2 border rounded"
           />
@@ -163,14 +165,14 @@ const BlockEditor = ({
           <input
             type="text"
             value={block.src || ''}
-            onChange={(e) => onChange({ ...block, src: e.target.value })}
+            onChange={(e: any) => onChange({ ...block, src: e.target.value })}
             placeholder="Image URL"
             className="w-full p-2 border rounded"
           />
           <input
             type="text"
             value={block.alt || ''}
-            onChange={(e) => onChange({ ...block, alt: e.target.value })}
+            onChange={(e: any) => onChange({ ...block, alt: e.target.value })}
             placeholder="Alt text"
             className="w-full p-2 border rounded"
           />
@@ -257,7 +259,7 @@ export default function PageEditor() {
           published: pageData.published,
           blocks: pageData.blocks,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', id);
 
       if (error) throw error;
@@ -272,7 +274,7 @@ export default function PageEditor() {
   };
 
   const handleBlocksChange = (newBlocks: Block[]) => {
-    setPageData(prev => ({ ...prev, blocks: newBlocks }));
+    setPageData((prev: PageData) => ({ ...prev, blocks: newBlocks }));
   };
 
   const handlePublishToggle = async () => {
@@ -282,7 +284,7 @@ export default function PageEditor() {
     try {
       const { error } = await supabaseClient
         .from('pages')
-        .update({ published: newPublishedState })
+        .update({ published: newPublishedState } as any)
         .eq('id', id);
       
       if (error) throw error;
@@ -429,12 +431,12 @@ export default function PageEditor() {
               </div>
 
               <div className="space-y-4">
-                {pageData.blocks.map((b) => (
+                {pageData.blocks.map((b: Block) => (
                   <div key={b.id} className="relative group">
                     <BlockEditor
                       block={b}
-                      onChange={(nb) => handleBlocksChange(pageData.blocks.map(x => x.id === b.id ? nb : x))}
-                      onRemove={() => handleBlocksChange(pageData.blocks.filter(x => x.id !== b.id))}
+                      onChange={(nb: Block) => handleBlocksChange(pageData.blocks.map((x: Block) => x.id === b.id ? nb : x))}
+                      onRemove={() => handleBlocksChange(pageData.blocks.filter((x: Block) => x.id !== b.id))}
                     />
                   </div>
                 ))}
