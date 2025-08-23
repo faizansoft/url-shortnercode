@@ -12,6 +12,8 @@
   --border: #e5e7eb; /* light border */
   --selection-bg: #bfdbfe; /* selection background */
   --selection-text: #0b1220; /* selection text */
+  /* Font stack (light default) */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 /* Explicit overrides so app theme wins over system appearance */
@@ -101,6 +103,8 @@ html.theme-dark .btn-chrome:hover {
     /* ensure surfaces and borders are darker in dark mode */
     --surface: #0f1626; /* slightly elevated surface */
     --border: #21304d; /* subtle border for dark */
+    /* Prefer variable/modern system fonts in dark for better hinting */
+    --font-sans: "Segoe UI Variable Text", "Inter", ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
   }
 
   /* Dark theme: unify hover to match View link style across the site */
@@ -139,9 +143,13 @@ body {
     radial-gradient(900px 480px at 50% 120%, color-mix(in oklab, var(--accent-3) 8%, transparent), transparent 60%);
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
 }
+
+/* Slightly crisper font rendering in dark themes */
+html.theme-dark body { -webkit-font-smoothing: antialiased; }
+html.theme-light body { -webkit-font-smoothing: auto; }
 
 /* Improve selection visibility */
 *::selection {
@@ -267,9 +275,10 @@ a:hover {
 .btn-ghost:hover { background: color-mix(in oklab, var(--surface) 92%, var(--accent) 8%); }
 
 /* Icon button utilities to ensure consistent sizing */
-.btn-icon { height: 2.25rem; width: 2.25rem; padding: 0; border-radius: .6rem; }
-.btn-icon-lg { height: 2.75rem; width: 2.75rem; padding: 0; border-radius: .6rem; }
-.btn-icon > svg, .btn-icon-lg > svg, .btn > svg { width: 1.5rem; height: 1.5rem; display: block; }
+/* Compact icon buttons for a tighter chrome */
+.btn-icon { height: 2rem; width: 2rem; padding: 0; border-radius: .55rem; }
+.btn-icon-lg { height: 2.5rem; width: 2.5rem; padding: 0; border-radius: .6rem; }
+.btn-icon > svg, .btn-icon-lg > svg, .btn > svg { width: 1.25rem; height: 1.25rem; display: block; }
 
 /* Header/Chrome action button for strong contrast in both themes */
 .btn-chrome {
@@ -387,6 +396,7 @@ html.theme-light {
   --border: #e5e7eb;
   --selection-bg: #bfdbfe;
   --selection-text: #0b1220;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 html.theme-dark {
   color-scheme: dark;
@@ -400,4 +410,5 @@ html.theme-dark {
   --border: #21304d;
   --selection-bg: #1f2a44;
   --selection-text: #eaf2ff;
+  --font-sans: "Segoe UI Variable Text", "Inter", ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }

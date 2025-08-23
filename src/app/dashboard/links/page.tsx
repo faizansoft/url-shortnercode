@@ -437,7 +437,10 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
                         Share Link
                       </button>
                       <Link className="btn btn-ghost h-9 inline-flex items-center gap-1" href={`/dashboard/links/${l.short_code}`}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 5c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.14-7-7 3.14-7 7-7Zm0-2C6.48 3 2 7.48 2 13s4.48 10 10 10 10-4.48 10-10S17.52 3 12 3Zm0 5a5 5 0 0 0-5 5h2a3 3 0 1 1 3 3v2a5 5 0 0 0 0-10Z"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <path d="M12 5C6 5 2 12 2 12s4 7 10 7 10-7 10-7-4-7-10-7Zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Z"/>
+                          <circle cx="12" cy="12" r="2.5"/>
+                        </svg>
                         View
                       </Link>
                       

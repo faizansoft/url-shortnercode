@@ -152,7 +152,13 @@ export default function PageEditor() {
         <h1 className="text-2xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)]">Edit Page</h1>
         <div className="flex items-center gap-2">
           <a className="btn btn-secondary h-9" href={`/dashboard/pages/${id}/templates`}>Select template</a>
-          <a className="btn btn-secondary h-9" href={publicUrl} target="_blank" rel="noreferrer">View</a>
+          <a className="btn btn-secondary h-9 inline-flex items-center gap-1" href={publicUrl} target="_blank" rel="noreferrer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 5C6 5 2 12 2 12s4 7 10 7 10-7 10-7-4-7-10-7Zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Z"/>
+              <circle cx="12" cy="12" r="2.5"/>
+            </svg>
+            View
+          </a>
           <button className="btn btn-primary h-9" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
         </div>
       </header>
