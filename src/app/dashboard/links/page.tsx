@@ -21,7 +21,7 @@ export default function LinksIndexPage() {
   
   const [copied, setCopied] = useState<string | null>(null);
   // Download in-progress state for QR modal to prevent double clicks
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<'svg' | 'png' | null>(null);
 
   const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
   const searchParams = useSearchParams();
@@ -337,23 +337,30 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
 
 // (removed unused dataUrlToBlob helper)
 
-  function handleDownloadSvg() {
+  async function handleDownloadSvg() {
+    setDownloading('svg');
     try {
-      if (!qrSvg || !qrFor) return;
-      const blob = new Blob([qrSvg], { type: 'image/svg+xml;charset=utf-8' });
+      if (!qrFor) return;
+      const code = qrFor.startsWith(origin + "/") ? qrFor.slice(origin.length + 1) : qrFor.split("/").pop() || "";
+      const svg = await buildStyledSvgOrDefault(qrFor, code);
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `qr-${qrFor.replace(`${origin}/`, '')}.svg`;
+      a.download = `qr-${code}.svg`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch {}
+    } catch {
+      // ignore
+    } finally {
+      setDownloading(null);
+    }
   }
 
   async function handleDownloadPngFromPreview() {
-    setDownloading(true);
+    setDownloading('png');
     try {
       if (!qrSvg || !qrFor) return;
       const pngDataUrl = await rasterizeSvgToPng(qrSvg, 2048);
@@ -364,7 +371,7 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
       a.click();
       a.remove();
     } catch {} finally {
-      setDownloading(false);
+      setDownloading(null);
     }
   }
 
@@ -518,12 +525,14 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
                   <div className="flex flex-wrap justify-center gap-2 w-full">
                     <div className="flex gap-2">
                       <button
-                        className="btn btn-primary btn-no-motion h-9 px-5 inline-flex items-center gap-2"
+                        className="btn btn-primary btn-no-motion h-9 px-4 inline-flex items-center gap-2 tip"
                         onClick={handleDownloadPngFromPreview}
-                        disabled={downloading}
-                        aria-busy={downloading}
+                        disabled={!!downloading}
+                        aria-busy={!!downloading}
+                        data-tip="Download PNG"
+                        aria-label="Download PNG"
                       >
-                        {downloading ? (
+                        {downloading === 'png' ? (
                           <>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin" aria-hidden>
                               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
@@ -533,24 +542,39 @@ async function rasterizeSvgToPng(svgText: string, exportOuter: number): Promise<
                           </>
                         ) : (
                           <>
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                              <path d="M12 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 8.707 10.293L11 12.586V4a1 1 0 0 1 1-1Z"/>
-                              <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2a1 1 0 1 0-2 0v2H7v-2a1 1 0 1 0-2 0v2Z"/>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                              <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                              <path d="M19 18H5v3h14v-3Z"/>
                             </svg>
-                            Download PNG
+                            <span className="leading-none">PNG</span>
                           </>
                         )}
                       </button>
                       <button
-                        className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2"
+                        className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
                         onClick={handleDownloadSvg}
+                        disabled={!!downloading}
+                        aria-busy={!!downloading}
+                        data-tip="Download SVG"
                         aria-label="Download SVG"
                       >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                          <path d="M12 3a1 1 0 0 1 1 1v8.586l2.293-2.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4A1 1 0 0 1 8.707 10.293L11 12.586V4a1 1 0 0 1 1-1Z"/>
-                          <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2a1 1 0 1 0-2 0v2H7v-2a1 1 0 1 0-2 0v2Z"/>
-                        </svg>
-                        Download SVG
+                        {downloading === 'svg' ? (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="animate-spin" aria-hidden>
+                              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
+                              <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="3"/>
+                            </svg>
+                            <span className="leading-none">SVG…</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                              <path d="M12 3v10.586l3.293-3.293 1.414 1.414L12 17.414l-4.707-4.707 1.414-1.414L11 13.586V3h2Z"/>
+                              <path d="M19 18H5v3h14v-3Z"/>
+                            </svg>
+                            <span className="leading-none">SVG</span>
+                          </>
+                        )}
                       </button>
                       <button
                         className="btn btn-secondary h-9 px-4 inline-flex items-center gap-2 tip"
