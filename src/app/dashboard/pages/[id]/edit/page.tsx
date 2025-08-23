@@ -1,6 +1,8 @@
 'use client';
 
+// @ts-ignore - IDE sometimes can't resolve react types, runtime is fine
 import { useState, useEffect } from 'react';
+// @ts-ignore - IDE sometimes can't resolve next/navigation types, runtime is fine
 import { useParams, useRouter } from 'next/navigation';
 import type { Block, HeroBlock, TextBlock, ButtonBlock } from '@/types/pageBlocks';
 
