@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     const startedAt = Date.now()
     const { data: inserted, error: insertErr } = await supabaseServer
       .from('links')
-      .insert({ short_code, target_url, user_id })
+      .insert({ short_code, target_url, user_id } as any)
       .select('*')
       .single()
 

@@ -104,11 +104,11 @@ export async function GET(req: NextRequest) {
       }
     }))
 
-    const linksOut = linksArr.map((l) => ({
+    const linksOut = linksArr.map((l: LinkRow) => ({
       ...l,
       user_email: l.user_id ? userMap[l.user_id] ?? null : null,
     }))
-    const qrOut = qrArr.map((q) => ({
+    const qrOut = qrArr.map((q: QrRow) => ({
       ...q,
       user_email: q.user_id ? userMap[q.user_id] ?? null : null,
     }))
