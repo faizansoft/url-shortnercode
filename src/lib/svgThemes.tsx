@@ -8,7 +8,7 @@ export type SvgTheme = {
   id: string
   name: string
   slots: string[] // expected editable keys
-  render: (slots: Record<string, string>) => JSX.Element
+  render: (slots: Record<string, string>) => React.ReactElement
 }
 
 function safe(v: string | undefined, fallback: string) {

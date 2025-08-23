@@ -19,7 +19,6 @@
       }
     ],
     "typeRoots": ["./src/types", "./node_modules/@types"],
-    "types": ["react", "react-dom", "next", "next/image-types"],
     "paths": {
       "@/*": ["./src/*"]
     }
