@@ -205,7 +205,6 @@ export default function PageEditor() {
             <div className="h-px my-5" style={{ background: 'var(--border)' }} />
             {/* Tabs: Theme | Customize */}
             <Tabs
-              theme={theme}
               onApplyPreset={(id: string)=> {
                 const p = themePresets.find(x=> x.id === id)
                 if (p) setTheme(p.theme)
@@ -285,14 +284,12 @@ function BlockEditor({ block, onChange, onRemove }: { block: Block; onChange: (b
 }
 
 function Tabs({
-  theme: _theme,
   onApplyPreset,
   branding,
   setBranding,
   saving,
   onSave,
 }: {
-  theme: Theme
   onApplyPreset: (id: string) => void
   branding: Branding
   setBranding: (b: Branding) => void

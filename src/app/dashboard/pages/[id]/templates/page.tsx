@@ -196,7 +196,6 @@ function LivePresetPreview({ preset }: { preset: ThemePreset }) {
   const brand = (b?.brandColor ?? t.palette.primary);
   const accent = (b?.accentColor ?? t.palette.secondary);
   const hasCover = typeof b?.coverUrl === 'string' && !!b?.coverUrl;
-  const bgOverlayColor = b?.bg?.overlay?.color ?? '#000000';
   const bgOverlayOpacity = typeof b?.bg?.overlay?.opacity === 'number' ? b!.bg!.overlay!.opacity : 0.35;
   const bgImage = hasCover ? `${`linear-gradient(rgba(0,0,0,${bgOverlayOpacity}), rgba(0,0,0,${bgOverlayOpacity}))`}, url(${b!.coverUrl})` : grad;
 
