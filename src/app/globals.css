@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   /* Light, clean, non-gray palette */
   --background: #ffffff;
@@ -11,12 +13,6 @@
   --selection-bg: #bfdbfe; /* selection background */
   --selection-text: #0b1220; /* selection text */
 }
-
-/* Collapsible sidebar (desktop) */
-aside[data-collapsed="true"] > a.mb-4 { display: none; }
-aside[data-collapsed="true"] .nav-item { justify-content: center; padding-inline: .5rem; }
-aside[data-collapsed="true"] .nav-item > span:last-child { display: none; }
-aside[data-collapsed="true"] .nav-item::before { left: 2px; }
 
 /* Themed scrollbars */
 .scrollbar {
@@ -95,7 +91,7 @@ body {
     radial-gradient(900px 480px at 50% 120%, color-mix(in oklab, var(--accent-3) 8%, transparent), transparent 60%);
   background-color: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
     Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 

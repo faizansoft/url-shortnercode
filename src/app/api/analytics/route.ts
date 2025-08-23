@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
       .eq('user_id', user_id)
       .limit(2000)
     if (linksErr) return NextResponse.json({ error: linksErr.message }, { status: 500 })
-    const linkIds = ((links ?? []) as Array<{ id: string }>).map((l) => l.id)
+    const linkIds = (links ?? []).map((l) => l.id)
 
     if (linkIds.length === 0) {
       return NextResponse.json({
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
     const typedLinks = (links ?? []) as unknown as LinkRow[]
     for (const l of typedLinks) linkMap.set(l.id, { short_code: l.short_code })
 
-    const clicks = (rawClicks ?? []).map((r: AnyRow) => {
+    const clicks = (rawClicks ?? []).map((r) => {
       const ref = getRef(r)
       const refDomRaw = getRefDomain(r)
       const refDomNorm = refDomRaw

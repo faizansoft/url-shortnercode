@@ -43,13 +43,12 @@ export async function GET(
   try {
     const { error } = await supabaseServer
       .from('clicks')
-      // Cast to any to satisfy TS when schema generics resolve to never in CI
-      .insert(minimalPayload as any)
+      .insert(minimalPayload)
     if (error) {
       // Fallback: try with explicit created_at for schemas without default timestamp
       await supabaseServer
         .from('clicks')
-        .insert({ ...minimalPayload, created_at: nowIso } as any)
+        .insert({ ...minimalPayload, created_at: nowIso })
     }
   } catch {
     // Swallow errors to not block redirect
@@ -73,7 +72,7 @@ export async function GET(
             org: geo.org ?? null,
             asn: geo.asn ?? null,
             created_at: nowIso,
-          } as any)
+          })
       }
     } catch {
       // ignore

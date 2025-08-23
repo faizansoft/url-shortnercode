@@ -104,11 +104,11 @@ export async function GET(req: NextRequest) {
       }
     }))
 
-    const linksOut = linksArr.map((l: LinkRow) => ({
+    const linksOut = linksArr.map((l) => ({
       ...l,
       user_email: l.user_id ? userMap[l.user_id] ?? null : null,
     }))
-    const qrOut = qrArr.map((q: QrRow) => ({
+    const qrOut = qrArr.map((q) => ({
       ...q,
       user_email: q.user_id ? userMap[q.user_id] ?? null : null,
     }))
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
         if (short_code) update.short_code = short_code
         if (target_url) update.target_url = target_url
 
-        const q = supabase.from('links').update(update as any)
+        const q = supabase.from('links').update(update)
         const r = id ? await q.eq('id', id) : await q.eq('short_code', short_code)
         if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
         return NextResponse.json({ ok: true })
