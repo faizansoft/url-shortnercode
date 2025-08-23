@@ -18,6 +18,11 @@ declare module 'react' {
   export default React;
 }
 
+// React namespace for types like React.ReactNode
+declare namespace React {
+  type ReactNode = any;
+}
+
 // dnd-kit core and sortable (only what we use)
 declare module '@dnd-kit/core' {
   export const DndContext: any;
@@ -55,3 +60,17 @@ declare module 'next/server' {
   export type NextRequest = any;
   export const NextResponse: any;
 }
+
+// Minimal Next.js types used in app/layout
+declare module 'next' {
+  export type Metadata = any;
+}
+
+// Minimal next/font/google exports used
+declare module 'next/font/google' {
+  export function Inter(options: any): { variable: string };
+  export function Roboto_Mono(options: any): { variable: string };
+}
+
+// Global process shim for env access
+declare var process: any;
