@@ -1,20 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Inter({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  preload: false, // avoid preloaded-but-not-used warnings
-  display: 'swap',
-});
-
-const geistMono = Roboto_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  preload: false,
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: "URL Shortner",
@@ -37,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`antialiased`}
       >
         {/* Performance hints for Supabase assets (thumbnails, logos) */}
         {supabaseOrigin && (
