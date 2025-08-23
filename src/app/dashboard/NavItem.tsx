@@ -3,7 +3,7 @@ import Link from "next/link";
 import type React from "react";
 import { usePathname } from "next/navigation";
 
-export default function NavItem({ href, label, icon }: { href: string; label: string; icon?: React.ReactNode }) {
+export default function NavItem({ href, label, icon, collapsed = false }: { href: string; label: string; icon?: React.ReactNode; collapsed?: boolean }) {
   const pathname = usePathname();
   const active = pathname === href || (href !== "/dashboard" && pathname?.startsWith(href));
   return (
@@ -11,6 +11,7 @@ export default function NavItem({ href, label, icon }: { href: string; label: st
       href={href}
       aria-current={active ? "page" : undefined}
       className={`nav-item ${active ? "nav-item-active" : ""}`}
+      title={label}
     >
       {icon ? (
         <span
@@ -24,7 +25,7 @@ export default function NavItem({ href, label, icon }: { href: string; label: st
           {icon}
         </span>
       ) : null}
-      <span>{label}</span>
+      {collapsed ? null : <span>{label}</span>}
     </Link>
   );
 }

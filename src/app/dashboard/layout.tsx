@@ -23,7 +23,7 @@ function DashboardSearchBox() {
   // Debounced update of the URL query param
   useEffect(() => {
     const t = setTimeout(() => {
-      const usp = new URLSearchParams(Array.from(searchParams.entries()));
+      const usp = new URLSearchParams(searchParams.toString());
       if (queryInput) usp.set("q", queryInput);
       else usp.delete("q");
       const qs = usp.toString();
@@ -38,7 +38,7 @@ function DashboardSearchBox() {
       type="search"
       placeholder="Search links…"
       value={queryInput}
-      onChange={(e) => setQueryInput(e.target.value)}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQueryInput(e.target.value)}
       className="w-full h-9 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
       style={{
         background: "var(--surface)",
@@ -53,16 +53,46 @@ export default function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const isCustomize = pathname === "/dashboard/qrcodes/customize";
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+
+  // Read persisted sidebar state
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("dash.sidebar.collapsed");
+      if (saved != null) setCollapsed(saved === "1");
+      else if (typeof window !== 'undefined' && window.innerWidth <= 1024) setCollapsed(true);
+    } catch {}
+  }, []);
+
+  // Persist sidebar state
+  useEffect(() => {
+    try {
+      localStorage.setItem("dash.sidebar.collapsed", collapsed ? "1" : "0");
+    } catch {}
+  }, [collapsed]);
   return (
-    <div className="min-h-[100dvh] grid grid-cols-[240px_1fr]">
-      <aside className="glass text-sm p-4 flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-hidden" style={{ borderRadius: 0 }}>
+    <div className={`${collapsed ? "grid-cols-[72px_1fr]" : "grid-cols-[240px_1fr]"} min-h-[100dvh] grid`}>
+      <aside className={`glass text-sm ${collapsed ? "p-2" : "p-4"} flex flex-col gap-3 relative rounded-none border-r border-[var(--border)] sticky top-0 h-[100dvh] overflow-hidden`} style={{ borderRadius: 0 }}>
         <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
           <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 60%)'}} />
           <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full blur-3xl" style={{background: 'radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--accent-2) 18%, transparent), transparent 60%)'}} />
         </div>
-        <Link href="/" className="mb-4 text-base font-semibold relative">
+        <button
+          type="button"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={() => setCollapsed((v: boolean) => !v)}
+          className="absolute right-2 top-2 btn btn-ghost h-8 w-8 p-0 rounded-md"
+          title={collapsed ? "Expand" : "Collapse"}
+        >
+          {collapsed ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6L2 12L8 18"/><path d="M2 12H22"/></svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 6L22 12L16 18"/><path d="M2 12H22"/></svg>
+          )}
+        </button>
+        <Link href="/" className={`mb-4 text-base font-semibold relative ${collapsed ? "text-center" : ""}`}>
           <span className="brand-text">
-            URL Shortner
+            {collapsed ? "US" : "URL Shortner"}
           </span>
         </Link>
         {/* Removed standalone Create button as requested */}
@@ -70,6 +100,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard/create"
             label="Create"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14" />
@@ -80,6 +111,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard"
             label="Overview"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 10.5 12 3l9 7.5" />
@@ -90,6 +122,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard/links"
             label="Links"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 13a5 5 0 0 1 0-7l1.5-1.5a5 5 0 0 1 7 7L17 12" />
@@ -100,6 +133,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard/qrcodes"
             label="QR Codes"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 3h6v6H3z" />
@@ -116,6 +150,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard/pages"
             label="Pages"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
@@ -126,6 +161,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard/analytics"
             label="Analytics"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 3v18h18" />
@@ -136,6 +172,7 @@ export default function DashboardLayout({
           <NavItem
             href="/dashboard/settings"
             label="Settings"
+            collapsed={collapsed}
             icon={
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
