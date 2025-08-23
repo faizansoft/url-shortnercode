@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from 'next/image'
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -9,6 +9,9 @@ import type { Theme } from "@/lib/pageThemes";
 import type { Branding } from "@/lib/pageBranding";
 import { defaultBranding, normalizeBranding } from "@/lib/pageBranding";
 import type { Block } from "@/types/pageBlocks";
+import Palette from "./builder/Palette";
+import Canvas from "./builder/Canvas";
+import Inspector from "./builder/Inspector";
 
 export const runtime = 'edge'
 
@@ -92,6 +95,9 @@ export default function PageEditor() {
   const [slug, setSlug] = useState("");
   const [published, setPublished] = useState(false);
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [history, setHistory] = useState<Block[][]>([]);
+  const [future, setFuture] = useState<Block[][]>([]);
   const [theme, setTheme] = useState<Theme>(defaultTheme);
   const [branding, setBranding] = useState<Branding>(defaultBranding);
 
@@ -106,7 +112,11 @@ export default function PageEditor() {
         setTitle(p.title || "");
         setSlug(p.slug || "");
         setPublished(!!p.published);
-        setBlocks(Array.isArray(p.blocks) ? p.blocks as Block[] : []);
+        const initialBlocks = Array.isArray(p.blocks) ? (p.blocks as Block[]) : [];
+        setBlocks(initialBlocks);
+        setHistory([]);
+        setFuture([]);
+        setSelectedId(null);
         setTheme(normalizeTheme(p.theme));
         setBranding(normalizeBranding(p.branding));
       } catch (e) {
@@ -117,13 +127,100 @@ export default function PageEditor() {
     })();
   }, [id]);
 
-  function addBlock(t: Block["type"]) {
+  // History helpers
+  const commit = useCallback((next: Block[]) => {
+    setHistory((h: Block[][]) => [...h, blocks]);
+    setFuture([]);
+    setBlocks(next);
+  }, [blocks]);
+
+  const undo = useCallback(() => {
+    setHistory((h: Block[][]) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      setFuture((f: Block[][]) => [...f, blocks]);
+      setBlocks(prev);
+      return h.slice(0, -1);
+    });
+  }, [blocks]);
+
+  const redo = useCallback(() => {
+    setFuture((f: Block[][]) => {
+      if (f.length === 0) return f;
+      const next = f[f.length - 1];
+      setHistory((h: Block[][]) => [...h, blocks]);
+      setBlocks(next);
+      return f.slice(0, -1);
+    });
+  }, [blocks]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.key.toLowerCase() === 'y') || (e.key.toLowerCase() === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
+
+  // Block factory
+  const createBlock = useCallback((t: Block["type"]): Block => {
     const nid = Math.random().toString(36).slice(2);
-    if (t === 'hero') setBlocks((p) => [...p, { id: nid, type: 'hero', heading: 'Your Heading', subheading: '' }]);
-    if (t === 'text') setBlocks((p) => [...p, { id: nid, type: 'text', text: 'Your text here' }]);
-    if (t === 'button') setBlocks((p) => [...p, { id: nid, type: 'button', label: 'Call to Action', href: 'https://example.com' }]);
-  }
-  function rmBlock(id: string) { setBlocks((p) => p.filter(b => b.id !== id)); }
+    if (t === 'hero') return { id: nid, type: 'hero', heading: 'Your Heading', subheading: '' } as Block;
+    if (t === 'heading') return { id: nid, type: 'heading', text: 'Heading', level: 2 } as Block;
+    if (t === 'text') return { id: nid, type: 'text', text: 'Your text here' } as Block;
+    if (t === 'button') return { id: nid, type: 'button', label: 'Call to Action', href: 'https://example.com' } as Block;
+    if (t === 'link') return { id: nid, type: 'link', text: 'Visit link', href: 'https://example.com' } as Block;
+    if (t === 'image') return { id: nid, type: 'image', src: 'https://picsum.photos/1200/675', alt: 'Image', rounded: true } as Block;
+    if (t === 'product-card') return { id: nid, type: 'product-card', image: 'https://picsum.photos/800', title: 'Product title', subtitle: 'Subtitle', ctaLabel: 'Buy now', ctaHref: 'https://example.com' } as Block;
+    return { id: nid, type: 'text', text: 'New block' } as Block;
+  }, []);
+
+  // Canvas handlers
+  const handleReorder = useCallback((from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= blocks.length) return;
+    const arr = [...blocks];
+    const [moved] = arr.splice(from, 1);
+    const insertAt = to > from ? to - 1 : to;
+    arr.splice(Math.min(arr.length, Math.max(0, insertAt)), 0, moved);
+    commit(arr);
+  }, [blocks, commit]);
+
+  const handleDropNew = useCallback((type: Block["type"], atIndex: number | null) => {
+    const nb = createBlock(type);
+    const arr = [...blocks];
+    if (atIndex === null || atIndex < 0 || atIndex > arr.length) arr.push(nb); else arr.splice(atIndex, 0, nb);
+    commit(arr);
+    setSelectedId(nb.id);
+  }, [blocks, commit, createBlock]);
+
+  const updateBlock = useCallback((id: string, partial: Partial<Block> | ((b: Block)=>Block)) => {
+    const arr = blocks.map((b: Block) => {
+      if (b.id !== id) return b;
+      const next = typeof partial === 'function' ? (partial as any)(b) : { ...b, ...partial };
+      return next as Block;
+    });
+    commit(arr);
+  }, [blocks, commit]);
+
+  const deleteBlock = useCallback((id: string) => {
+    const arr = blocks.filter(b => b.id !== id);
+    commit(arr);
+    if (selectedId === id) setSelectedId(null);
+  }, [blocks, commit, selectedId]);
+
+  const duplicateBlock = useCallback((id: string) => {
+    const idx = blocks.findIndex(b => b.id === id);
+    if (idx === -1) return;
+    const b = blocks[idx];
+    const clone = { ...b, id: Math.random().toString(36).slice(2) } as Block;
+    const arr = [...blocks];
+    arr.splice(idx + 1, 0, clone);
+    commit(arr);
+    setSelectedId(clone.id);
+  }, [blocks, commit]);
 
   async function handleSave() {
     try {
@@ -168,7 +265,7 @@ export default function PageEditor() {
       ) : error ? (
         <div className="p-4 text-sm text-red-600">{error}</div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+        <div className="space-y-4">
           <section className="rounded-xl glass p-5 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -184,109 +281,54 @@ export default function PageEditor() {
               <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
               <span>Published</span>
             </label>
-
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-medium">Blocks</div>
-                <div className="inline-flex gap-2">
-                  <button className="btn btn-secondary h-8" onClick={() => addBlock('hero')}>Add Hero</button>
-                  <button className="btn btn-secondary h-8" onClick={() => addBlock('text')}>Add Text</button>
-                  <button className="btn btn-secondary h-8" onClick={() => addBlock('button')}>Add Button</button>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {blocks.map((b) => (
-                  <BlockEditor key={b.id} block={b} onChange={(nb) => setBlocks((p) => p.map(x => x.id === b.id ? nb as Block : x))} onRemove={() => rmBlock(b.id)} />
-                ))}
-                {blocks.length === 0 && <div className="text-sm text-[var(--muted)]">No blocks yet. Use the buttons above to add content.</div>}
-              </div>
+            <div className="flex items-center gap-2">
+              <button className="btn btn-secondary h-8" onClick={undo} disabled={history.length === 0}>Undo</button>
+              <button className="btn btn-secondary h-8" onClick={redo} disabled={future.length === 0}>Redo</button>
             </div>
           </section>
 
-          <aside className="rounded-xl glass p-5">
-            <div className="font-medium mb-2">Preview</div>
-            <div className="rounded border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-              <PagePreview title={title} blocks={blocks} />
-            </div>
-            <div className="h-px my-5" style={{ background: 'var(--border)' }} />
-            {/* Tabs: Theme | Customize */}
-            <Tabs
-              onApplyPreset={(id: string)=> {
-                const p = themePresets.find(x=> x.id === id)
-                if (p) setTheme(p.theme)
-              }}
-              branding={branding}
-              setBranding={setBranding}
-              saving={saving}
-              onSave={handleSave}
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-4">
+            <Palette onAdd={(t)=> {
+              const nb = createBlock(t);
+              const arr = [...blocks, nb];
+              commit(arr);
+              setSelectedId(nb.id);
+            }} />
+
+            <Canvas
+              blocks={blocks}
+              selectedId={selectedId}
+              onSelect={(id)=> setSelectedId(id)}
+              onReorder={handleReorder}
+              onDropNew={handleDropNew}
             />
-          </aside>
+
+            <div className="space-y-4">
+              <Inspector
+                block={blocks.find(b=> b.id === selectedId) || null}
+                onChange={(b)=> updateBlock(b.id, b)}
+                onDelete={()=> selectedId && deleteBlock(selectedId)}
+                onDuplicate={()=> selectedId && duplicateBlock(selectedId)}
+              />
+              <div className="rounded-xl glass p-4">
+                <div className="font-medium mb-2">Theme & Branding</div>
+                <Tabs
+                  onApplyPreset={(id: string)=> {
+                    const p = themePresets.find(x=> x.id === id)
+                    if (p) setTheme(p.theme)
+                  }}
+                  branding={branding}
+                  setBranding={setBranding}
+                  saving={saving}
+                  onSave={handleSave}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
-}
-
-function BlockEditor({ block, onChange, onRemove }: { block: Block; onChange: (b: Block) => void; onRemove: () => void }) {
-  if (block.type === 'hero') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Hero</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.heading} onChange={(e)=> onChange({ ...block, heading: e.target.value })} />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.subheading ?? ''} onChange={(e)=> onChange({ ...block, subheading: e.target.value })} placeholder="Subheading" />
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'text') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Text</div>
-        <textarea className="w-full min-h-[120px] p-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.text} onChange={(e)=> onChange({ ...block, text: e.target.value })} />
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'button') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Button</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.label} onChange={(e)=> onChange({ ...block, label: e.target.value })} placeholder="Label" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.href} onChange={(e)=> onChange({ ...block, href: e.target.value })} placeholder="https://…" />
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'image') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Image</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.src} onChange={(e)=> onChange({ ...block, src: e.target.value })} placeholder="https://…/image.jpg" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.alt ?? ''} onChange={(e)=> onChange({ ...block, alt: e.target.value })} placeholder="Alt text" />
-        <label className="inline-flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={!!block.rounded} onChange={(e)=> onChange({ ...block, rounded: e.target.checked })} />
-          Rounded corners
-        </label>
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  if (block.type === 'product-card') {
-    return (
-      <div className="rounded border p-4 space-y-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-xs text-[var(--muted)]">Product Card</div>
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.image} onChange={(e)=> onChange({ ...block, image: e.target.value })} placeholder="https://…/product.jpg" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.title} onChange={(e)=> onChange({ ...block, title: e.target.value })} placeholder="Title" />
-        <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.subtitle ?? ''} onChange={(e)=> onChange({ ...block, subtitle: e.target.value })} placeholder="Subtitle" />
-        <div className="grid grid-cols-2 gap-2">
-          <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.ctaLabel ?? ''} onChange={(e)=> onChange({ ...block, ctaLabel: e.target.value })} placeholder="CTA label" />
-          <input className="h-9 w-full px-3 rounded border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} value={block.ctaHref ?? ''} onChange={(e)=> onChange({ ...block, ctaHref: e.target.value })} placeholder="https://…" />
-        </div>
-        <div className="text-right"><button className="btn btn-secondary h-8" onClick={onRemove}>Remove</button></div>
-      </div>
-    )
-  }
-  return null
 }
 
 function Tabs({
@@ -422,50 +464,4 @@ function Tabs({
   )
 }
 
-function PagePreview({ title, blocks }: { title: string; blocks: Block[] }) {
-  return (
-    <div className="space-y-6">
-      <div className="text-2xl font-semibold">{title || 'Untitled Page'}</div>
-      {blocks.map((b) => {
-        if (b.type === 'hero') {
-          return (
-            <div key={b.id} className="rounded-lg p-6" style={{ background: 'color-mix(in oklab, var(--accent) 12%, transparent)' }}>
-              <div className="text-xl font-semibold mb-1">{b.heading}</div>
-              {b.subheading && <div className="text-sm text-[var(--muted)]">{b.subheading}</div>}
-            </div>
-          )
-        }
-        if (b.type === 'text') {
-          return <div key={b.id} className="prose prose-invert max-w-none" style={{ color: 'var(--foreground)' }}>{b.text}</div>
-        }
-        if (b.type === 'button') {
-          return (
-            <div key={b.id}>
-              <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-9">{b.label}</a>
-            </div>
-          )
-        }
-        if (b.type === 'image') {
-          return (
-            <div key={b.id} className="rounded overflow-hidden" style={{ borderRadius: b.rounded ? 12 : 6 }}>
-              <Image src={b.src} alt={b.alt || ''} width={800} height={450} className="w-full h-auto" unoptimized />
-            </div>
-          )
-        }
-        if (b.type === 'product-card') {
-          return (
-            <div key={b.id} className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3" style={{ borderColor: 'var(--border)' }}>
-              <div className="rounded overflow-hidden"><Image src={b.image} alt={b.title} width={600} height={600} className="w-full h-auto" unoptimized /></div>
-              <div>
-                <div className="font-medium">{b.title}</div>
-                {b.subtitle && <div className="text-xs text-[var(--muted)] mb-2">{b.subtitle}</div>}
-                {b.ctaHref && b.ctaLabel && <a href={b.ctaHref} className="btn btn-secondary h-8">{b.ctaLabel}</a>}
-              </div>
-            </div>
-          )
-        }
-        return null
-      })}
-    </div>
-  )
-}
+// PagePreview removed in favor of interactive Canvas

@@ -42,6 +42,15 @@ function isProductCard(b: unknown): b is ProductCardBlock {
   return b['type'] === 'product-card' && typeof b['image'] === 'string' && typeof b['title'] === 'string'
 }
 
+function isHeading(b: unknown): b is { id?: string; type: 'heading'; text: string; level?: number } {
+  if (!isRecord(b)) return false
+  return b['type'] === 'heading' && typeof b['text'] === 'string'
+}
+function isLink(b: unknown): b is { id?: string; type: 'link'; text: string; href: string } {
+  if (!isRecord(b)) return false
+  return b['type'] === 'link' && typeof b['text'] === 'string' && typeof b['href'] === 'string'
+}
+
 export default async function PublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const supabase = getSupabaseServer()
   const { slug } = await params
@@ -72,7 +81,15 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
   const row = data as PublicPageRow
   const rawBlocks = row.blocks
   const blocks: Block[] = Array.isArray(rawBlocks)
-    ? rawBlocks.filter((b: unknown): b is Block => isHero(b) || isText(b) || isButton(b))
+    ? rawBlocks.filter((b: unknown): b is Block =>
+        isHero(b) ||
+        isText(b) ||
+        isButton(b) ||
+        isImage(b) ||
+        isProductCard(b) ||
+        isHeading(b) ||
+        isLink(b)
+      )
     : []
 
   const theme = (row.theme as Partial<Theme> | null | undefined) || undefined
@@ -195,6 +212,17 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
               </div>
             )
           }
+          if (isHeading(b)) {
+            const lvl = Math.min(6, Math.max(1, Number((b as any).level ?? 2))) as 1|2|3|4|5|6
+            const key = b.id ?? idx
+            const commonProps = { className: 'font-semibold', style: { margin: 0, textAlign: (t.layout.align ?? 'left') as React.CSSProperties['textAlign'] } }
+            if (lvl === 1) return (<h1 key={key} {...commonProps} className={`text-3xl ${commonProps.className}`}>{b.text}</h1>)
+            if (lvl === 2) return (<h2 key={key} {...commonProps} className={`text-2xl ${commonProps.className}`}>{b.text}</h2>)
+            if (lvl === 3) return (<h3 key={key} {...commonProps} className={`text-xl ${commonProps.className}`}>{b.text}</h3>)
+            if (lvl === 4) return (<h4 key={key} {...commonProps} className={`text-lg ${commonProps.className}`}>{b.text}</h4>)
+            if (lvl === 5) return (<h5 key={key} {...commonProps} className={`text-base ${commonProps.className}`}>{b.text}</h5>)
+            return (<h6 key={key} {...commonProps} className={`text-sm ${commonProps.className}`}>{b.text}</h6>)
+          }
           if (isText(b)) {
             return (
               <div key={b.id ?? idx} className="prose prose-invert max-w-none" style={{ color: 'var(--foreground)' }}>
@@ -206,6 +234,13 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
             return (
               <div key={b.id ?? idx} style={{ textAlign: (t.layout.align ?? 'left') }}>
                 <a href={b.href} target="_blank" rel="noreferrer" className="btn btn-primary h-10 inline-flex items-center justify-center px-4" style={{ background: 'var(--brand)', borderRadius: 'var(--radius)' }}>{b.label}</a>
+              </div>
+            )
+          }
+          if (isLink(b)) {
+            return (
+              <div key={b.id ?? idx} style={{ textAlign: (t.layout.align ?? 'left') }}>
+                <a href={b.href} target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--accent)' }}>{b.text}</a>
               </div>
             )
           }
