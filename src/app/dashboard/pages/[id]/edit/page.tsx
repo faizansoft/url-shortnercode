@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Block, HeroBlock, TextBlock, ButtonBlock } from '@/types/pageBlocks';
 
-export const runtime = 'edge';
 
 // Define PagePreview component at the top level
 const PagePreview = ({ title = 'Untitled Page', blocks = [] }: { title?: string; blocks?: Block[] }) => {
@@ -40,7 +39,7 @@ const PagePreview = ({ title = 'Untitled Page', blocks = [] }: { title?: string;
 
 // UI Components
 const Button = ({ children, onClick, disabled, variant = 'default', size = 'default', className = '' }: { 
-  children: React.ReactNode; 
+  children?: any; 
   onClick?: () => void; 
   disabled?: boolean; 
   variant?: 'default' | 'ghost' | 'outline'; 
@@ -101,7 +100,7 @@ const Switch = ({ id, checked, onCheckedChange }: { id: string; checked: boolean
   </div>
 );
 
-const Label = ({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) => (
+const Label = ({ htmlFor, children }: { htmlFor: string; children?: any }) => (
   <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700">
     {children}
   </label>
