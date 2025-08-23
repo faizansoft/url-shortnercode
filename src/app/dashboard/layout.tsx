@@ -38,7 +38,7 @@ function DashboardSearchBox() {
       type="search"
       placeholder="Search links…"
       value={queryInput}
-      onChange={(e) => setQueryInput(e.target.value)}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQueryInput(e.target.value)}
       className="w-full h-9 px-3 rounded-md outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[color-mix(in_oklab,var(--accent)_30%,transparent)]"
       style={{
         background: "var(--surface)",
