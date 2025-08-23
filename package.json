@@ -11,23 +11,26 @@
     "cf:preview": "npx wrangler pages dev .vercel/output/static"
   },
   "dependencies": {
+    "@dnd-kit/core": "^7.0.2",
+    "@dnd-kit/sortable": "^8.0.3",
+    "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.55.0",
-    "next": "15.4.6",
+    "next": "^14.1.0",
     "qr-code-styling": "^1.8.4",
     "qrcode": "^1.5.3",
-    "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.4.6",
-    "tailwindcss": "^4",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
+    "tailwindcss": "^3.4.1",
     "typescript": "^5"
   },
   "engines": {
