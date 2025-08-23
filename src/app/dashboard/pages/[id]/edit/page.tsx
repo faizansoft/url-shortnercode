@@ -3,6 +3,37 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Builder } from '@/components/builder/Builder';
+
+// Define PagePreview component at the top level
+const PagePreview = ({ title = 'Untitled Page', blocks = [] }: { title?: string; blocks?: Block[] }) => {
+  return (
+    <div className="space-y-6">
+      <div className="text-2xl font-semibold">{title}</div>
+      {blocks?.map((b: Block) => (
+        <div key={b.id} className="border rounded-lg p-4">
+          {b.type === 'hero' && (
+            <div className="rounded-lg p-6 bg-accent/10">
+              <div className="text-xl font-semibold mb-1">{(b as HeroBlock).heading || 'Hero Heading'}</div>
+              {(b as HeroBlock).subheading && <div className="text-sm text-muted-foreground">{(b as HeroBlock).subheading}</div>}
+            </div>
+          )}
+          {b.type === 'text' && (
+            <div className="prose max-w-none">
+              {(b as TextBlock).text || 'Text content goes here...'}
+            </div>
+          )}
+          {b.type === 'button' && (
+            <div className="pt-2">
+              <Button>
+                {(b as ButtonBlock).label || 'Button'}
+              </Button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 import { Block, HeroBlock, TextBlock, ButtonBlock, ImageBlock, ProductCardBlock } from '@/types/pageBlocks';
 
 // UI Components
@@ -25,13 +56,28 @@ const Button = ({ children, onClick, disabled, variant = 'default', size = 'defa
   </button>
 );
 
-const Input = ({ value, onChange, placeholder, className = '', type = 'text' }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; className?: string; type?: string }) => (
+const Input = ({ 
+  id,
+  value, 
+  onChange, 
+  placeholder, 
+  className = '', 
+  type = 'text' 
+}: { 
+  id?: string;
+  value: string; 
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; 
+  placeholder?: string; 
+  className?: string; 
+  type?: string 
+}) => (
   <input
+    id={id}
     type={type}
     value={value}
     onChange={onChange}
     placeholder={placeholder}
-    className={`px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
+    className={`px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full ${className}`}
   />
 );
 
@@ -352,32 +398,11 @@ export default function PageEditor() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="page-title">Page Title</Label>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Switch
-                    id="published"
+                  <h2 className="text-lg font-medium">Page Builder</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop blocks to build your page
+                  </p>
                 </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="page-slug">Page URL</Label>
-              <div className="flex rounded-md shadow-sm">
-                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-sm text-muted-foreground">
-                  /
-                </span>
-                <Input
-                  id="page-slug"
-                  value={pageData.slug}
-                  onChange={(e) => setPageData({ ...pageData, slug: e.target.value })}
-                  className="rounded-l-none"
-                  placeholder="page-slug"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Page Builder</Label>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -419,99 +444,20 @@ export default function PageEditor() {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-          
-          {/* Preview Pane */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6 space-y-4">
-              <h3 className="font-medium">Preview</h3>
-              <div className="rounded-lg border p-4 bg-white">
-                <PagePreview title={pageData.title} blocks={pageData.blocks} />
+              
+              {/* Preview Pane */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-6 space-y-4">
+                  <h3 className="font-medium">Preview</h3>
+                  <div className="rounded-lg border p-4 bg-white">
+                    <PagePreview title={pageData.title} blocks={pageData.blocks} />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
-
-const PagePreview = ({ title, blocks }: { title: string; blocks: Block[] }) => {
-  return (
-    <div className="space-y-6">
-      <div className="text-2xl font-semibold">{title || 'Untitled Page'}</div>
-      {blocks.map((b: Block) => (
-        <div key={b.id} className="border rounded-lg p-4">
-          {b.type === 'hero' && (
-            <div className="rounded-lg p-6 bg-accent/10">
-              <div className="text-xl font-semibold mb-1">{(b as HeroBlock).heading || 'Hero Heading'}</div>
-              {(b as HeroBlock).subheading && <div className="text-sm text-muted-foreground">{(b as HeroBlock).subheading}</div>}
-            </div>
-          )}
-          {b.type === 'text' && (
-            <div className="prose max-w-none">
-              {(b as TextBlock).text || 'Text content goes here...'}
-            </div>
-          )}
-          {b.type === 'button' && (
-            <div className="pt-2">
-              <a 
-                href={(b as ButtonBlock).href || '#'} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {(b as ButtonBlock).label || 'Button'}
-              </a>
-            </div>
-          )}
-          {b.type === 'image' && (b as ImageBlock).src && (
-            <div className="rounded-md overflow-hidden border">
-              <img 
-                src={(b as ImageBlock).src} 
-                alt={(b as ImageBlock).alt || ''} 
-                className="w-full h-auto"
-                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgNDAwIDIwMCIgZmlsbD0iI2YzZjRmNiI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyMDAiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBhbGlnbm1lbnQtYmFzZWxpbmU9Im1pZGRsZSIgZmlsbD0iI2I4YjliYSI+SW1hZ2Ugbm90IGZvdW5kPC90ZXh0Pjwvc3ZnPg==';
-                }}
-              />
-            </div>
-          )}
-          {b.type === 'product-card' && (
-            <div className="rounded border p-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
-              <div className="rounded overflow-hidden bg-gray-100 aspect-square flex items-center justify-center">
-                {(b as ProductCardBlock).image ? (
-                  <img 
-                    src={(b as ProductCardBlock).image} 
-                    alt={(b as ProductCardBlock).title || 'Product image'}
-                    className="w-full h-full object-cover"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MDAgMjAwIiBmaWxsPSIjZjNmNGY2Ij48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmaWxsPSIjYjhiOWJhIj5JbWFnZSBub3QgZm91bmQ8L3RleHQ+PC9zdmc+'
-                    }}
-                  />
-                ) : (
-                  <div className="text-gray-400">No image</div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium">{(b as ProductCardBlock).title || 'Product Title'}</div>
-                {(b as ProductCardBlock).subtitle && <div className="text-sm text-muted-foreground mt-1">{(b as ProductCardBlock).subtitle}</div>}
-                {(b as ProductCardBlock).ctaHref && (b as ProductCardBlock).ctaLabel && (
-                  <a 
-                    href={(b as ProductCardBlock).ctaHref} 
-                    className="inline-block mt-3 px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    {(b as ProductCardBlock).ctaLabel}
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
