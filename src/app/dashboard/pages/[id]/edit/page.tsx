@@ -7,6 +7,7 @@ import type { Block } from "@/types/pageBlocks";
 import Palette from "./builder/Palette";
 import Canvas from "./builder/Canvas";
 import Inspector from "./builder/Inspector";
+import type React from "react";
 import type { Theme } from "@/lib/pageThemes";
 import { defaultTheme } from "@/lib/pageThemes";
 
@@ -198,22 +199,23 @@ export default function PageEditor() {
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${slug}` : `/p/${slug}`;
 
   // Compute CSS variables from theme for Canvas WYSIWYG
-  const cssVars = {
-    ['--primary' as any]: theme.palette.primary,
-    ['--secondary' as any]: theme.palette.secondary,
-    ['--surface' as any]: theme.palette.surface,
-    ['--foreground' as any]: theme.palette.foreground,
-    ['--muted' as any]: theme.palette.muted,
-    ['--border' as any]: theme.palette.border,
-    ['--radius' as any]: `${theme.radius}px`,
-    ['--maxw' as any]: `${theme.layout.maxWidth}px`,
-    ['--section-gap' as any]: `${theme.layout.sectionGap}px`,
-    ['--gradient' as any]: `linear-gradient(${theme.gradient.angle}deg, ${theme.gradient.stops.map(s=>`${s.color} ${s.at}%`).join(', ')})`,
-    ['--font' as any]: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
-    ['--font-size' as any]: `${theme.typography.baseSize}px`,
-    ['--brand' as any]: theme.palette.primary,
-    ['--accent' as any]: theme.palette.secondary,
-  } as React.CSSProperties;
+  const themeVars: Record<string, string> = {
+    '--primary': theme.palette.primary,
+    '--secondary': theme.palette.secondary,
+    '--surface': theme.palette.surface,
+    '--foreground': theme.palette.foreground,
+    '--muted': theme.palette.muted,
+    '--border': theme.palette.border,
+    '--radius': `${theme.radius}px`,
+    '--maxw': `${theme.layout.maxWidth}px`,
+    '--section-gap': `${theme.layout.sectionGap}px`,
+    '--gradient': `linear-gradient(${theme.gradient.angle}deg, ${theme.gradient.stops.map((s: { color: string; at: number }) => `${s.color} ${s.at}%`).join(', ')})`,
+    '--font': 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
+    '--font-size': `${theme.typography.baseSize}px`,
+    '--brand': theme.palette.primary,
+    '--accent': theme.palette.secondary,
+    '--accent-2': theme.palette.primary,
+  };
 
   return (
     <div className="space-y-6">
@@ -242,15 +244,15 @@ export default function PageEditor() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <div className="text-xs text-[var(--muted)] mb-1">Title</div>
-                <input className="h-10 w-full px-3 rounded border" value={title} onChange={(e) => setTitle(e.target.value)} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} />
+                <input className="h-10 w-full px-3 rounded border" value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} />
               </div>
               <div>
                 <div className="text-xs text-[var(--muted)] mb-1">Slug</div>
-                <input className="h-10 w-full px-3 rounded border font-mono" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} />
+                <input className="h-10 w-full px-3 rounded border font-mono" value={slug} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSlug(e.target.value.toLowerCase())} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }} />
               </div>
             </div>
             <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+              <input type="checkbox" checked={published} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPublished(e.target.checked)} />
               <span>Published</span>
             </label>
             <div className="flex items-center gap-2">
@@ -267,19 +269,19 @@ export default function PageEditor() {
               setSelectedId(nb.id);
             }} />
 
-            <div style={{ ...cssVars, fontFamily: 'var(--font)', color: 'var(--foreground)' }}>
+            <div style={{ ...(themeVars as unknown as React.CSSProperties), fontFamily: 'var(--font)', color: 'var(--foreground)' }}>
               <Canvas
                 blocks={blocks}
                 selectedId={selectedId}
-                onSelect={(id)=> setSelectedId(id)}
+                onSelect={(id: string)=> setSelectedId(id)}
                 onReorder={handleReorder}
                 onDropNew={handleDropNew}
               />
             </div>
             <div className="space-y-4">
               <Inspector
-                block={blocks.find(b=> b.id === selectedId) || null}
-                onChange={(b)=> updateBlock(b.id, b)}
+                block={blocks.find((b: Block)=> b.id === selectedId) || null}
+                onChange={(b: Block)=> updateBlock(b.id, b)}
                 onDelete={()=> selectedId && deleteBlock(selectedId)}
                 onDuplicate={()=> selectedId && duplicateBlock(selectedId)}
               />
